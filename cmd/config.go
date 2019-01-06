@@ -124,6 +124,7 @@ func newConfigApp() *cli.Cli {
 	}
 	checkDbPath()
 	if err := conf.validate(); err != nil {
+		log.Printf("Invalid options:\n%s\n", err.Error())
 		app.PrintLongHelp()
 		cli.Exit(1)
 	}
@@ -137,11 +138,11 @@ func (o options) validate() error {
 func checkDbPath() {
 	if info, err := os.Stat(*conf.dbPath); !os.IsNotExist(err) {
 		if !info.IsDir() {
-			log.Fatalf("Db path exists and it is not a folder, must be folder")
+			FatalF("Db path exists and it is not a folder, must be folder")
 		}
 	} else {
 		if err := os.MkdirAll(*conf.dbPath, os.ModePerm); err != nil {
-			log.Fatalf("Couldn't make db dir. Reason: %s", err.Error())
+			FatalF("Couldn't make db dir. Reason: %s", err.Error())
 		}
 	}
 }
@@ -155,8 +156,13 @@ func getPassword(length int) string {
 	)
 	for secret, err = jwtis.GenerateSecret(length); err != nil; numtries-- {
 		if numtries == 0 {
-			log.Fatalf("Couldn't generate secret key because of internal problem")
+			FatalF("Couldn't generate secret key because of internal problem")
 		}
 	}
 	return string(secret)
+}
+
+func FatalF(format string, v ...interface{}) {
+	log.Printf(format, v...)
+	cli.Exit(1)
 }

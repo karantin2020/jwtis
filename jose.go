@@ -12,7 +12,6 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"errors"
-	"log"
 
 	"golang.org/x/crypto/ed25519"
 
@@ -126,7 +125,7 @@ func KeygenEnc(alg jose.KeyAlgorithm, bits int) (crypto.PublicKey, crypto.Privat
 }
 
 // GenerateKey generates enc, sig key
-func GenerateKey(kid, use, alg string, bits int) KeySet {
+func GenerateKey(kid, use, alg string, bits int) (KeySet, error) {
 	var privKey crypto.PublicKey
 	var pubKey crypto.PrivateKey
 	var err error
@@ -136,16 +135,18 @@ func GenerateKey(kid, use, alg string, bits int) KeySet {
 	case "enc":
 		pubKey, privKey, err = KeygenEnc(jose.KeyAlgorithm(alg), bits)
 	}
-	log.Fatalf("Unable to generate key: %s", err.Error())
+	if err != nil {
+		return KeySet{}, errors.New("Unable to generate key: " + err.Error())
+	}
 
 	priv := jose.JSONWebKey{Key: privKey, KeyID: kid, Algorithm: alg, Use: use}
 	pub := jose.JSONWebKey{Key: pubKey, KeyID: kid, Algorithm: alg, Use: use}
 
 	if priv.IsPublic() || !pub.IsPublic() || !priv.Valid() || !pub.Valid() {
-		log.Fatalf("invalid keys were generated")
+		return KeySet{}, errors.New("invalid keys were generated")
 	}
 	return KeySet{
 		Priv: priv,
 		Pub:  pub,
-	}
+	}, nil
 }

@@ -14,14 +14,14 @@ type httpConf struct {
 	tls    *bool   // Future feature
 }
 
-// keys generation options
+// Default keys generation options
 type sign struct {
-	sigAlg  *string // Generate key to be used for sign
-	sigBits *int    // Key size in bits for sign
+	sigAlg  *string // Default algorithn to be used for sign
+	sigBits *int    // Default key size in bits for sign
 }
 type encryption struct {
-	encAlg  *string // Generate key to be used for encrypt
-	encBits *int    // Key size in bits for encrypt
+	encAlg  *string // Default algorithn to be used for encrypt
+	encBits *int    // Default key size in bits for encrypt
 }
 type keyGeneration struct {
 	// keys generation options
@@ -78,13 +78,13 @@ func newConfigApp() *cli.Cli {
 				sigAlg: app.String(cli.StringOpt{
 					Name:   "sigAlg",
 					Value:  "RS256",
-					Desc:   "Generate key to be used for sign",
+					Desc:   "Default algorithn to be used for sign",
 					EnvVar: envPrefix + "SIG_ALG",
 				}),
 				sigBits: app.Int(cli.IntOpt{
 					Name:   "sigBits",
 					Value:  2048,
-					Desc:   "Key size in bits for sign key",
+					Desc:   "Default key size in bits for sign key",
 					EnvVar: envPrefix + "SIG_BITS",
 				}),
 			},
@@ -92,13 +92,13 @@ func newConfigApp() *cli.Cli {
 				encAlg: app.String(cli.StringOpt{
 					Name:   "encAlg",
 					Value:  "RSA-OAEP-256",
-					Desc:   "Generate key to be used for encrypt",
+					Desc:   "Default algorithn to be used for encrypt",
 					EnvVar: envPrefix + "ENC_ALG",
 				}),
 				encBits: app.Int(cli.IntOpt{
 					Name:   "encBits",
 					Value:  2048,
-					Desc:   "Key size in bits for encrypt",
+					Desc:   "Default key size in bits for encrypt",
 					EnvVar: envPrefix + "ENC_BITS",
 				}),
 			},

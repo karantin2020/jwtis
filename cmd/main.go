@@ -4,6 +4,7 @@ import (
 	"os"
 
 	"github.com/dgraph-io/badger"
+	cli "github.com/jawher/mow.cli"
 )
 
 const (
@@ -15,11 +16,12 @@ const (
 )
 
 var (
-	db *badger.DB
+	db  *badger.DB
+	app *cli.Cli
 )
 
 func main() {
-	app := newConfigApp()
+	app = newConfigApp()
 	db = openDB()
 	defer db.Close()
 	app.Run(os.Args)

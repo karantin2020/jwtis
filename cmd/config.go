@@ -28,8 +28,7 @@ type keyGeneration struct {
 	sign
 	encryption
 	// Key IDs
-	kid     *string // Key ID
-	kidRand *bool   // Generate random Key ID
+	kid *string // Key ID
 }
 type options struct {
 	httpConf
@@ -57,6 +56,7 @@ const (
 func newConfigApp() *cli.Cli {
 	app := cli.App(appName, appDescription)
 	app.Version("v version", appVersion)
+	app.Spec = "[OPTIONS]"
 	conf = options{
 		httpConf: httpConf{
 			listen: app.String(cli.StringOpt{
@@ -68,7 +68,7 @@ func newConfigApp() *cli.Cli {
 			tls: app.Bool(cli.BoolOpt{
 				Name:   "tls",
 				Value:  false,
-				Desc:   "Use tls connection [not implemented]",
+				Desc:   "Use tls connection [not implemented yet]",
 				EnvVar: envPrefix + "TLS",
 			}),
 		},
@@ -108,12 +108,6 @@ func newConfigApp() *cli.Cli {
 				Desc:   "Key ID to set to enc ang sign keys",
 				EnvVar: envPrefix + "KEY_ID",
 			}),
-			kidRand: app.Bool(cli.BoolOpt{
-				Name:   "r kidRand",
-				Value:  false,
-				Desc:   "Generate random Key ID",
-				EnvVar: envPrefix + "KEY_RAND",
-			}),
 		},
 		selfName: app.String(cli.StringOpt{
 			Name:   "n name",
@@ -128,7 +122,16 @@ func newConfigApp() *cli.Cli {
 			EnvVar: envPrefix + "DB_PATH",
 		}),
 	}
+	checkDbPath()
+	if err := conf.validate(); err != nil {
+		app.PrintLongHelp()
+		cli.Exit(1)
+	}
 	return app
+}
+
+func (o options) validate() error {
+	return nil
 }
 
 func checkDbPath() {

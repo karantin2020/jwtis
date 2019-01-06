@@ -12,6 +12,7 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"errors"
+	"log"
 
 	"golang.org/x/crypto/ed25519"
 
@@ -35,6 +36,18 @@ var (
 		"enc", "sig",
 	}
 )
+
+// SigEncKeys holds sig ang enc key sets
+type SigEncKeys struct {
+	Sig KeySet
+	Enc KeySet
+}
+
+// KeySet holds private and public keys
+type KeySet struct {
+	Priv jose.JSONWebKey
+	Pub  jose.JSONWebKey
+}
 
 // KeygenSig generates keypair for corresponding SignatureAlgorithm.
 func KeygenSig(alg jose.SignatureAlgorithm, bits int) (crypto.PublicKey, crypto.PrivateKey, error) {
@@ -109,5 +122,30 @@ func KeygenEnc(alg jose.KeyAlgorithm, bits int) (crypto.PublicKey, crypto.Privat
 		return key.Public(), key, err
 	default:
 		return nil, nil, errors.New("unknown `alg` for `use` = `enc`")
+	}
+}
+
+// GenerateKey generates enc, sig key
+func GenerateKey(kid, use, alg string, bits int) KeySet {
+	var privKey crypto.PublicKey
+	var pubKey crypto.PrivateKey
+	var err error
+	switch use {
+	case "sig":
+		pubKey, privKey, err = KeygenSig(jose.SignatureAlgorithm(alg), bits)
+	case "enc":
+		pubKey, privKey, err = KeygenEnc(jose.KeyAlgorithm(alg), bits)
+	}
+	log.Fatalf("Unable to generate key: %s", err.Error())
+
+	priv := jose.JSONWebKey{Key: privKey, KeyID: kid, Algorithm: alg, Use: use}
+	pub := jose.JSONWebKey{Key: pubKey, KeyID: kid, Algorithm: alg, Use: use}
+
+	if priv.IsPublic() || !pub.IsPublic() || !priv.Valid() || !pub.Valid() {
+		log.Fatalf("invalid keys were generated")
+	}
+	return KeySet{
+		Priv: priv,
+		Pub:  pub,
 	}
 }

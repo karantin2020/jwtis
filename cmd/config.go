@@ -121,7 +121,7 @@ func newConfigApp() *cli.Cli {
 			Name:   "p pswd",
 			Value:  "",
 			Desc:   "Storage password. App generates password with db creation. Later user must provide a password to access the database",
-			EnvVar: envPrefix + "DB_PATH",
+			EnvVar: envPrefix + "PSWD",
 		}),
 		dbPath: app.String(cli.StringOpt{
 			Name:   "d dbPath",

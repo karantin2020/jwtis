@@ -1,7 +1,5 @@
 ## JWTIS - JWT issuer server
 
----
-
 Stand alone JWT issuer server. Just creates and renews JSON Web Tokens.
 
 Used `gopkg.in/square/go-jose.v2` library.  

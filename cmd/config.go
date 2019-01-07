@@ -31,6 +31,17 @@ type keyGeneration struct {
 	sign
 	encryption
 }
+type setByUser struct {
+	listenSetByUser   bool
+	tlsSetByUser      bool
+	sigAlgSetByUser   bool
+	sigBitsSetByUser  bool
+	encAlgSetByUser   bool
+	encBitsSetByUser  bool
+	selfNameSetByUser bool
+	passwordSetByUser bool
+	dbPathSetByUser   bool
+}
 type options struct {
 	httpConf
 	keyGeneration
@@ -40,6 +51,7 @@ type options struct {
 	password *string // Storage password. App generates password with db creation.
 	// Later user must provide a password to access the database
 	dbPath *string
+	setByUser
 }
 
 var (
@@ -72,74 +84,83 @@ func newConfigApp() *cli.Cli {
 	conf = options{
 		httpConf: httpConf{
 			listen: app.String(cli.StringOpt{
-				Name:   "l listen",
-				Value:  "127.0.0.1:4343",
-				Desc:   "ip:port to listen to",
-				EnvVar: envPrefix + "ADDRESS",
+				Name:      "l listen",
+				Value:     "127.0.0.1:4343",
+				Desc:      "ip:port to listen to",
+				EnvVar:    envPrefix + "ADDRESS",
+				SetByUser: &conf.listenSetByUser,
 			}),
 			tls: app.Bool(cli.BoolOpt{
-				Name:   "tls",
-				Value:  false,
-				Desc:   "Use tls connection [not implemented yet]",
-				EnvVar: envPrefix + "TLS",
+				Name:      "tls",
+				Value:     false,
+				Desc:      "Use tls connection [not implemented yet]",
+				EnvVar:    envPrefix + "TLS",
+				SetByUser: &conf.tlsSetByUser,
 			}),
 		},
 		keyGeneration: keyGeneration{
 			// keys generation options
 			sign: sign{
 				sigAlg: app.String(cli.StringOpt{
-					Name:   "sigAlg",
-					Value:  "RS256",
-					Desc:   "Default algorithn to be used for sign",
-					EnvVar: envPrefix + "SIG_ALG",
+					Name:      "sigAlg",
+					Value:     "RS256",
+					Desc:      "Default algorithn to be used for sign",
+					EnvVar:    envPrefix + "SIG_ALG",
+					SetByUser: &conf.sigAlgSetByUser,
 				}),
 				sigBits: app.Int(cli.IntOpt{
-					Name:   "sigBits",
-					Value:  2048,
-					Desc:   "Default key size in bits for sign key",
-					EnvVar: envPrefix + "SIG_BITS",
+					Name:      "sigBits",
+					Value:     2048,
+					Desc:      "Default key size in bits for sign key",
+					EnvVar:    envPrefix + "SIG_BITS",
+					SetByUser: &conf.sigBitsSetByUser,
 				}),
 			},
 			encryption: encryption{
 				encAlg: app.String(cli.StringOpt{
-					Name:   "encAlg",
-					Value:  "RSA-OAEP-256",
-					Desc:   "Default algorithn to be used for encrypt",
-					EnvVar: envPrefix + "ENC_ALG",
+					Name:      "encAlg",
+					Value:     "RSA-OAEP-256",
+					Desc:      "Default algorithn to be used for encrypt",
+					EnvVar:    envPrefix + "ENC_ALG",
+					SetByUser: &conf.encAlgSetByUser,
 				}),
 				encBits: app.Int(cli.IntOpt{
-					Name:   "encBits",
-					Value:  2048,
-					Desc:   "Default key size in bits for encrypt",
-					EnvVar: envPrefix + "ENC_BITS",
+					Name:      "encBits",
+					Value:     2048,
+					Desc:      "Default key size in bits for encrypt",
+					EnvVar:    envPrefix + "ENC_BITS",
+					SetByUser: &conf.encBitsSetByUser,
 				}),
 			},
 		},
 		selfName: app.String(cli.StringOpt{
-			Name:   "n name",
-			Value:  "JWTIS",
-			Desc:   "Name of this service",
-			EnvVar: envPrefix + "NAME",
+			Name:      "n name",
+			Value:     "JWTIS",
+			Desc:      "Name of this service",
+			EnvVar:    envPrefix + "NAME",
+			SetByUser: &conf.selfNameSetByUser,
 		}),
 		password: app.String(cli.StringOpt{
-			Name:   "p pswd",
-			Value:  "",
-			Desc:   "Storage password. App generates password with db creation. Later user must provide a password to access the database",
-			EnvVar: envPrefix + "PSWD",
+			Name:      "p pswd",
+			Value:     "",
+			Desc:      "Storage password. App generates password with db creation. Later user must provide a password to access the database",
+			EnvVar:    envPrefix + "PSWD",
+			SetByUser: &conf.passwordSetByUser,
 		}),
 		dbPath: app.String(cli.StringOpt{
-			Name:   "d dbPath",
-			Value:  "./data/" + dbPathName,
-			Desc:   "Path to store keys db",
-			EnvVar: envPrefix + "DB_PATH",
+			Name:      "d dbPath",
+			Value:     "./data/" + dbPathName,
+			Desc:      "Path to store keys db",
+			EnvVar:    envPrefix + "DB_PATH",
+			SetByUser: &conf.dbPathSetByUser,
 		}),
 	}
-	checkDbPath()
 	if err := conf.validate(); err != nil {
 		log.Printf("Invalid options:\n%s\n", err.Error())
 		app.PrintLongHelp()
 		cli.Exit(1)
 	}
+	checkDbPath()
 	return app
 }
 
@@ -161,41 +182,60 @@ func (o options) validate() error {
 }
 
 func (o *options) store() error {
-	fmt.Println("[DEBUG] ", string(confListen), " : ", *conf.listen)
-	ShouldSet(confListen, []byte(*conf.listen))
-	ShouldSet(confTLS, strconv.AppendBool([]byte{}, *conf.tls))
-	ShouldSet(confSigAlg, []byte(*conf.sigAlg))
-	ShouldSet(confSigBits, strconv.AppendInt([]byte{}, int64(*conf.sigBits), 10))
-	ShouldSet(confEncAlg, []byte(*conf.encAlg))
-	ShouldSet(confEncBits, strconv.AppendInt([]byte{}, int64(*conf.encBits), 10))
-	ShouldSet(confSelfName, []byte(*conf.selfName))
-	ShouldSet(confPassword, []byte(*conf.password))
-	ShouldSet(confDbPath, []byte(*conf.dbPath))
+	bkt := buckets["internalBucketName"]
+	ShouldSet(bkt, confListen, []byte(*conf.listen))
+	ShouldSet(bkt, confTLS, strconv.AppendBool([]byte{}, *conf.tls))
+	ShouldSet(bkt, confSigAlg, []byte(*conf.sigAlg))
+	ShouldSet(bkt, confSigBits, strconv.AppendInt([]byte{}, int64(*conf.sigBits), 10))
+	ShouldSet(bkt, confEncAlg, []byte(*conf.encAlg))
+	ShouldSet(bkt, confEncBits, strconv.AppendInt([]byte{}, int64(*conf.encBits), 10))
+	ShouldSet(bkt, confSelfName, []byte(*conf.selfName))
+	ShouldSet(bkt, confPassword, []byte(*conf.password))
+	ShouldSet(bkt, confDbPath, []byte(*conf.dbPath))
 
-	ShouldSet(dbCheckKey, dbCheckValue)
+	ShouldSet(bkt, dbCheckKey, dbCheckValue)
 	return nil
 }
 
-func (o *options) retrieve() error {
-	*conf.listen = string(ShouldGet(confListen)) //, []byte(*conf.listen))
-	tls := ShouldGet(confTLS)
+func (o *options) load() error {
+	bkt := buckets["internalBucketName"]
+	if dbExists && !conf.listenSetByUser {
+		*conf.listen = string(ShouldGet(bkt, confListen)) //, []byte(*conf.listen))
+	}
 	var err error
-	if *conf.tls, err = strconv.ParseBool(string(tls)); err != nil {
-		return err
+	if dbExists && !conf.tlsSetByUser {
+		tls := ShouldGet(bkt, confTLS)
+		if *conf.tls, err = strconv.ParseBool(string(tls)); err != nil {
+			return err
+		}
 	}
-	*conf.sigAlg = string(ShouldGet(confSigAlg)) //, []byte(*conf.sigAlg))
-	sbits := ShouldGet(confSigBits)
-	if *conf.sigBits, err = strconv.Atoi(string(sbits)); err != nil {
-		return nil
+	if dbExists && !conf.sigAlgSetByUser {
+		*conf.sigAlg = string(ShouldGet(bkt, confSigAlg)) //, []byte(*conf.sigAlg))
 	}
-	*conf.encAlg = string(ShouldGet(confEncAlg)) //, []byte(*conf.encAlg))
-	ebits := ShouldGet(confEncBits)
-	if *conf.encBits, err = strconv.Atoi(string(ebits)); err != nil {
-		return nil
+	if dbExists && !conf.sigBitsSetByUser {
+		sbits := ShouldGet(bkt, confSigBits)
+		if *conf.sigBits, err = strconv.Atoi(string(sbits)); err != nil {
+			return nil
+		}
 	}
-	*conf.selfName = string(ShouldGet(confSelfName)) //, []byte(*conf.selfName))
-	*conf.password = string(ShouldGet(confPassword)) //, []byte(*conf.password))
-	*conf.dbPath = string(ShouldGet(confDbPath))     //, []byte(*conf.dbPath))
+	if dbExists && !conf.encAlgSetByUser {
+		*conf.encAlg = string(ShouldGet(bkt, confEncAlg)) //, []byte(*conf.encAlg))
+	}
+	if dbExists && !conf.encBitsSetByUser {
+		ebits := ShouldGet(bkt, confEncBits)
+		if *conf.encBits, err = strconv.Atoi(string(ebits)); err != nil {
+			return nil
+		}
+	}
+	if dbExists && !conf.selfNameSetByUser {
+		*conf.selfName = string(ShouldGet(bkt, confSelfName)) //, []byte(*conf.selfName))
+	}
+	if dbExists && !conf.passwordSetByUser {
+		*conf.password = string(ShouldGet(bkt, confPassword)) //, []byte(*conf.password))
+	}
+	if dbExists && !conf.dbPathSetByUser {
+		*conf.dbPath = string(ShouldGet(bkt, confDbPath)) //, []byte(*conf.dbPath))
+	}
 	return nil
 }
 

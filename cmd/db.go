@@ -16,12 +16,14 @@ func openDB() (*bolt.DB, error) {
 	if err != nil {
 		return nil, fmt.Errorf("couldn't open keys db: %s", err.Error())
 	}
-	err = db.Update(func(tx *bolt.Tx) error {
-		if _, e := tx.CreateBucketIfNotExists(keysBucketName); e != nil {
-			return fmt.Errorf("failed to create top level bucket %s, error: %s", keysBucketName, e.Error())
-		}
-		return nil
-	})
+	for _, v := range buckets {
+		err = db.Update(func(tx *bolt.Tx) error {
+			if _, e := tx.CreateBucketIfNotExists(v); e != nil {
+				return fmt.Errorf("failed to create top level bucket %s, error: %s", v, e.Error())
+			}
+			return nil
+		})
+	}
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to create top level bucket: %s", err.Error())
@@ -31,7 +33,7 @@ func openDB() (*bolt.DB, error) {
 }
 
 func checkDBPassword() {
-	val, err := Get(dbCheckKey)
+	val, err := Get(buckets["internalBucketName"], dbCheckKey)
 	if err != nil {
 		log.Printf("error getting dbCheckKey: %s\n", err.Error())
 	}
@@ -60,9 +62,9 @@ func newDBPassword() {
 
 // ====== Should Methods ========= //
 
-// ShouldGet value from badger
-func ShouldGet(k []byte) []byte {
-	v, _ := Get(k)
+// ShouldGet value from bboltdb
+func ShouldGet(bkt, k []byte) []byte {
+	v, _ := Get(bkt, k)
 	if v == nil {
 		return []byte{}
 	}
@@ -70,21 +72,21 @@ func ShouldGet(k []byte) []byte {
 }
 
 // ShouldExists checks if the key exists in db
-func ShouldExists(k []byte) bool {
-	v, _ := Exists(k)
+func ShouldExists(bkt, k []byte) bool {
+	v, _ := Exists(bkt, k)
 	return v
 }
 
-// ShouldSet the key in badger
-func ShouldSet(k []byte, v []byte) {
-	if err := Set(k, v); err != nil {
+// ShouldSet the key in bboltdb
+func ShouldSet(bkt, k, v []byte) {
+	if err := Set(bkt, k, v); err != nil {
 		FatalF("%s\n", err.Error())
 	}
 }
 
 // ShouldDelete key/value pair from db
-func ShouldDelete(k []byte) {
-	err := Delete(k)
+func ShouldDelete(bkt, k []byte) {
+	err := Delete(bkt, k)
 	if err != nil {
 		FatalF("%s\n", err.Error())
 	}
@@ -92,11 +94,14 @@ func ShouldDelete(k []byte) {
 
 // ====== Pure Error Methods ========= //
 
-// Get value from badger
-func Get(k []byte) ([]byte, error) {
+// Get value from bboltdb
+func Get(bkt, k []byte) ([]byte, error) {
+	if k == nil {
+		return nil, fmt.Errorf("nil key %s", string(k))
+	}
 	var value []byte
 	err := boltDB.View(func(tx *bolt.Tx) error {
-		b := tx.Bucket(keysBucketName)
+		b := tx.Bucket(bkt)
 		v := b.Get(k)
 		value = append(value, v...)
 		return nil
@@ -109,10 +114,13 @@ func Get(k []byte) ([]byte, error) {
 }
 
 // Exists checks if the key exists in db
-func Exists(k []byte) (bool, error) {
+func Exists(bkt, k []byte) (bool, error) {
+	if k == nil {
+		return false, fmt.Errorf("nil key %s", string(k))
+	}
 	exist := false
 	err := boltDB.View(func(tx *bolt.Tx) error {
-		b := tx.Bucket(keysBucketName)
+		b := tx.Bucket(bkt)
 		v := b.Get(k)
 		exist = v != nil
 		return nil
@@ -120,18 +128,27 @@ func Exists(k []byte) (bool, error) {
 	return exist, err
 }
 
-// Set the key in badger
-func Set(k []byte, v []byte) error {
+// Set the key in bboltdb
+func Set(bkt, k, v []byte) error {
+	if k == nil {
+		return fmt.Errorf("nil key %s", string(k))
+	}
+	if v == nil {
+		return fmt.Errorf("nil val for key %s", string(k))
+	}
 	return boltDB.Update(func(tx *bolt.Tx) error {
-		b := tx.Bucket(keysBucketName)
+		b := tx.Bucket(bkt)
 		return b.Put(k, v)
 	})
 }
 
 // Delete key/value pair from db
-func Delete(k []byte) error {
+func Delete(bkt, k []byte) error {
+	if k == nil {
+		return fmt.Errorf("nil key %s", string(k))
+	}
 	return boltDB.Update(func(tx *bolt.Tx) error {
-		b := tx.Bucket(keysBucketName)
+		b := tx.Bucket(bkt)
 		return b.Delete(k)
 	})
 }
@@ -163,5 +180,28 @@ func load(bkt *bolt.Bucket, key []byte, res interface{}) error {
 	if err := json.Unmarshal(value, &res); err != nil {
 		return fmt.Errorf("failed to unmarshal: %s", err.Error())
 	}
+	return nil
+}
+
+// saveByte puts val into bucket. []byte version
+func saveByte(bkt *bolt.Bucket, key, val []byte) (err error) {
+	if val == nil {
+		return fmt.Errorf("can't save nil value for %s", string(key))
+	}
+	if err = bkt.Put(key, val); err != nil {
+		return fmt.Errorf("failed to save key %s, error: %s", string(key), err.Error())
+	}
+	return nil
+}
+
+// loadByte gets val from bucket. []byte version
+func loadByte(bkt *bolt.Bucket, key, val []byte) error {
+	value := bkt.Get(key)
+	if value == nil {
+		return fmt.Errorf("no value for %s", string(key))
+	}
+
+	val = val[:0]
+	val = append(val, value...)
 	return nil
 }

@@ -29,7 +29,9 @@ type NewTokenResponse struct {
 
 // RegisterClientRequest sent to jwtis to register new client
 type RegisterClientRequest struct {
-	Kid string `json:"kid"` // Keys id to use
+	Kid      string          `json:"kid"`       // Keys id to use
+	RenewTTL jwt.NumericDate `json:"renew_ttL"` // TTL for auto revoke keys with this kid
+	// client servers cann't request keys renew without ClientToken
 
 	// Sign and encrypt keys config. If not provided then use default JWTIS values
 	SigAlg  string `json:"sig_alg"`  // algorithn to be used for sign
@@ -44,4 +46,16 @@ type RegisterClientResponse struct {
 	ClientToken string          `json:"client_token"` // Client token given after registration
 	PubSigKey   jose.JSONWebKey `json:"pub_sig_key"`  // Public sign key to verify AuthTokens
 	PubEncKey   jose.JSONWebKey `json:"pub_enc_key"`  // Public enc key to decrypt RefreshTokens
+}
+
+// PubKeysClientRequest fetch public keys
+type PubKeysClientRequest struct {
+	Kid string `json:"kid"` // Keys id to use
+}
+
+// PubKeysResponse holds public keys
+type PubKeysResponse struct {
+	Kid       string          `json:"kid"`         // Keys id to use
+	PubSigKey jose.JSONWebKey `json:"pub_sig_key"` // Public sign key to verify AuthTokens
+	PubEncKey jose.JSONWebKey `json:"pub_enc_key"` // Public enc key to decrypt RefreshTokens
 }

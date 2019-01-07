@@ -71,34 +71,47 @@ These refresh tokens can be revoked by an authorized client
 
   - method
 
-```
-    POST
-```
+  ```
+      POST
+  ```
 
-- payload
+  - payload
 
-```go
-  type RegisterClientRequest struct {
-      Kid string `json:"kid"` // Keys id to use
+  ```go
+    type RegisterClientRequest struct {
+        Kid string `json:"kid"` // Keys id to use
 
-      // Sign and encrypt keys config. If not provided then use default JWTIS values
-      SigAlg  string `json:"sig_alg"`  // algorithn to be used for sign
-      SigBits string `json:"sig_bits"` // key size in bits for sign
-      EncAlg  string `json:"enc_alg"`  // algorithn to be used for encrypt
-      EncBits string `json:"enc_bits"` // key size in bits for encrypt
-  }
-```
+        // Sign and encrypt keys config. If not provided then use default JWTIS values
+        SigAlg  string `json:"sig_alg"`  // algorithn to be used for sign
+        SigBits string `json:"sig_bits"` // key size in bits for sign
+        EncAlg  string `json:"enc_alg"`  // algorithn to be used for encrypt
+        EncBits string `json:"enc_bits"` // key size in bits for encrypt
+    }
+  ```
 
-- response
+  - response
 
-```go
-  type RegisterClientResponse struct {
-      Kid         string          `json:"kid"`          // Keys id to use
-      ClientToken string          `json:"client_token"` // Client token given after registration
-      PubSigKey   jose.JSONWebKey `json:"pub_sig_key"`  // Public sign key to verify AuthTokens
-      PubEncKey   jose.JSONWebKey `json:"pub_enc_key"`  // Public enc key to decrypt RefreshTokens
-  }
-```
+  ```go
+    type RegisterClientResponse struct {
+        Kid         string          `json:"kid"`          // Keys id to use
+        ClientToken string          `json:"client_token"` // Client token given after registration
+        PubSigKey   jose.JSONWebKey `json:"pub_sig_key"`  // Public sign key to verify AuthTokens
+        PubEncKey   jose.JSONWebKey `json:"pub_enc_key"`  // Public enc key to decrypt RefreshTokens
+    }
+  ```
+
+- /keys
+  `- fetch client server (app) public keys [TODO]`
+
+  - request for previously generated public keys for JWT
+  - request for new pub and priv JSONWebKey, not for jwt issuing
+  - and other functions
+  - requests send parameters in url queue or req body
+
+- /renew_keys
+  `- request new client server (app) keys [TODO]`
+
+  - method
 
 - /issue_token
   `- request new token set for client server with kid`
@@ -130,7 +143,7 @@ These refresh tokens can be revoked by an authorized client
     }
   ```
 
-- /renew_token
+* /renew_token
   `- renew auth token for client server based on refresh token.`
   `Only if refresh token is valid. Otherwise need to request new token`
 

@@ -22,10 +22,13 @@ var (
 	keysBucket *bolt.Bucket
 	buckets    = map[string][]byte{
 		"internalBucketName": []byte("internalBucket"),
+		"configBucketName":   []byte("configBucket"),
 		"keysBucketName":     []byte("keysBucket"),
 	}
-	app      *cli.Cli
-	password string
+	app           *cli.Cli
+	confRepo      configRepository
+	internalsRepo internalRepository
+	password      string
 )
 
 func main() {
@@ -34,20 +37,30 @@ func main() {
 		var err error
 		boltDB, err = openDB()
 		defer func() {
-			conf.store()
+			confRepo.save()
+			internalsRepo.save()
 			boltDB.Close()
 		}()
 		if err != nil {
 			fmt.Printf("Couldn't open db: %s\n", err.Error())
 			return
 		}
-		checkDBPassword()
+		confRepo.setDB(boltDB)
+		internalsRepo.setDB(boltDB)
+		if err := internalsRepo.load(); err != nil {
+			fmt.Println(err.Error())
+			cli.Exit(1)
+		}
+		// checkDBPassword()
 		fmt.Println("dbExists: ", dbExists)
 		fmt.Println("dbCheckFault: ", dbCheckFault)
-		if !dbExists {
-			conf.store()
+		fmt.Printf("internalsRepo.password: '%s'\n", string(internalsRepo.password))
+		if dbExists {
+			if err := confRepo.load(); err != nil {
+				fmt.Println(err.Error())
+				cli.Exit(1)
+			}
 		}
-		conf.load()
 		printOptions()
 	}
 	app.Run(os.Args)

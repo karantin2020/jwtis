@@ -1,10 +1,8 @@
 package main
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
-	"log"
 	"time"
 
 	bolt "github.com/coreos/bbolt"
@@ -12,7 +10,7 @@ import (
 
 func openDB() (*bolt.DB, error) {
 	opts := &bolt.Options{Timeout: 10 * time.Second}
-	db, err := bolt.Open(*conf.dbPath, 0600, opts)
+	db, err := bolt.Open(*confRepo.dbPath, 0600, opts)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't open keys db: %s", err.Error())
 	}
@@ -30,34 +28,6 @@ func openDB() (*bolt.DB, error) {
 	}
 	dbExists = true
 	return db, nil
-}
-
-func checkDBPassword() {
-	val, err := Get(buckets["internalBucketName"], dbCheckKey)
-	if err != nil {
-		log.Printf("error getting dbCheckKey: %s\n", err.Error())
-	}
-	if val == nil {
-		log.Printf("DB has no dbCheckValue, use generated password\n")
-		*conf.password = getPassword(passwordLength)
-		log.Printf("generated conf.password: '%s'\n", *conf.password)
-		dbExists = false
-		dbCheckFault = false
-		return
-	} else if !bytes.Equal(val, dbCheckValue) {
-		dbExists = true
-		dbCheckFault = true
-		FatalF("prompted password is not equal to db password\n")
-	} else {
-		dbExists = true
-		dbCheckFault = false
-	}
-}
-
-func newDBPassword() {
-	log.Printf("DB password check didn't pass, use generated password\n")
-	*conf.password = getPassword(passwordLength)
-	log.Printf("generated password: '%s'\n", *conf.password)
 }
 
 // ====== Should Methods ========= //
@@ -174,7 +144,7 @@ func save(bkt *bolt.Bucket, key []byte, value interface{}) (err error) {
 func load(bkt *bolt.Bucket, key []byte, res interface{}) error {
 	value := bkt.Get(key)
 	if value == nil {
-		return fmt.Errorf("no value for %s", string(key))
+		return errKeyNotFound
 	}
 
 	if err := json.Unmarshal(value, &res); err != nil {

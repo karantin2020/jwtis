@@ -1,8 +1,11 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
+	"path/filepath"
+	"strconv"
 
 	cli "github.com/jawher/mow.cli"
 	"github.com/karantin2020/jwtis"
@@ -27,8 +30,6 @@ type keyGeneration struct {
 	// keys generation options
 	sign
 	encryption
-	// Key IDs
-	kid *string // Key ID
 }
 type options struct {
 	httpConf
@@ -41,18 +42,27 @@ type options struct {
 	dbPath *string
 }
 
-type bootstrapOptions struct {
-	password string
-	dbExists bool
-}
-
 var (
-	conf          options
-	bootstrapConf bootstrapOptions
+	conf options
+
+	confListen   = []byte("jwtis.conf.listen")
+	confTLS      = []byte("jwtis.conf.tls")
+	confSigAlg   = []byte("jwtis.conf.sigAlg")
+	confSigBits  = []byte("jwtis.conf.sigBits")
+	confEncAlg   = []byte("jwtis.conf.encAlg")
+	confEncBits  = []byte("jwtis.conf.encBits")
+	confSelfName = []byte("jwtis.conf.selfName")
+	confPassword = []byte("jwtis.conf.password")
+	confDbPath   = []byte("jwtis.conf.dbPath")
+
+	dbCheckKey   = []byte("jwtis.conf.dbCheckKey")
+	dbCheckValue = []byte("jwtis.conf.dbCheckValue")
+	dbExists     bool
+	dbCheckFault bool
 )
 
 const (
-	dbPathName = "keys_db" // default db folder name
+	dbPathName = "keys.db" // default db folder name
 )
 
 func newConfigApp() *cli.Cli {
@@ -104,12 +114,6 @@ func newConfigApp() *cli.Cli {
 					EnvVar: envPrefix + "ENC_BITS",
 				}),
 			},
-			kid: app.String(cli.StringOpt{
-				Name:   "k kid",
-				Value:  "",
-				Desc:   "Key ID to set to enc ang sign keys",
-				EnvVar: envPrefix + "KEY_ID",
-			}),
 		},
 		selfName: app.String(cli.StringOpt{
 			Name:   "n name",
@@ -139,19 +143,66 @@ func newConfigApp() *cli.Cli {
 	return app
 }
 
+func printOptions() {
+	fmt.Printf("Options found:\n")
+	fmt.Println("conf.listen: ", *conf.listen)
+	fmt.Println("conf.tls: ", *conf.tls)
+	fmt.Println("conf.sigAlg: ", *conf.sigAlg)
+	fmt.Println("conf.sigBits: ", *conf.sigBits)
+	fmt.Println("conf.encAlg: ", *conf.encAlg)
+	fmt.Println("conf.encBits: ", *conf.encBits)
+	fmt.Println("conf.selfName: ", *conf.selfName)
+	fmt.Println("conf.password: ", *conf.password)
+	fmt.Println("conf.dbPath: ", *conf.dbPath)
+}
+
 func (o options) validate() error {
 	return nil
 }
 
+func (o *options) store() error {
+	fmt.Println("[DEBUG] ", string(confListen), " : ", *conf.listen)
+	ShouldSet(confListen, []byte(*conf.listen))
+	ShouldSet(confTLS, strconv.AppendBool([]byte{}, *conf.tls))
+	ShouldSet(confSigAlg, []byte(*conf.sigAlg))
+	ShouldSet(confSigBits, strconv.AppendInt([]byte{}, int64(*conf.sigBits), 10))
+	ShouldSet(confEncAlg, []byte(*conf.encAlg))
+	ShouldSet(confEncBits, strconv.AppendInt([]byte{}, int64(*conf.encBits), 10))
+	ShouldSet(confSelfName, []byte(*conf.selfName))
+	ShouldSet(confPassword, []byte(*conf.password))
+	ShouldSet(confDbPath, []byte(*conf.dbPath))
+
+	ShouldSet(dbCheckKey, dbCheckValue)
+	return nil
+}
+
+func (o *options) retrieve() error {
+	*conf.listen = string(ShouldGet(confListen)) //, []byte(*conf.listen))
+	tls := ShouldGet(confTLS)
+	var err error
+	if *conf.tls, err = strconv.ParseBool(string(tls)); err != nil {
+		return err
+	}
+	*conf.sigAlg = string(ShouldGet(confSigAlg)) //, []byte(*conf.sigAlg))
+	sbits := ShouldGet(confSigBits)
+	if *conf.sigBits, err = strconv.Atoi(string(sbits)); err != nil {
+		return nil
+	}
+	*conf.encAlg = string(ShouldGet(confEncAlg)) //, []byte(*conf.encAlg))
+	ebits := ShouldGet(confEncBits)
+	if *conf.encBits, err = strconv.Atoi(string(ebits)); err != nil {
+		return nil
+	}
+	*conf.selfName = string(ShouldGet(confSelfName)) //, []byte(*conf.selfName))
+	*conf.password = string(ShouldGet(confPassword)) //, []byte(*conf.password))
+	*conf.dbPath = string(ShouldGet(confDbPath))     //, []byte(*conf.dbPath))
+	return nil
+}
+
 func checkDbPath() {
-	if info, err := os.Stat(*conf.dbPath); !os.IsNotExist(err) {
-		if !info.IsDir() {
-			FatalF("Db path exists and it is not a folder, must be folder")
-		}
-	} else {
-		if err := os.MkdirAll(*conf.dbPath, os.ModePerm); err != nil {
-			FatalF("Couldn't make db dir. Reason: %s", err.Error())
-		}
+	dir, _ := filepath.Split(*conf.dbPath)
+	if err := os.MkdirAll(dir, os.ModePerm); err != nil {
+		FatalF("Couldn't make db dir. Reason: %s\n", err.Error())
 	}
 }
 
@@ -164,7 +215,7 @@ func getPassword(length int) string {
 	)
 	for secret, err = jwtis.GenerateSecret(length); err != nil; numtries-- {
 		if numtries == 0 {
-			FatalF("Couldn't generate secret key because of internal problem")
+			FatalF("Couldn't generate secret key because of internal problem\n")
 		}
 	}
 	return string(secret)

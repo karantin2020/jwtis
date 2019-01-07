@@ -8,7 +8,7 @@ import (
 	"math/big"
 )
 
-var secretCharSet = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890_-.~!{}[]&?")
+var secretCharSet = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890_-.~!{}[]&?@#$&*()")
 
 // GenerateSecret gererates a secret including chars from secret char set
 func GenerateSecret(length int) ([]byte, error) {

@@ -63,37 +63,24 @@ type configRepository struct {
 	options
 	repoDB     *bolt.DB
 	bucketName []byte
-	bucketKeys [][]byte
 }
 
-func initConfigRepository(db *bolt.DB) configRepository {
-	repo := configRepository{
-		repoDB: db,
-		defaults: defaults{
-			defListen:   "127.0.0.1:4343",
-			defTLS:      false,
-			defSigAlg:   "RS256",
-			defSigBits:  2048,
-			defEncAlg:   "RSA-OAEP-256",
-			defEncBits:  2048,
-			defSelfName: "JWTIS",
-			defPassword: "",
-			defDbPath:   "./data/" + dbPathName,
-		},
-		bucketName: buckets["configBucketName"],
-		bucketKeys: [][]byte{
-			[]byte("jwtis.conf.listen"),
-			[]byte("jwtis.conf.tls"),
-			[]byte("jwtis.conf.sigAlg"),
-			[]byte("jwtis.conf.sigBits"),
-			[]byte("jwtis.conf.encAlg"),
-			[]byte("jwtis.conf.encBits"),
-			[]byte("jwtis.conf.selfName"),
-			[]byte("jwtis.conf.password"),
-			[]byte("jwtis.conf.dbPath"),
-		},
+func (p *configRepository) init(db *bolt.DB) {
+	if p == nil {
+		panic("configRepository pointer is nil")
 	}
-	return repo
+	p.repoDB = db
+	p.defListen = "127.0.0.1:4343"
+	p.defTLS = false
+	p.defSigAlg = "RS256"
+	p.defSigBits = 2048
+	p.defEncAlg = "RSA-OAEP-256"
+	p.defEncBits = 2048
+	p.defSelfName = "JWTIS"
+	p.defPassword = ""
+	p.defDbPath = "./data/" + dbPathName
+	p.bucketName = buckets["configBucketName"]
+	p.setDefaults()
 }
 
 func (p *configRepository) setDefaults() *configRepository {
@@ -124,7 +111,31 @@ func (p *configRepository) save() error {
 	}
 	if err := boltDB.Batch(func(tx *bolt.Tx) error {
 		b := tx.Bucket(p.bucketName)
-		if err := save(b, confListen, p.listen); err != nil { //= string(ShouldGet(bkt, confListen)) //, []byte(*conf.listen))
+		if err := save(b, confListen, p.listen); err != nil {
+			return err
+		}
+		if err := save(b, confTLS, p.tls); err != nil {
+			return err
+		}
+		if err := save(b, confSigAlg, p.sigAlg); err != nil {
+			return err
+		}
+		if err := save(b, confSigBits, p.sigBits); err != nil {
+			return err
+		}
+		if err := save(b, confEncAlg, p.encAlg); err != nil {
+			return err
+		}
+		if err := save(b, confEncBits, p.encBits); err != nil {
+			return err
+		}
+		if err := save(b, confSelfName, p.selfName); err != nil {
+			return err
+		}
+		if err := save(b, confPassword, p.password); err != nil {
+			return err
+		}
+		if err := save(b, confDbPath, p.dbPath); err != nil {
 			return err
 		}
 		return nil
@@ -141,7 +152,47 @@ func (p *configRepository) load() error {
 	if err := boltDB.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket(p.bucketName)
 		if !p.listenSetByUser {
-			if err := load(b, confListen, p.listen); err != nil { //= string(ShouldGet(bkt, confListen)) //, []byte(*conf.listen))
+			if err := load(b, confListen, p.listen); err != nil {
+				return err
+			}
+		}
+		if !p.tlsSetByUser {
+			if err := load(b, confTLS, p.tls); err != nil {
+				return err
+			}
+		}
+		if !p.sigAlgSetByUser {
+			if err := load(b, confSigAlg, p.sigAlg); err != nil {
+				return err
+			}
+		}
+		if !p.sigBitsSetByUser {
+			if err := load(b, confSigBits, p.sigBits); err != nil {
+				return err
+			}
+		}
+		if !p.encAlgSetByUser {
+			if err := load(b, confEncAlg, p.encAlg); err != nil {
+				return err
+			}
+		}
+		if !p.encBitsSetByUser {
+			if err := load(b, confEncBits, p.encBits); err != nil {
+				return err
+			}
+		}
+		if !p.selfNameSetByUser {
+			if err := load(b, confSelfName, p.selfName); err != nil {
+				return err
+			}
+		}
+		if !p.passwordSetByUser {
+			if err := load(b, confPassword, p.password); err != nil {
+				return err
+			}
+		}
+		if !p.dbPathSetByUser {
+			if err := load(b, confDbPath, p.dbPath); err != nil {
 				return err
 			}
 		}

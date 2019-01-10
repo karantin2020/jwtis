@@ -131,6 +131,16 @@ func poly1305Verify(msg []byte, nonce []byte, key *MACKey, mac []byte) bool {
 func NewRandomKey() *Key {
 	k := &Key{}
 
+	k.Init()
+	return k
+}
+
+// Init inits new encryption and message authentication keys.
+func (k *Key) Init() {
+	if k == nil {
+		panic("nil pointer Key found in init func")
+	}
+
 	n, err := rand.Read(k.EncryptionKey[:])
 	if n != aesKeySize || err != nil {
 		panic("unable to read enough random bytes for encryption key")
@@ -147,7 +157,6 @@ func NewRandomKey() *Key {
 	}
 
 	maskKey(&k.MACKey)
-	return k
 }
 
 // NewRandomNonce returns a new random nonce. It panics on error so that the
@@ -318,6 +327,9 @@ func (k *Key) Seal(dst, nonce, plaintext, additionalData []byte) []byte {
 	return ret
 }
 
+// ErrInvalidEncKey describes error when crypto key is invalid
+var ErrInvalidEncKey = errors.New("invalid key")
+
 // Open decrypts and authenticates ciphertext, authenticates the
 // additional data and, if successful, appends the resulting plaintext
 // to dst, returning the updated slice. The nonce must be NonceSize()
@@ -331,7 +343,7 @@ func (k *Key) Seal(dst, nonce, plaintext, additionalData []byte) []byte {
 // may be overwritten.
 func (k *Key) Open(dst, nonce, ciphertext, additionalData []byte) ([]byte, error) {
 	if !k.Valid() {
-		return nil, errors.New("invalid key")
+		return nil, ErrInvalidEncKey
 	}
 
 	// check parameters
@@ -371,4 +383,18 @@ func (k *Key) Open(dst, nonce, ciphertext, additionalData []byte) ([]byte, error
 // Valid tests if the key is valid.
 func (k *Key) Valid() bool {
 	return k.EncryptionKey.Valid() && k.MACKey.Valid()
+}
+
+// SealWithNonce is k.Seal with prefix nonce
+func (k *Key) SealWithNonce(dst, nonce, plaintext, additionalData []byte) []byte {
+	dst = append(dst[:0], nonce...)
+	return append(dst, k.Seal(dst[len(dst):], nonce, plaintext, additionalData)...)
+}
+
+// OpenWithNonce is k.Open over nonce + cipherText byte slice
+func (k *Key) OpenWithNonce(dst, noncecipher, additionalData []byte) ([]byte, []byte, error) {
+	s := k.NonceSize()
+	var err error
+	dst, err = k.Open(dst, noncecipher[:s], noncecipher[s:], additionalData)
+	return noncecipher[:s], dst, err
 }

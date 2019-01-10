@@ -3,12 +3,17 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"log"
+	"os"
+	"path/filepath"
 	"time"
 
 	bolt "github.com/coreos/bbolt"
+	"github.com/karantin2020/jwtis"
 )
 
 func openDB() (*bolt.DB, error) {
+	checkDbPath()
 	opts := &bolt.Options{Timeout: 10 * time.Second}
 	db, err := bolt.Open(*confRepo.dbPath, 0600, opts)
 	if err != nil {
@@ -26,8 +31,14 @@ func openDB() (*bolt.DB, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to create top level bucket: %s", err.Error())
 	}
-	dbExists = true
 	return db, nil
+}
+
+func checkDbPath() {
+	dir, _ := filepath.Split(*confRepo.dbPath)
+	if err := os.MkdirAll(dir, os.ModePerm); err != nil {
+		FatalF("Couldn't make db dir. Reason: %s\n", err.Error())
+	}
 }
 
 // ====== Should Methods ========= //
@@ -132,7 +143,7 @@ func save(bkt *bolt.Bucket, key []byte, value interface{}) (err error) {
 	}
 	jdata, jerr := json.Marshal(value)
 	if jerr != nil {
-		return fmt.Errorf("can't marshal comment: %s", jerr.Error())
+		return fmt.Errorf("can't marshal value: %s", jerr.Error())
 	}
 	if err = bkt.Put(key, jdata); err != nil {
 		return fmt.Errorf("failed to save key %s, error: %s", string(key), err.Error())
@@ -153,6 +164,47 @@ func load(bkt *bolt.Bucket, key []byte, res interface{}) error {
 	return nil
 }
 
+func saveWithNonce(bkt *bolt.Bucket, key []byte, val []byte) (err error) {
+	if internalsRepo.nonce == nil {
+		panic("in saveWithNonce nil nonce pointer")
+	}
+	buf := make([]byte, 0, len(val)+jwtis.Extension+len(internalsRepo.nonce))
+	ciphertext := internalsRepo.encKey.SealWithNonce(buf[:0], internalsRepo.nonce, val, nil)
+	log.Printf("save string key '%s' with value '%+v'", string(key), ciphertext)
+	if err = saveByte(bkt, key, ciphertext); err != nil {
+		return fmt.Errorf("failed to save key %s, error: %s", string(key), err.Error())
+	}
+	plaintext := make([]byte, 0, len(ciphertext))
+	_, plaintext, err = internalsRepo.encKey.OpenWithNonce(plaintext[:0], ciphertext, nil)
+	if err != nil {
+		panic("error seach plain text")
+	}
+	log.Printf("in save db check plaintext is: '%s'\n", string(plaintext))
+	return nil
+}
+
+func loadWithNonce(bkt *bolt.Bucket, key []byte) ([]byte, []byte, error) {
+	ciphertext := []byte{}
+	if err := loadByte(bkt, key, &ciphertext); err != nil {
+		return nil, nil, err
+	}
+	var err error
+	var nonce []byte
+	log.Printf("loaded string key '%s' value '%+v'\n", string(key), ciphertext)
+	plaintext := make([]byte, len(ciphertext))
+	// v, err := json.Marshal(&internalsRepo.encKey)
+	// if err != nil {
+	// 	panic("WWoooo")
+	// }
+	// log.Printf("in db load key: '%s'\n", string(v))
+	nonce, plaintext, err = internalsRepo.encKey.OpenWithNonce(plaintext[:0], ciphertext, nil)
+	if err != nil {
+		return nil, nil, err
+	}
+	log.Printf("in db plaintext is: '%s'\n", string(plaintext))
+	return nonce, plaintext, nil
+}
+
 // saveByte puts val into bucket. []byte version
 func saveByte(bkt *bolt.Bucket, key, val []byte) (err error) {
 	if val == nil {
@@ -165,13 +217,13 @@ func saveByte(bkt *bolt.Bucket, key, val []byte) (err error) {
 }
 
 // loadByte gets val from bucket. []byte version
-func loadByte(bkt *bolt.Bucket, key, val []byte) error {
+func loadByte(bkt *bolt.Bucket, key []byte, val *[]byte) error {
 	value := bkt.Get(key)
 	if value == nil {
-		return fmt.Errorf("no value for %s", string(key))
+		return errKeyNotFound
 	}
 
-	val = val[:0]
-	val = append(val, value...)
+	// *val = (*val)[:0]
+	*val = append((*val)[:0], value...)
 	return nil
 }

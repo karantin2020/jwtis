@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"os"
 
 	bolt "github.com/coreos/bbolt"
@@ -33,35 +34,27 @@ var (
 
 func main() {
 	app = newConfigApp()
-	app.Action = func() {
+	app.Before = func() {
 		var err error
 		boltDB, err = openDB()
-		defer func() {
-			confRepo.save()
-			internalsRepo.save()
-			boltDB.Close()
-		}()
 		if err != nil {
-			fmt.Printf("Couldn't open db: %s\n", err.Error())
+			log.Printf("Couldn't open db: %s\n", err.Error())
 			return
 		}
 		confRepo.setDB(boltDB)
-		internalsRepo.setDB(boltDB)
-		if err := internalsRepo.load(); err != nil {
-			fmt.Println(err.Error())
-			cli.Exit(1)
-		}
-		// checkDBPassword()
-		fmt.Println("dbExists: ", dbExists)
-		fmt.Println("dbCheckFault: ", dbCheckFault)
-		fmt.Printf("internalsRepo.password: '%s'\n", string(internalsRepo.password))
-		if dbExists {
-			if err := confRepo.load(); err != nil {
-				fmt.Println(err.Error())
-				cli.Exit(1)
-			}
-		}
-		printOptions()
+		internalsRepo.init(boltDB, &confRepo)
+		internalsRepo.printConfigs()
+	}
+	app.After = func() {
+		log.Println("save config repository")
+		confRepo.save()
+		log.Println("save internals repository")
+		internalsRepo.save()
+		log.Println("close db")
+		boltDB.Close()
+	}
+	app.Action = func() {
+		fmt.Println("jwtis works well")
 	}
 	app.Run(os.Args)
 }

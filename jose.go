@@ -19,31 +19,28 @@ import (
 )
 
 var (
-	sigAlgs = []string{
+	// SigAlgs is array of possible sig algorithms
+	SigAlgs = []string{
 		string(jose.ES256), string(jose.ES384), string(jose.ES512),
 		string(jose.EdDSA), string(jose.RS256), string(jose.RS384),
 		string(jose.RS512), string(jose.PS256), string(jose.PS384),
 		string(jose.PS512),
 	}
-	encAlgs = []string{
+	// EncAlgs is array of possible enc algorithms
+	EncAlgs = []string{
 		string(jose.RSA1_5), string(jose.RSA_OAEP),
 		string(jose.RSA_OAEP_256), string(jose.ECDH_ES),
 		string(jose.ECDH_ES_A128KW), string(jose.ECDH_ES_A192KW),
 		string(jose.ECDH_ES_A256KW),
 	}
-	use = []string{
+	// Use is array of possible use values
+	Use = []string{
 		"enc", "sig",
 	}
 )
 
-// SigEncKeys holds sig ang enc key sets
-type SigEncKeys struct {
-	Sig KeySet
-	Enc KeySet
-}
-
-// KeySet holds private and public keys
-type KeySet struct {
+// PrivPubKeySet holds private and public keys
+type PrivPubKeySet struct {
 	Priv jose.JSONWebKey
 	Pub  jose.JSONWebKey
 }
@@ -124,29 +121,26 @@ func KeygenEnc(alg jose.KeyAlgorithm, bits int) (crypto.PublicKey, crypto.Privat
 	}
 }
 
-// GenerateKey generates enc, sig key
-func GenerateKey(kid, use, alg string, bits int) (KeySet, error) {
+// GenerateKeys generates enc, sig key
+func GenerateKeys(kid string, opt KeyOptions) (jose.JSONWebKey, jose.JSONWebKey, error) {
 	var privKey crypto.PublicKey
 	var pubKey crypto.PrivateKey
 	var err error
-	switch use {
+	switch opt.Use {
 	case "sig":
-		pubKey, privKey, err = KeygenSig(jose.SignatureAlgorithm(alg), bits)
+		pubKey, privKey, err = KeygenSig(jose.SignatureAlgorithm(opt.Alg), opt.Bits)
 	case "enc":
-		pubKey, privKey, err = KeygenEnc(jose.KeyAlgorithm(alg), bits)
+		pubKey, privKey, err = KeygenEnc(jose.KeyAlgorithm(opt.Alg), opt.Bits)
 	}
 	if err != nil {
-		return KeySet{}, errors.New("Unable to generate key: " + err.Error())
+		return jose.JSONWebKey{}, jose.JSONWebKey{}, errors.New("Unable to generate key: " + err.Error())
 	}
 
-	priv := jose.JSONWebKey{Key: privKey, KeyID: kid, Algorithm: alg, Use: use}
-	pub := jose.JSONWebKey{Key: pubKey, KeyID: kid, Algorithm: alg, Use: use}
+	priv := jose.JSONWebKey{Key: privKey, KeyID: kid, Algorithm: opt.Alg, Use: opt.Use}
+	pub := jose.JSONWebKey{Key: pubKey, KeyID: kid, Algorithm: opt.Alg, Use: opt.Use}
 
 	if priv.IsPublic() || !pub.IsPublic() || !priv.Valid() || !pub.Valid() {
-		return KeySet{}, errors.New("invalid keys were generated")
+		return jose.JSONWebKey{}, jose.JSONWebKey{}, errors.New("invalid keys were generated")
 	}
-	return KeySet{
-		Priv: priv,
-		Pub:  pub,
-	}, nil
+	return priv, pub, nil
 }

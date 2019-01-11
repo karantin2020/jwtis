@@ -6,7 +6,6 @@ import (
 	"time"
 
 	bolt "github.com/coreos/bbolt"
-	merr "github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 	jose "gopkg.in/square/go-jose.v2"
 	jwt "gopkg.in/square/go-jose.v2/jwt"
@@ -107,6 +106,20 @@ func (p *KeysRepository) Init(db *bolt.DB, bucketName []byte, opts *DefaultOptio
 		Alg:  opts.EncAlg,
 		Bits: opts.EncBits,
 	}
+}
+
+// CheckKeys checks if all keys are valid and are not expired
+func (p *KeysRepository) CheckKeys() error {
+	var res Error
+	for k, v := range p.Keys {
+		if v.invalid || !v.Valid() {
+			res.Append(fmt.Errorf("keys with kid %s are invalid", k))
+		}
+		if v.expired || v.Expired() {
+			res.Append(fmt.Errorf("keys with kid %s are expired", k))
+		}
+	}
+	return res
 }
 
 // NewKey creates new key with key_id and adds it to repository
@@ -242,7 +255,6 @@ func (p *KeysRepository) SaveAll() error {
 
 // LoadAll loads all keys from boltDB to memory
 func (p *KeysRepository) LoadAll() error {
-	var resErr *merr.Error
 	if err := p.boltDB.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket(p.bucketName)
 		err := b.ForEach(func(k, v []byte) error {
@@ -253,12 +265,8 @@ func (p *KeysRepository) LoadAll() error {
 			if err := json.Unmarshal(v, &res); err != nil {
 				return fmt.Errorf("in loading key %s failed to unmarshal: %s", string(k), err.Error())
 			}
-			if !res.Valid() {
-				resErr = merr.Append(resErr, fmt.Errorf("keys with kid %s are not valid", string(k)))
-			}
-			if res.Expired() {
-				resErr = merr.Append(resErr, fmt.Errorf("keys with kid %s are expired", string(k)))
-			}
+			res.Valid()
+			res.Expired()
 			p.Keys[string(res.KID)] = res
 			return nil
 		})

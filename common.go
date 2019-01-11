@@ -5,7 +5,9 @@ package jwtis
 
 import (
 	"crypto/rand"
+	"fmt"
 	"math/big"
+	"strings"
 )
 
 var secretCharSet = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890_-.~!{}[]&?@#$&*()")
@@ -53,4 +55,33 @@ func RuneSequence(l int, allowedRunes []rune) (seq []rune, err error) {
 	}
 
 	return seq, nil
+}
+
+// Error implements multierror type
+type Error []error
+
+// Error implements error interface
+func (me Error) Error() string {
+	if me == nil {
+		return ""
+	}
+
+	strs := make([]string, len(me))
+	for i, err := range me {
+		strs[i] = fmt.Sprintf("%v; ", err)
+	}
+	return strings.Join(strs, "")
+}
+
+// Append appends errors to array if err != nil
+func (me *Error) Append(errs ...error) Error {
+	if me == nil {
+		*me = []error{}
+	}
+	for i := range errs {
+		if errs[i] != nil {
+			*me = append(*me, errs[i])
+		}
+	}
+	return *me
 }

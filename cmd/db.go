@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 	"time"
@@ -170,7 +169,7 @@ func saveWithNonce(bkt *bolt.Bucket, key []byte, val []byte) (err error) {
 	}
 	buf := make([]byte, 0, len(val)+jwtis.Extension+len(internalsRepo.nonce))
 	ciphertext := internalsRepo.encKey.SealWithNonce(buf[:0], internalsRepo.nonce, val, nil)
-	log.Printf("save string key '%s' with value '%+v'", string(key), ciphertext)
+	log.Info().Msgf("save string key '%s' with value '%+v'", string(key), ciphertext)
 	if err = saveByte(bkt, key, ciphertext); err != nil {
 		return fmt.Errorf("failed to save key %s, error: %s", string(key), err.Error())
 	}
@@ -179,7 +178,7 @@ func saveWithNonce(bkt *bolt.Bucket, key []byte, val []byte) (err error) {
 	if err != nil {
 		panic("error seach plain text")
 	}
-	log.Printf("in save db check plaintext is: '%s'\n", string(plaintext))
+	log.Info().Msgf("in save db check plaintext is: '%s'\n", string(plaintext))
 	return nil
 }
 
@@ -190,18 +189,18 @@ func loadWithNonce(bkt *bolt.Bucket, key []byte) ([]byte, []byte, error) {
 	}
 	var err error
 	var nonce []byte
-	log.Printf("loaded string key '%s' value '%+v'\n", string(key), ciphertext)
+	log.Info().Msgf("loaded string key '%s' value '%+v'\n", string(key), ciphertext)
 	plaintext := make([]byte, len(ciphertext))
 	// v, err := json.Marshal(&internalsRepo.encKey)
 	// if err != nil {
 	// 	panic("WWoooo")
 	// }
-	// log.Printf("in db load key: '%s'\n", string(v))
+	// log.Info().Msgf("in db load key: '%s'\n", string(v))
 	nonce, plaintext, err = internalsRepo.encKey.OpenWithNonce(plaintext[:0], ciphertext, nil)
 	if err != nil {
 		return nil, nil, err
 	}
-	log.Printf("in db plaintext is: '%s'\n", string(plaintext))
+	log.Info().Msgf("in db plaintext is: '%s'\n", string(plaintext))
 	return nonce, plaintext, nil
 }
 

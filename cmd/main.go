@@ -2,11 +2,11 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"os"
 
 	bolt "github.com/coreos/bbolt"
 	cli "github.com/jawher/mow.cli"
+	"github.com/rs/zerolog"
 )
 
 const (
@@ -29,28 +29,34 @@ var (
 	app           *cli.Cli
 	confRepo      configRepository
 	internalsRepo internalRepository
-	password      string
+	log           zerolog.Logger
 )
 
 func main() {
 	app = newConfigApp()
 	app.Before = func() {
+		zerolog.SetGlobalLevel(zerolog.WarnLevel)
+		if *confRepo.verbose {
+			zerolog.SetGlobalLevel(zerolog.InfoLevel)
+		}
+		log = logger("")
 		var err error
+		log.Info().Msg("open db")
 		boltDB, err = openDB()
 		if err != nil {
-			log.Printf("Couldn't open db: %s\n", err.Error())
-			return
+			log.Error().Err(err).Msg("couldn't open db; exit")
+			cli.Exit(1)
 		}
 		confRepo.setDB(boltDB)
 		internalsRepo.init(boltDB, &confRepo)
-		internalsRepo.printConfigs()
+		// internalsRepo.printConfigs()
 	}
 	app.After = func() {
-		log.Println("save config repository")
+		log.Info().Msg("save config repository")
 		confRepo.save()
-		log.Println("save internals repository")
+		log.Info().Msg("save internals repository")
 		internalsRepo.save()
-		log.Println("close db")
+		log.Info().Msg("close db")
 		boltDB.Close()
 	}
 	app.Action = func() {

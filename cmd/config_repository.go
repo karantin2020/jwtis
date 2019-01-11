@@ -34,6 +34,7 @@ type setByUser struct {
 	selfNameSetByUser bool
 	passwordSetByUser bool
 	dbPathSetByUser   bool
+	VerboseSetByUser  bool
 }
 type defaults struct {
 	defListen   string
@@ -45,6 +46,7 @@ type defaults struct {
 	defSelfName string
 	defPassword string
 	defDbPath   string
+	defVerbose  bool
 }
 type options struct {
 	httpConf
@@ -54,7 +56,8 @@ type options struct {
 	// internal options
 	password *string // Storage password. App generates password with db creation.
 	// Later user must provide a password to access the database
-	dbPath *string
+	dbPath  *string
+	verbose *bool
 	setByUser
 }
 

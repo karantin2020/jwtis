@@ -1,8 +1,6 @@
 package main
 
 import (
-	"log"
-
 	cli "github.com/jawher/mow.cli"
 	"github.com/karantin2020/jwtis"
 )
@@ -25,7 +23,7 @@ const (
 
 func newConfigApp() *cli.Cli {
 	app := cli.App(appName, appDescription)
-	app.Version("v version", appVersion)
+	app.Version("V version", appVersion)
 	app.Spec = "[OPTIONS]"
 	confRepo.init(nil)
 	confRepo.listen = app.String(cli.StringOpt{
@@ -91,6 +89,13 @@ func newConfigApp() *cli.Cli {
 		EnvVar:    envPrefix + "DB_PATH",
 		SetByUser: &confRepo.dbPathSetByUser,
 	})
+	confRepo.verbose = app.Bool(cli.BoolOpt{
+		Name:      "v verbose",
+		Value:     confRepo.defVerbose,
+		Desc:      "Verbose. Show detailed logs",
+		EnvVar:    envPrefix + "VERBOSE",
+		SetByUser: &confRepo.VerboseSetByUser,
+	})
 	if err := confRepo.validate(); err != nil {
 		log.Printf("Invalid options:\n%s\n", err.Error())
 		app.PrintLongHelp()
@@ -120,6 +125,6 @@ func getPassword(length int) []byte {
 
 // FatalF prints message to log and then interrupts app execution
 func FatalF(format string, v ...interface{}) {
-	log.Printf(format, v...)
+	log.Error().Msgf(format, v...)
 	cli.Exit(1)
 }

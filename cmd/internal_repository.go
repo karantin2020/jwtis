@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"log"
 
 	bolt "github.com/coreos/bbolt"
 	"github.com/karantin2020/jwtis"
@@ -61,15 +60,15 @@ var (
 
 func (p *internalRepository) init(db *bolt.DB, confRepo *configRepository) {
 	if p == nil {
-		log.Println("internalRepository pointer is nil")
+		log.Info().Msg("internalRepository pointer is nil")
 		cli.Exit(1)
 	}
 	if db == nil {
-		log.Println("internalRepository db pointer is nil")
+		log.Info().Msg("internalRepository db pointer is nil")
 		cli.Exit(1)
 	}
 	if confRepo == nil {
-		log.Println("internalRepository confRepo pointer is nil")
+		log.Info().Msg("internalRepository confRepo pointer is nil")
 		cli.Exit(1)
 	}
 	p.bucketName = buckets["internalBucketName"]
@@ -78,7 +77,7 @@ func (p *internalRepository) init(db *bolt.DB, confRepo *configRepository) {
 	p.setPassword([]byte(*confRepo.password))
 
 	if err := p.load(); err != nil {
-		log.Println(err.Error())
+		log.Error().Err(err).Msg("can't load internalRepo from boltDB; exit")
 		cli.Exit(1)
 	}
 
@@ -104,7 +103,7 @@ func (p *internalRepository) init(db *bolt.DB, confRepo *configRepository) {
 		p.EncBits = *confRepo.encBits
 	}
 	if err := p.save(); err != nil {
-		log.Println(err.Error())
+		log.Error().Err(err).Msg("can't save internalRepo; exit")
 		cli.Exit(1)
 	}
 }
@@ -220,9 +219,9 @@ func (p *internalRepository) load() error {
 }
 
 func newDBPassword() {
-	log.Printf("generate new db password\n")
+	log.Info().Msg("generate new db password\n")
 	internalsRepo.password = getPassword(passwordLength)
-	log.Printf("generated password is: '%s'\n", string(internalsRepo.password))
+	log.Info().Msgf("generated password is: '%s'\n", string(internalsRepo.password))
 	internalsRepo.nonce = jwtis.NewRandomNonce()
 	internalsRepo.encKey.Init()
 	if len(internalsRepo.encKey.EncryptionKey) != len(internalsRepo.password) {

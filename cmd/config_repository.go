@@ -75,8 +75,8 @@ func (p *configRepository) init(db *bolt.DB) {
 	p.defTLS = false
 	p.defSigAlg = "RS256"
 	p.defSigBits = 2048
-	p.defEncAlg = "RSA-OAEP-256"
-	p.defEncBits = 2048
+	p.defEncAlg = "ECDH-ES+A256KW"
+	p.defEncBits = 521
 	p.defSelfName = "JWTIS"
 	p.defPassword = ""
 	p.defDbPath = "./data/" + dbPathName

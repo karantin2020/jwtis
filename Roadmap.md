@@ -17,11 +17,12 @@
   - [ ] add keys routes `/register` and `/keys`
   - [ ] add jwt routes `/issue_token` and `/renew_token`
   - [ ] add tests
-- [ ] client-side; middleware with automatic key fetching
+- [ ] client-side; middleware with automatic key fetching [tag 0.2.1]
   - [ ] http client to fetch public sign and encrypt keys
   - [ ] http middleware for jwt verification
   - [ ] add tests
-  - [ ] _optional jwt revoke client functionality_
+  - [ ] \_optional jwt revoke client functionality
+- [ ] Complete all tests [tag 1.0.1]
 - [ ] add automatic tls support to server
   - [ ] [mkcert](https://github.com/FiloSottile/mkcert)
   - [ ] let's encrypt, eg [lego](https://github.com/xenolf/lego)

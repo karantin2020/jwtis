@@ -6,6 +6,7 @@ import (
 
 	bolt "github.com/coreos/bbolt"
 	cli "github.com/jawher/mow.cli"
+	"github.com/karantin2020/jwtis/http"
 	"github.com/rs/zerolog"
 )
 
@@ -60,6 +61,12 @@ func main() {
 	}
 	app.Action = func() {
 		fmt.Println("jwtis works well")
+		srv := http.SetupServer(internalsRepo.Listen, "release")
+		err := http.StartServer(srv)
+		if err != nil {
+			fmt.Println("server error:", err.Error())
+		}
+		fmt.Println("jwtis finished work")
 	}
 	app.Run(os.Args)
 }

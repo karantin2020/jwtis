@@ -226,3 +226,36 @@ func loadByte(bkt *bolt.Bucket, key []byte, val *[]byte) error {
 	*val = append((*val)[:0], value...)
 	return nil
 }
+
+// save marshaled value to key for bucket. Should run in update tx
+func saveSealed(encKey *jwtis.Key, nonce []byte, bkt *bolt.Bucket, key []byte, value interface{}) (err error) {
+	if value == nil {
+		return fmt.Errorf("can't save nil value for %s", string(key))
+	}
+	data, err := json.Marshal(value)
+	if err != nil {
+		return fmt.Errorf("can't marshal value: %s", err.Error())
+	}
+	buf := make([]byte, 0, len(data)+jwtis.Extension)
+	ciphertext := encKey.Seal(buf[:0], nonce, data, nil)
+	if err = bkt.Put(key, ciphertext); err != nil {
+		return fmt.Errorf("failed to save key %s, error: %s", string(key), err.Error())
+	}
+	return nil
+}
+
+// load and unmarshal json value by key from bucket. Should run in view tx
+func loadSealed(encKey *jwtis.Key, nonce []byte, bkt *bolt.Bucket, key []byte, res interface{}) error {
+	plaintext := bkt.Get(key)
+	if plaintext == nil {
+		return errKeyNotFound
+	}
+	value, err := encKey.Open(nil, nonce, plaintext, nil)
+	if err != nil {
+		return err
+	}
+	if err := json.Unmarshal(value, &res); err != nil {
+		return fmt.Errorf("failed to unmarshal: %s", err.Error())
+	}
+	return nil
+}

@@ -52,8 +52,8 @@ var (
 	internalNonce    = []byte("jwtis.internal.nonce")
 	internalEncKey   = []byte("jwtis.internal.enckey")
 	internalConfigs  = []byte("jwtis.internal.configs")
-	dbCheckKey       = []byte("jwtis.conf.dbCheckKey")
-	dbCheckValue     = []byte("jwtis.conf.dbCheckValue")
+	dbCheckKey       = []byte("jwtis.internal.dbCheckKey")
+	dbCheckValue     = []byte("jwtis.internal.dbCheckValue")
 	dbExists         bool
 	dbCheckFault     bool
 )
@@ -109,16 +109,16 @@ func (p *internalRepository) init(db *bolt.DB, confRepo *configRepository) {
 }
 
 func (p internalRepository) printConfigs() {
-	fmt.Printf("Configs found:\n")
-	fmt.Println("internalRepo.configs.listen: ", p.Listen)
-	fmt.Println("internalRepo.configs.tls: ", p.TLS)
-	fmt.Println("internalRepo.configs.sigAlg: ", p.SigAlg)
-	fmt.Println("internalRepo.configs.sigBits: ", p.SigBits)
-	fmt.Println("internalRepo.configs.encAlg: ", p.EncAlg)
-	fmt.Println("internalRepo.configs.encBits: ", p.EncBits)
-	fmt.Println("internalRepo.configs.selfName: ", string(p.SelfName))
-	fmt.Printf("internalRepo.configs.password: '%s'\n", string(p.password))
-	fmt.Println("conf.dbPath: ", *confRepo.dbPath)
+	fmt.Printf("Current configuration:\n")
+	fmt.Printf("  internalRepo.configs.listen:\t %s\n", p.Listen)
+	fmt.Printf("  internalRepo.configs.tls:\t %t\n", p.TLS)
+	fmt.Printf("  internalRepo.configs.sigAlg:\t %s\n", p.SigAlg)
+	fmt.Printf("  internalRepo.configs.sigBits:\t %d\n", p.SigBits)
+	fmt.Printf("  internalRepo.configs.encAlg:\t %s\n", p.EncAlg)
+	fmt.Printf("  internalRepo.configs.encBits:\t %d\n", p.EncBits)
+	fmt.Printf("  internalRepo.configs.selfName: %s\n", string(p.SelfName))
+	// fmt.Printf("internalRepo.configs.password: '%s'\n", string(p.password))
+	fmt.Printf("  confRepo.options.dbPath:\t %s\n", *confRepo.dbPath)
 }
 
 func (p internalRepository) validate() error {
@@ -154,7 +154,7 @@ func (p *internalRepository) save() error {
 		if err := saveByte(b, dbCheckKey, nk); err != nil {
 			return err
 		}
-		if err := save(b, internalConfigs, p.configs); err != nil {
+		if err := saveSealed(&p.encKey, p.nonce, b, internalConfigs, p.configs); err != nil {
 			return err
 		}
 		// log.Printf("saved internal configs: '%+v'\n", p.configs)
@@ -195,7 +195,7 @@ func (p *internalRepository) load() error {
 		}
 		p.dbCheckValue = append([]byte{}, plaintext...)
 		p.nonce = append([]byte{}, nonce...)
-		if err := load(b, internalConfigs, &p.configs); err != nil {
+		if err := loadSealed(&p.encKey, p.nonce, b, internalConfigs, &p.configs); err != nil {
 			return fmt.Errorf("error loading internalConfigs: %s", err.Error())
 		}
 		// log.Printf("loaded internal configs: '%+v'\n", p.configs)
@@ -219,9 +219,7 @@ func (p *internalRepository) load() error {
 }
 
 func newDBPassword() {
-	log.Info().Msg("generate new db password\n")
 	internalsRepo.password = getPassword(passwordLength)
-	log.Info().Msgf("generated password is: '%s'\n", string(internalsRepo.password))
 	internalsRepo.nonce = jwtis.NewRandomNonce()
 	internalsRepo.encKey.Init()
 	if len(internalsRepo.encKey.EncryptionKey) != len(internalsRepo.password) {

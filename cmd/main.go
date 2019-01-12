@@ -39,6 +39,7 @@ func main() {
 			zerolog.SetGlobalLevel(zerolog.InfoLevel)
 		}
 		log = logger("")
+		log.Info().Msgf("started %s %s", appName, appVersion)
 		var err error
 		log.Info().Msg("open db")
 		boltDB, err = openDB()
@@ -47,16 +48,30 @@ func main() {
 			cli.Exit(1)
 		}
 		internalsRepo.init(boltDB, &confRepo)
-		// internalsRepo.printConfigs()
+		greetingMsg()
+		internalsRepo.printConfigs()
 	}
 	app.After = func() {
 		log.Info().Msg("save internals repository")
 		internalsRepo.save()
 		log.Info().Msg("close db")
 		boltDB.Close()
+		log.Info().Msgf("finished %s %s", appName, appVersion)
 	}
 	app.Action = func() {
 		fmt.Println("jwtis works well")
 	}
 	app.Run(os.Args)
+}
+
+func greetingMsg() {
+	fmt.Printf("Welcome. Started %s version %s\n", appName, appVersion)
+	if !dbExists {
+		fmt.Printf("Created new bbolt database to store app's data\n")
+		fmt.Printf("Generated new password: '%s'\n", string(internalsRepo.password))
+		fmt.Printf("Please save the password safely, it's not recoverable\n")
+	} else {
+		fmt.Printf("Found existing bbolt database storing app's data\n")
+		fmt.Printf("Use user inserted password to bboltDB\n")
+	}
 }

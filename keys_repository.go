@@ -47,6 +47,10 @@ func (k *JWTKeysIssuerSet) Valid() bool {
 		k.invalid = true
 		return false
 	}
+	if len(k.KID) == 0 {
+		k.invalid = true
+		return false
+	}
 	return true
 }
 
@@ -82,10 +86,13 @@ type KeysRepository struct {
 
 	boltDB     *bolt.DB
 	bucketName []byte // repository bucket name in boltDB
+	encKey     *Key
+	nonce      []byte
 }
 
 // Init initiates created KeysRepository
-func (p *KeysRepository) Init(db *bolt.DB, bucketName []byte, opts *DefaultOptions) {
+func (p *KeysRepository) Init(db *bolt.DB, bucketName []byte,
+	opts *DefaultOptions, encKey *Key, nonce []byte) {
 	if p == nil {
 		panic("KeysRepository pointer is nil")
 	}
@@ -106,6 +113,8 @@ func (p *KeysRepository) Init(db *bolt.DB, bucketName []byte, opts *DefaultOptio
 		Alg:  opts.EncAlg,
 		Bits: opts.EncBits,
 	}
+	p.encKey = encKey
+	p.nonce = nonce
 }
 
 // CheckKeys checks if all keys are valid and are not expired
@@ -177,7 +186,7 @@ func (p *KeysRepository) keyExists(kid []byte) (bool, JWTKeysIssuerSet, error) {
 	exists := false
 	if err := p.boltDB.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket(p.bucketName)
-		if err := load(b, kid, &privKeys); err != nil {
+		if err := LoadSealed(p.encKey, p.nonce, b, kid, &privKeys); err != nil {
 			if err == ErrKeyNotFound {
 				return nil
 			}
@@ -213,7 +222,7 @@ func (p *KeysRepository) AddKey(key *JWTKeysIssuerSet) (SigEncKeys, error) {
 
 	if err := p.boltDB.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket(p.bucketName)
-		if err := save(b, key.KID, key); err != nil {
+		if err := SaveSealed(p.encKey, p.nonce, b, key.KID, key); err != nil {
 			return fmt.Errorf("error saving keys with kid %s", string(key.KID))
 		}
 		return nil
@@ -285,7 +294,7 @@ func (p *KeysRepository) SaveAll() error {
 	if err := p.boltDB.Batch(func(tx *bolt.Tx) error {
 		b := tx.Bucket(p.bucketName)
 		for _, v := range p.Keys {
-			if err := save(b, v.KID, v); err != nil {
+			if err := SaveSealed(p.encKey, p.nonce, b, v.KID, v); err != nil {
 				return fmt.Errorf("error saving keys with kid %s", string(v.KID))
 			}
 		}
@@ -304,8 +313,14 @@ func (p *KeysRepository) LoadAll() error {
 			if v == nil {
 				return fmt.Errorf("error loading key %s, value is empty", string(k))
 			}
+
+			buf := make([]byte, 0, len(v))
+			value, err := p.encKey.Open(buf, p.nonce, v, nil)
+			if err != nil {
+				return err
+			}
 			res := JWTKeysIssuerSet{}
-			if err := json.Unmarshal(v, &res); err != nil {
+			if err := json.Unmarshal(value, &res); err != nil {
 				return fmt.Errorf("in loading key %s failed to unmarshal: %s", string(k), err.Error())
 			}
 			res.Valid()

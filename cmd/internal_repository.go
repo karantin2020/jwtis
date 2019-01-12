@@ -154,7 +154,7 @@ func (p *internalRepository) save() error {
 		if err := saveByte(b, dbCheckKey, nk); err != nil {
 			return err
 		}
-		if err := saveSealed(&p.encKey, p.nonce, b, internalConfigs, p.configs); err != nil {
+		if err := jwtis.SaveSealed(&p.encKey, p.nonce, b, internalConfigs, p.configs); err != nil {
 			return err
 		}
 		// log.Printf("saved internal configs: '%+v'\n", p.configs)
@@ -195,7 +195,7 @@ func (p *internalRepository) load() error {
 		}
 		p.dbCheckValue = append([]byte{}, plaintext...)
 		p.nonce = append([]byte{}, nonce...)
-		if err := loadSealed(&p.encKey, p.nonce, b, internalConfigs, &p.configs); err != nil {
+		if err := jwtis.LoadSealed(&p.encKey, p.nonce, b, internalConfigs, &p.configs); err != nil {
 			return fmt.Errorf("error loading internalConfigs: %s", err.Error())
 		}
 		// log.Printf("loaded internal configs: '%+v'\n", p.configs)

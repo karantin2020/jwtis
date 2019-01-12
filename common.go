@@ -5,9 +5,12 @@ package jwtis
 
 import (
 	"crypto/rand"
+	"encoding/json"
 	"fmt"
 	"math/big"
 	"strings"
+
+	bolt "github.com/coreos/bbolt"
 )
 
 var secretCharSet = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890_-.~!{}[]&?@#$&*()")
@@ -84,4 +87,38 @@ func (me *Error) Append(errs ...error) Error {
 		}
 	}
 	return *me
+}
+
+// SaveSealed saves marshaled value to key for bucket. Should run in update tx
+func SaveSealed(encKey *Key, nonce []byte, bkt *bolt.Bucket, key []byte, value interface{}) (err error) {
+	if value == nil {
+		return fmt.Errorf("can't save nil value for %s", string(key))
+	}
+	data, err := json.Marshal(value)
+	if err != nil {
+		return fmt.Errorf("can't marshal value: %s", err.Error())
+	}
+	buf := make([]byte, 0, len(data)+Extension)
+	ciphertext := encKey.Seal(buf[:0], nonce, data, nil)
+	if err = bkt.Put(key, ciphertext); err != nil {
+		return fmt.Errorf("failed to save key %s, error: %s", string(key), err.Error())
+	}
+	return nil
+}
+
+// LoadSealed loads and unmarshals json value by key from bucket. Should run in view tx
+func LoadSealed(encKey *Key, nonce []byte, bkt *bolt.Bucket, key []byte, res interface{}) error {
+	plaintext := bkt.Get(key)
+	if plaintext == nil {
+		return ErrKeyNotFound
+	}
+	buf := make([]byte, 0, len(plaintext))
+	value, err := encKey.Open(buf, nonce, plaintext, nil)
+	if err != nil {
+		return err
+	}
+	if err := json.Unmarshal(value, &res); err != nil {
+		return fmt.Errorf("failed to unmarshal: %s", err.Error())
+	}
+	return nil
 }

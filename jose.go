@@ -136,8 +136,8 @@ func GenerateKeys(kid string, opt KeyOptions) (jose.JSONWebKey, jose.JSONWebKey,
 		return jose.JSONWebKey{}, jose.JSONWebKey{}, errors.New("Unable to generate key: " + err.Error())
 	}
 
-	priv := jose.JSONWebKey{Key: privKey, KeyID: kid, Algorithm: opt.Alg, Use: opt.Use}
 	pub := jose.JSONWebKey{Key: pubKey, KeyID: kid, Algorithm: opt.Alg, Use: opt.Use}
+	priv := jose.JSONWebKey{Key: privKey, KeyID: kid, Algorithm: opt.Alg, Use: opt.Use}
 
 	if priv.IsPublic() || !pub.IsPublic() || !priv.Valid() || !pub.Valid() {
 		return jose.JSONWebKey{}, jose.JSONWebKey{}, errors.New("invalid keys were generated")

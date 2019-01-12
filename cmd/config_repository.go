@@ -64,7 +64,6 @@ type options struct {
 type configRepository struct {
 	defaults
 	options
-	repoDB     *bolt.DB
 	bucketName []byte
 }
 
@@ -72,7 +71,6 @@ func (p *configRepository) init(db *bolt.DB) {
 	if p == nil {
 		panic("configRepository pointer is nil")
 	}
-	p.repoDB = db
 	p.defListen = "127.0.0.1:4343"
 	p.defTLS = false
 	p.defSigAlg = "RS256"
@@ -100,108 +98,5 @@ func (p *configRepository) setDefaults() *configRepository {
 }
 
 func (p configRepository) validate() error {
-	return nil
-}
-
-func (p *configRepository) setDB(db *bolt.DB) *configRepository {
-	p.repoDB = db
-	return p
-}
-
-func (p *configRepository) save() error {
-	if p.repoDB == nil {
-		return errDBNotSet
-	}
-	if err := boltDB.Batch(func(tx *bolt.Tx) error {
-		b := tx.Bucket(p.bucketName)
-		if err := save(b, confListen, p.listen); err != nil {
-			return err
-		}
-		if err := save(b, confTLS, p.tls); err != nil {
-			return err
-		}
-		if err := save(b, confSigAlg, p.sigAlg); err != nil {
-			return err
-		}
-		if err := save(b, confSigBits, p.sigBits); err != nil {
-			return err
-		}
-		if err := save(b, confEncAlg, p.encAlg); err != nil {
-			return err
-		}
-		if err := save(b, confEncBits, p.encBits); err != nil {
-			return err
-		}
-		if err := save(b, confSelfName, p.selfName); err != nil {
-			return err
-		}
-		if err := save(b, confPassword, p.password); err != nil {
-			return err
-		}
-		if err := save(b, confDbPath, p.dbPath); err != nil {
-			return err
-		}
-		return nil
-	}); err != nil {
-		return errSaveDBConf
-	}
-	return nil
-}
-
-func (p *configRepository) load() error {
-	if p.repoDB == nil {
-		return errDBNotSet
-	}
-	if err := boltDB.View(func(tx *bolt.Tx) error {
-		b := tx.Bucket(p.bucketName)
-		if !p.listenSetByUser {
-			if err := load(b, confListen, p.listen); err != nil {
-				return err
-			}
-		}
-		if !p.tlsSetByUser {
-			if err := load(b, confTLS, p.tls); err != nil {
-				return err
-			}
-		}
-		if !p.sigAlgSetByUser {
-			if err := load(b, confSigAlg, p.sigAlg); err != nil {
-				return err
-			}
-		}
-		if !p.sigBitsSetByUser {
-			if err := load(b, confSigBits, p.sigBits); err != nil {
-				return err
-			}
-		}
-		if !p.encAlgSetByUser {
-			if err := load(b, confEncAlg, p.encAlg); err != nil {
-				return err
-			}
-		}
-		if !p.encBitsSetByUser {
-			if err := load(b, confEncBits, p.encBits); err != nil {
-				return err
-			}
-		}
-		if !p.selfNameSetByUser {
-			if err := load(b, confSelfName, p.selfName); err != nil {
-				return err
-			}
-		}
-		if !p.passwordSetByUser {
-			if err := load(b, confPassword, p.password); err != nil {
-				return err
-			}
-		}
-		if !p.dbPathSetByUser {
-			if err := load(b, confDbPath, p.dbPath); err != nil {
-				return err
-			}
-		}
-		return nil
-	}); err != nil {
-		return errLoadDBConf
-	}
 	return nil
 }

@@ -23,7 +23,6 @@ var (
 	keysBucket *bolt.Bucket
 	buckets    = map[string][]byte{
 		"internalBucketName": []byte("internalBucket"),
-		"configBucketName":   []byte("configBucket"),
 		"keysBucketName":     []byte("keysBucket"),
 	}
 	app           *cli.Cli
@@ -47,13 +46,10 @@ func main() {
 			log.Error().Err(err).Msg("couldn't open db; exit")
 			cli.Exit(1)
 		}
-		confRepo.setDB(boltDB)
 		internalsRepo.init(boltDB, &confRepo)
 		// internalsRepo.printConfigs()
 	}
 	app.After = func() {
-		log.Info().Msg("save config repository")
-		confRepo.save()
 		log.Info().Msg("save internals repository")
 		internalsRepo.save()
 		log.Info().Msg("close db")

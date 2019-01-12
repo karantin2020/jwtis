@@ -14,7 +14,7 @@ Client server (app) may use `github.com/dgrijalva/jwt-go` to verify tokens.
 - web client (user) - the end consumer, client, user which requests client server
 - auth token and refresh token are described later in README
 
-What is it for:
+#### What is it for:
 
 - automate sign and encrypt key creation, storing and revision
 - automate producing JWTs (no need to implement it yourself)
@@ -44,24 +44,14 @@ These refresh tokens can be revoked by an authorized client
 
 #### Sign algorithms
 
-```go
-    sigAlgs = []string{
-            string(jose.ES256), string(jose.ES384), string(jose.ES512),
-            string(jose.EdDSA), string(jose.RS256), string(jose.RS384),
-            string(jose.RS512), string(jose.PS256), string(jose.PS384),
-            string(jose.PS512),
-        }
+```
+  ES256 ES384 ES512 EdDSA RS256 RS384 RS512 PS256 PS384 PS512
 ```
 
 #### Encrypt algorithms
 
-```go
-    encAlgs = []string{
-    	string(jose.RSA1_5), string(jose.RSA_OAEP),
-    	string(jose.RSA_OAEP_256), string(jose.ECDH_ES),
-    	string(jose.ECDH_ES_A128KW), string(jose.ECDH_ES_A192KW),
-    	string(jose.ECDH_ES_A256KW),
-    }
+```
+  RSA1_5 RSA-OAEP RSA-OAEP-256 ECDH-ES ECDH-ES+A128KW ECDH-ES+A192KW ECDH-ES+A256KW
 ```
 
 #### JWTIS http endpoints

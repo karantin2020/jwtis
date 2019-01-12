@@ -15,7 +15,7 @@ var (
 	// ErrKeysNotFound describes error when kid is missing in repository
 	ErrKeysNotFound = errors.New("keys with kid not found in repository")
 	// ErrKeysExpired fires when keys exist and expired
-	ErrKeysExpired = errors.New("keys with kid exist in repository, marks as expired, must be deleted")
+	ErrKeysExpired = errors.New("keys with kid exist in repository, marked as expired, must be deleted")
 	// ErrKeysInvalid fires when keys are not valid
 	ErrKeysInvalid = errors.New("keys with kid exist in repository and are not valid")
 )
@@ -123,26 +123,19 @@ func (p *KeysRepository) CheckKeys() error {
 }
 
 // NewKey creates new key with key_id and adds it to repository
-// returns pointer to public jose.JSONWebKey
+// returns public jose.JSONWebKey
 func (p *KeysRepository) NewKey(kid string, opts *DefaultOptions) (SigEncKeys, error) {
-	privKeys := JWTKeysIssuerSet{}
-	exists := false
 	// Keys in db must be checked for strong consistency
-	if err := p.boltDB.View(func(tx *bolt.Tx) error {
-		b := tx.Bucket(p.bucketName)
-		if err := load(b, []byte(kid), &privKeys); err != nil {
-			if err == ErrKeyNotFound {
-				return nil
-			}
-			return fmt.Errorf("error loading key %s: %s", []byte(kid), err.Error())
-		}
-		exists = true
-		return nil
-	}); err != nil {
-		return SigEncKeys{}, fmt.Errorf("error looking for key %s: %s", []byte(kid), err.Error())
+	exists, privKeys, err := p.keyExists([]byte(kid))
+	if err != nil {
+		return SigEncKeys{},
+			fmt.Errorf("error in NewKey checking key existance: %s", err.Error())
 	}
-
 	if exists {
+		if !privKeys.Valid() {
+			return SigEncKeys{},
+				fmt.Errorf("error creating new keys: keys with kid %s exist in db and not valid", string(kid))
+		}
 		if !privKeys.Expired() {
 			return SigEncKeys{},
 				fmt.Errorf("error creating new keys: keys with kid %s exist and not expired", string(kid))
@@ -168,7 +161,6 @@ func (p *KeysRepository) NewKey(kid string, opts *DefaultOptions) (SigEncKeys, e
 		privKeys.Expiry = jwt.NewNumericDate(now.Add(p.DefaultOptions.Expiry))
 	}
 	pubKeys.Expiry = privKeys.Expiry
-	var err error
 	privKeys.Sig, pubKeys.Sig, err = GenerateKeys(kid, s)
 	if err != nil {
 		return SigEncKeys{}, fmt.Errorf("error generating sig keys: %s", err.Error())
@@ -180,9 +172,45 @@ func (p *KeysRepository) NewKey(kid string, opts *DefaultOptions) (SigEncKeys, e
 	return p.AddKey(&privKeys)
 }
 
+func (p *KeysRepository) keyExists(kid []byte) (bool, JWTKeysIssuerSet, error) {
+	privKeys := JWTKeysIssuerSet{}
+	exists := false
+	if err := p.boltDB.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket(p.bucketName)
+		if err := load(b, kid, &privKeys); err != nil {
+			if err == ErrKeyNotFound {
+				return nil
+			}
+			return fmt.Errorf("error loading key %s: %s", string(kid), err.Error())
+		}
+		exists = true
+		return nil
+	}); err != nil {
+		return exists, JWTKeysIssuerSet{}, fmt.Errorf("error looking for key %s: %s", string(kid), err.Error())
+	}
+	return exists, privKeys, nil
+}
+
 // AddKey adds jose.JSONWebKey with key.KeyID to repository
-// returns pointer to public jose.JSONWebKey
+// returns public jose.JSONWebKey
 func (p *KeysRepository) AddKey(key *JWTKeysIssuerSet) (SigEncKeys, error) {
+	exists, privKeys, err := p.keyExists(key.KID)
+	if err != nil {
+		return SigEncKeys{},
+			fmt.Errorf("error in AddKey checking key existance: %s", err.Error())
+	}
+	if exists {
+		if !privKeys.Valid() {
+			return SigEncKeys{},
+				fmt.Errorf("error adding new keys: keys with kid %s exist in db and not valid", key.KID)
+		}
+		if !privKeys.Expired() {
+			return SigEncKeys{},
+				fmt.Errorf("error adding new keys: keys with kid %s exist and not expired", key.KID)
+		}
+		return SigEncKeys{}, ErrKeysExpired
+	}
+
 	if err := p.boltDB.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket(p.bucketName)
 		if err := save(b, key.KID, key); err != nil {
@@ -201,6 +229,21 @@ func (p *KeysRepository) AddKey(key *JWTKeysIssuerSet) (SigEncKeys, error) {
 	return pubKeys, nil
 }
 
+// DelKey deletes key from cache and boltDB
+func (p *KeysRepository) DelKey(kid string) error {
+	if err := p.boltDB.Update(func(tx *bolt.Tx) error {
+		b := tx.Bucket(p.bucketName)
+		if err := b.Delete([]byte(kid)); err != nil {
+			return fmt.Errorf("error delete key with kid %s: %s", kid, err.Error())
+		}
+		return nil
+	}); err != nil {
+		return fmt.Errorf("error delete keys from repository: %s", err.Error())
+	}
+	delete(p.Keys, kid)
+	return nil
+}
+
 // GetPublicKeys returns from boltDB public keys with kid
 // returns pointer to public jose.JSONWebKey
 func (p *KeysRepository) GetPublicKeys(kid string) (SigEncKeys, error) {
@@ -209,7 +252,7 @@ func (p *KeysRepository) GetPublicKeys(kid string) (SigEncKeys, error) {
 		return SigEncKeys{}, ErrKeysNotFound
 	}
 	if key.Expired() {
-		return SigEncKeys{}, fmt.Errorf("error get public keys for kid %s: %s", kid, ErrKeysExpired.Error())
+		return SigEncKeys{}, ErrKeysExpired
 	}
 	pubKeys := SigEncKeys{
 		Enc:    key.Enc.Public(),
@@ -227,7 +270,7 @@ func (p *KeysRepository) GetPrivateKeys(kid string) (SigEncKeys, error) {
 		return SigEncKeys{}, ErrKeysNotFound
 	}
 	if key.Expired() {
-		return SigEncKeys{}, fmt.Errorf("error get private keys for kid %s: %s", kid, ErrKeysExpired.Error())
+		return SigEncKeys{}, ErrKeysExpired
 	}
 	privKeys := SigEncKeys{
 		Enc:    key.Enc,

@@ -1,0 +1,28 @@
+### Feature roadmap
+
+- [ ] cli part [tag 0.0.1]
+  - [x] internal repository
+  - [x] persistance layer of internal repository
+  - [x] flags handling
+  - [x] db crypto check
+  - [x] add zerolog logging support
+  - [ ] add tests
+- [ ] keys repository [tag 0.0.2]
+  - [x] keys creation
+  - [x] keys persistance
+  - [x] keys deletion
+  - [ ] add tests
+- [ ] server-side [tag 0.1.1]
+  - [ ] add github.com/gin-gonic/gin HTTP web framework
+  - [ ] add keys routes `/register` and `/keys`
+  - [ ] add jwt routes `/issue_token` and `/renew_token`
+  - [ ] add tests
+- [ ] client-side; middleware with automatic key fetching
+  - [ ] http client to fetch public sign and encrypt keys
+  - [ ] http middleware for jwt verification
+  - [ ] add tests
+  - [ ] _optional jwt revoke client functionality_
+- [ ] add automatic tls support to server
+  - [ ] [mkcert](https://github.com/FiloSottile/mkcert)
+  - [ ] let's encrypt, eg [lego](https://github.com/xenolf/lego)
+- [ ] additional features described in readme

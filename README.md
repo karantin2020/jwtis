@@ -69,15 +69,15 @@ These refresh tokens can be revoked by an authorized client
 
   ```go
     type RegisterClientRequest struct {
-        Expiry time.Duration `json:"expiry,omitempty"` // keys ttl, optional
+        Expiry Duration `json:"expiry,omitempty"` // keys ttl, optional
 
         SigAlg  string `json:"sig_alg,omitempty"`  // default algorithn to be used for sign, optional
         SigBits int    `json:"sig_bits,omitempty"` // default key size in bits for sign, optional
         EncAlg  string `json:"enc_alg,omitempty"`  // default algorithn to be used for encrypt, optional
         EncBits int    `json:"enc_bits,omitempty"` // default key size in bits for encrypt, optional
 
-        AuthTTL    time.Duration `json:"auth_ttl,omitempty"`    // default auth jwt ttl, optional
-        RefreshTTL time.Duration `json:"refresh_ttl,omitempty"` // default refresh jwt ttl, optional
+        AuthTTL    Duration `json:"auth_ttl,omitempty"`    // default auth jwt ttl, optional
+        RefreshTTL Duration `json:"refresh_ttl,omitempty"` // default refresh jwt ttl, optional
     }
   ```
 

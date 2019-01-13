@@ -11,6 +11,17 @@
   - [x] keys creation
   - [x] keys persistance
   - [x] keys deletion
+  - [ ] implement key rotation mechanism
+    ```
+    When keys renewed client servers must be able to renew refresh jwt tokens signed with old keys
+      - period to store old keys
+      - key rotation process
+        - rename old keys as 'kid_old'
+        - store new keys as 'kid'
+      - jwt renew process
+        - when renew jwt requested get new keys
+        - if sign or enc verification fails try to use old keys
+    ```
   - [ ] add tests
 - [ ] server-side [tag 0.1.1]
   - [ ] add github.com/gin-gonic/gin HTTP web framework

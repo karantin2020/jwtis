@@ -56,7 +56,7 @@ These refresh tokens can be revoked by an authorized client
 
 #### JWTIS http endpoints
 
-- /register
+- /register/:kid
   `- register new client server (app)`
 
   - method
@@ -69,13 +69,15 @@ These refresh tokens can be revoked by an authorized client
 
   ```go
     type RegisterClientRequest struct {
-        Kid string `json:"kid"` // Keys id to use
+        Expiry time.Duration `json:"expiry,omitempty"` // keys ttl, optional
 
-        // Sign and encrypt keys config. If not provided then use default JWTIS values
-        SigAlg  string `json:"sig_alg"`  // algorithn to be used for sign
-        SigBits string `json:"sig_bits"` // key size in bits for sign
-        EncAlg  string `json:"enc_alg"`  // algorithn to be used for encrypt
-        EncBits string `json:"enc_bits"` // key size in bits for encrypt
+        SigAlg  string `json:"sig_alg,omitempty"`  // default algorithn to be used for sign, optional
+        SigBits int    `json:"sig_bits,omitempty"` // default key size in bits for sign, optional
+        EncAlg  string `json:"enc_alg,omitempty"`  // default algorithn to be used for encrypt, optional
+        EncBits int    `json:"enc_bits,omitempty"` // default key size in bits for encrypt, optional
+
+        AuthTTL    time.Duration `json:"auth_ttl,omitempty"`    // default auth jwt ttl, optional
+        RefreshTTL time.Duration `json:"refresh_ttl,omitempty"` // default refresh jwt ttl, optional
     }
   ```
 

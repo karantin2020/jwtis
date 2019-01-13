@@ -2,6 +2,7 @@ package http
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/karantin2020/jwtis"
@@ -40,9 +41,9 @@ func (g *KeyHandlersGroup) Register(c *gin.Context) {
 		SigBits:    req.SigBits,
 		EncAlg:     req.EncAlg,
 		EncBits:    req.EncBits,
-		Expiry:     req.Expiry,
-		AuthTTL:    req.AuthTTL,
-		RefreshTTL: req.RefreshTTL,
+		Expiry:     time.Duration(req.Expiry),
+		AuthTTL:    time.Duration(req.AuthTTL),
+		RefreshTTL: time.Duration(req.RefreshTTL),
 	}
 	pubKeys, err := g.srvc.Register(kid, opts)
 	if err != nil {
@@ -68,7 +69,7 @@ func (g *KeyHandlersGroup) Register(c *gin.Context) {
 				{
 					Source: "",
 					Title:  "internal server error",
-					Detail: "key service error, couldn't create new key; request key status",
+					Detail: "key service error, couldn't create new key; request key status: " + err.Error(),
 				},
 			},
 		})

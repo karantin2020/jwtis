@@ -1,6 +1,9 @@
 package http
 
 import (
+	"encoding/json"
+	"errors"
+	"strconv"
 	"time"
 
 	jose "gopkg.in/square/go-jose.v2"
@@ -31,15 +34,15 @@ type NewTokenResponse struct {
 
 // RegisterClientRequest sent to jwtis to register new client
 type RegisterClientRequest struct {
-	Expiry time.Duration `json:"expiry,omitempty"` // keys ttl, optional
+	Expiry Duration `json:"expiry,omitempty"` // keys ttl, optional
 
 	SigAlg  string `json:"sig_alg,omitempty"`  // default algorithn to be used for sign, optional
 	SigBits int    `json:"sig_bits,omitempty"` // default key size in bits for sign, optional
 	EncAlg  string `json:"enc_alg,omitempty"`  // default algorithn to be used for encrypt, optional
 	EncBits int    `json:"enc_bits,omitempty"` // default key size in bits for encrypt, optional
 
-	AuthTTL    time.Duration `json:"auth_ttl,omitempty"`    // default auth jwt ttl, optional
-	RefreshTTL time.Duration `json:"refresh_ttl,omitempty"` // default refresh jwt ttl, optional
+	AuthTTL    Duration `json:"auth_ttl,omitempty"`    // default auth jwt ttl, optional
+	RefreshTTL Duration `json:"refresh_ttl,omitempty"` // default refresh jwt ttl, optional
 }
 
 // RegisterClientResponse sent to client after it's registration
@@ -77,4 +80,40 @@ type ErrorBody struct {
 	Source string `json:"source"`
 	Title  string `json:"title"`
 	Detail string `json:"detail"`
+}
+
+// ===== Marshallers ===== //
+
+// Duration type
+type Duration int64
+
+// MarshalJSON func
+func (d Duration) MarshalJSON() ([]byte, error) {
+	return strconv.AppendInt([]byte{}, int64(d), 10), nil
+}
+
+// UnmarshalJSON func
+func (d *Duration) UnmarshalJSON(b []byte) error {
+	var v interface{}
+	if err := json.Unmarshal(b, &v); err != nil {
+		return err
+	}
+	switch value := v.(type) {
+	case int64:
+		*d = Duration(value)
+		return nil
+	case float64:
+		*d = Duration(value)
+		return nil
+	case string:
+		rv, err := time.ParseDuration(value)
+		if err != nil {
+			return err
+		}
+		// fmt.Printf("%+v\n", rv)
+		*d = Duration(int64(rv))
+		return nil
+	default:
+		return errors.New("invalid duration")
+	}
 }

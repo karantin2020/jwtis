@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"time"
 
 	bolt "github.com/coreos/bbolt"
 	"github.com/karantin2020/jwtis"
@@ -10,14 +11,22 @@ import (
 	cli "github.com/jawher/mow.cli"
 )
 
+// DefaultValues hold default key config values
+type DefaultValues struct {
+	SigAlg     string        // Default algorithm to be used for sign
+	SigBits    int           // Default key size in bits for sign
+	EncAlg     string        // Default algorithn to be used for encrypt
+	EncBits    int           // Default key size in bits for encrypt
+	Expiry     time.Duration // Default value for keys ttl
+	AuthTTL    time.Duration // Default value for auth jwt ttl
+	RefreshTTL time.Duration // Default value for refresh jwt ttl
+}
+
 // http config
 type configs struct {
-	Listen   string // ip:port to listen to
-	TLS      bool   // Future feature
-	SigAlg   string // Default algorithn to be used for sign
-	SigBits  int    // Default key size in bits for sign
-	EncAlg   string // Default algorithn to be used for encrypt
-	EncBits  int    // Default key size in bits for encrypt
+	Listen string // ip:port to listen to
+	TLS    bool   // Future feature
+	DefaultValues
 	SelfName []byte
 }
 
@@ -76,7 +85,8 @@ func (p *internalRepository) init(db *bolt.DB, confRepo *configRepository) {
 	p.confRepo = confRepo
 	p.setPassword([]byte(*confRepo.password))
 
-	if err := p.load(); err != nil {
+	err := p.load()
+	if err != nil {
 		log.Error().Err(err).Msg("can't load internalRepo from boltDB; exit")
 		cli.Exit(1)
 	}
@@ -102,6 +112,27 @@ func (p *internalRepository) init(db *bolt.DB, confRepo *configRepository) {
 	if !dbExists || confRepo.encBitsSetByUser {
 		p.EncBits = *confRepo.encBits
 	}
+	if !dbExists || confRepo.expirySetByUser || p.Expiry == 0 {
+		p.Expiry, err = time.ParseDuration(*confRepo.expiry)
+		if err != nil {
+			log.Error().Err(err).Msg("can't parse Expiry duration; exit")
+			cli.Exit(1)
+		}
+	}
+	if !dbExists || confRepo.authTTLSetByUser || p.AuthTTL == 0 {
+		p.AuthTTL, err = time.ParseDuration(*confRepo.authTTL)
+		if err != nil {
+			log.Error().Err(err).Msg("can't parse AuthTTL duration; exit")
+			cli.Exit(1)
+		}
+	}
+	if !dbExists || confRepo.refreshTTLSetByUser || p.RefreshTTL == 0 {
+		p.RefreshTTL, err = time.ParseDuration(*confRepo.refreshTTL)
+		if err != nil {
+			log.Error().Err(err).Msg("can't parse RefreshTTL duration; exit")
+			cli.Exit(1)
+		}
+	}
 	if err := p.save(); err != nil {
 		log.Error().Err(err).Msg("can't save internalRepo; exit")
 		cli.Exit(1)
@@ -110,15 +141,18 @@ func (p *internalRepository) init(db *bolt.DB, confRepo *configRepository) {
 
 func (p internalRepository) printConfigs() {
 	fmt.Printf("Current configuration:\n")
-	fmt.Printf("  internalRepo.configs.listen:\t %s\n", p.Listen)
-	fmt.Printf("  internalRepo.configs.tls:\t %t\n", p.TLS)
-	fmt.Printf("  internalRepo.configs.sigAlg:\t %s\n", p.SigAlg)
-	fmt.Printf("  internalRepo.configs.sigBits:\t %d\n", p.SigBits)
-	fmt.Printf("  internalRepo.configs.encAlg:\t %s\n", p.EncAlg)
-	fmt.Printf("  internalRepo.configs.encBits:\t %d\n", p.EncBits)
-	fmt.Printf("  internalRepo.configs.selfName: %s\n", string(p.SelfName))
+	fmt.Printf("  internalRepo.configs.listen:\t\t%s\n", p.Listen)
+	fmt.Printf("  internalRepo.configs.tls:\t\t%t\n", p.TLS)
+	fmt.Printf("  internalRepo.configs.sigAlg:\t\t%s\n", p.SigAlg)
+	fmt.Printf("  internalRepo.configs.sigBits:\t\t%d\n", p.SigBits)
+	fmt.Printf("  internalRepo.configs.encAlg:\t\t%s\n", p.EncAlg)
+	fmt.Printf("  internalRepo.configs.encBits:\t\t%d\n", p.EncBits)
+	fmt.Printf("  internalRepo.configs.selfName:\t%s\n", string(p.SelfName))
+	fmt.Printf("  internalRepo.configs.expiry:\t\t%s\n", p.Expiry)
+	fmt.Printf("  internalRepo.configs.authTTL:\t\t%s\n", p.AuthTTL)
+	fmt.Printf("  internalRepo.configs.refreshTTL:\t%s\n", p.RefreshTTL)
 	// fmt.Printf("internalRepo.configs.password: '%s'\n", string(p.password))
-	fmt.Printf("  confRepo.options.dbPath:\t %s\n", *confRepo.dbPath)
+	fmt.Printf("  confRepo.options.dbPath:\t\t%s\n", *confRepo.dbPath)
 }
 
 func (p internalRepository) validate() error {

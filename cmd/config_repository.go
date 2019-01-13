@@ -19,34 +19,46 @@ type encryption struct {
 	encAlg  *string // Default algorithn to be used for encrypt
 	encBits *int    // Default key size in bits for encrypt
 }
+type jwtttl struct {
+	authTTL    *string // Default value for auth jwt ttl
+	refreshTTL *string // Default value for refresh jwt ttl
+}
 type keyGeneration struct {
 	// keys generation options
 	sign
 	encryption
+	expiry *string
+	jwtttl
 }
 type setByUser struct {
-	listenSetByUser   bool
-	tlsSetByUser      bool
-	sigAlgSetByUser   bool
-	sigBitsSetByUser  bool
-	encAlgSetByUser   bool
-	encBitsSetByUser  bool
-	selfNameSetByUser bool
-	passwordSetByUser bool
-	dbPathSetByUser   bool
-	VerboseSetByUser  bool
+	listenSetByUser     bool
+	tlsSetByUser        bool
+	sigAlgSetByUser     bool
+	sigBitsSetByUser    bool
+	encAlgSetByUser     bool
+	encBitsSetByUser    bool
+	expirySetByUser     bool
+	authTTLSetByUser    bool
+	refreshTTLSetByUser bool
+	selfNameSetByUser   bool
+	passwordSetByUser   bool
+	dbPathSetByUser     bool
+	VerboseSetByUser    bool
 }
 type defaults struct {
-	defListen   string
-	defTLS      bool
-	defSigAlg   string
-	defSigBits  int
-	defEncAlg   string
-	defEncBits  int
-	defSelfName string
-	defPassword string
-	defDbPath   string
-	defVerbose  bool
+	defListen     string
+	defTLS        bool
+	defSigAlg     string
+	defSigBits    int
+	defEncAlg     string
+	defEncBits    int
+	defExpiry     string
+	defAuthTTL    string
+	defRefreshTTL string
+	defSelfName   string
+	defPassword   string
+	defDbPath     string
+	defVerbose    bool
 }
 type options struct {
 	httpConf
@@ -77,6 +89,9 @@ func (p *configRepository) init(db *bolt.DB) {
 	p.defSigBits = 2048
 	p.defEncAlg = "ECDH-ES+A256KW"
 	p.defEncBits = 521
+	p.defExpiry = "4320h"    // 180 days
+	p.defAuthTTL = "72h"     // 3 days
+	p.defRefreshTTL = "720h" // 30 days
 	p.defSelfName = "JWTIS"
 	p.defPassword = ""
 	p.defDbPath = "./data/" + dbPathName
@@ -91,6 +106,9 @@ func (p *configRepository) setDefaults() *configRepository {
 	p.sigBits = &p.defSigBits
 	p.encAlg = &p.defEncAlg
 	p.encBits = &p.defEncBits
+	p.expiry = &p.defExpiry
+	p.authTTL = &p.defAuthTTL
+	p.refreshTTL = &p.defRefreshTTL
 	p.selfName = &p.defSelfName
 	p.password = &p.defPassword
 	p.dbPath = &p.defDbPath

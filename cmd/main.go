@@ -8,6 +8,8 @@ import (
 	cli "github.com/jawher/mow.cli"
 	"github.com/karantin2020/jwtis/http"
 	"github.com/rs/zerolog"
+
+	"github.com/karantin2020/jwtis"
 )
 
 const (
@@ -20,15 +22,15 @@ const (
 )
 
 var (
-	boltDB     *bolt.DB
-	keysBucket *bolt.Bucket
-	buckets    = map[string][]byte{
+	boltDB  *bolt.DB
+	buckets = map[string][]byte{
 		"internalBucketName": []byte("internalBucket"),
 		"keysBucketName":     []byte("keysBucket"),
 	}
 	app           *cli.Cli
 	confRepo      configRepository
 	internalsRepo internalRepository
+	keysRepo      jwtis.KeysRepository
 	log           zerolog.Logger
 )
 
@@ -45,10 +47,24 @@ func main() {
 		log.Info().Msg("open db")
 		boltDB, err = openDB()
 		if err != nil {
-			log.Error().Err(err).Msg("couldn't open db; exit")
+			log.Error().Err(err).Msg("error in start up, couldn't open db; exit")
 			cli.Exit(1)
 		}
 		internalsRepo.init(boltDB, &confRepo)
+		err = keysRepo.Init(boltDB, buckets["keysBucketName"],
+			&jwtis.DefaultOptions{
+				SigAlg:     internalsRepo.SigAlg,
+				SigBits:    internalsRepo.SigBits,
+				EncAlg:     internalsRepo.EncAlg,
+				EncBits:    internalsRepo.EncBits,
+				Expiry:     internalsRepo.Expiry,
+				AuthTTL:    internalsRepo.AuthTTL,
+				RefreshTTL: internalsRepo.RefreshTTL,
+			}, &internalsRepo.encKey, internalsRepo.nonce)
+		if err != nil {
+			log.Error().Err(err).Msg("error in start up init keys repository; exit")
+			cli.Exit(1)
+		}
 		greetingMsg()
 		internalsRepo.printConfigs()
 	}

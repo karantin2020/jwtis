@@ -68,6 +68,29 @@ func newConfigApp() *cli.Cli {
 		EnvVar:    envPrefix + "ENC_BITS",
 		SetByUser: &confRepo.encBitsSetByUser,
 	})
+
+	confRepo.expiry = app.String(cli.StringOpt{
+		Name:      "e expiry",
+		Value:     confRepo.defExpiry,
+		Desc:      "Default keys time to live, expiration time [Duration string]",
+		EnvVar:    envPrefix + "EXPIRY",
+		SetByUser: &confRepo.expirySetByUser,
+	})
+	confRepo.authTTL = app.String(cli.StringOpt{
+		Name:      "a authTTL",
+		Value:     confRepo.defAuthTTL,
+		Desc:      "Default auth JWT token time to live, expiration time [Duration string]",
+		EnvVar:    envPrefix + "AUTH_TTL",
+		SetByUser: &confRepo.authTTLSetByUser,
+	})
+	confRepo.refreshTTL = app.String(cli.StringOpt{
+		Name:      "r refreshTTL",
+		Value:     confRepo.defRefreshTTL,
+		Desc:      "Default refresh JWT token time to live, expiration time [Duration string]",
+		EnvVar:    envPrefix + "REFRESH_TTL",
+		SetByUser: &confRepo.refreshTTLSetByUser,
+	})
+
 	confRepo.selfName = app.String(cli.StringOpt{
 		Name:      "n name",
 		Value:     confRepo.defSelfName,

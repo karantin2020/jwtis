@@ -16,19 +16,27 @@ var (
 	ErrKeysNotFound = errors.New("keys with kid not found in repository")
 	// ErrKeysExpired fires when keys exist and expired
 	ErrKeysExpired = errors.New("keys with kid exist in repository, marked as expired, must be deleted")
+	// ErrKeysExist if keys exist and are valid
+	ErrKeysExist = errors.New("keys with kid exist in repository and are valid")
+	// ErrKeysExistInvalid if keys exist and are not valid
+	ErrKeysExistInvalid = errors.New("keys with kid exist in repository and are not valid")
 	// ErrKeysInvalid fires when keys are not valid
 	ErrKeysInvalid = errors.New("keys with kid exist in repository and are not valid")
 )
 
 // JWTKeysIssuerSet holds jwt info
 type JWTKeysIssuerSet struct {
-	KID     []byte          // key id
-	Expiry  jwt.NumericDate // keys expiry time
-	Enc     jose.JSONWebKey // enc private key
-	Sig     jose.JSONWebKey // sig private key
-	Locked  bool            // is this keyset locked for further deletion (lost or other reason)
-	invalid bool
-	expired bool
+	KID        []byte          // key id
+	Expiry     jwt.NumericDate // keys expiry time
+	AuthTTL    time.Duration   // token expiry duration
+	RefreshTTL time.Duration   // token expiry duration
+	Enc        jose.JSONWebKey // enc private key
+	Sig        jose.JSONWebKey // sig private key
+	Locked     bool            // is this keyset locked for further deletion (lost or other reason)
+	pubEnc     jose.JSONWebKey // enc public key
+	pubSig     jose.JSONWebKey // sig public key
+	invalid    bool
+	expired    bool
 }
 
 // Expired returns true if JWTKeysIssuerSet is expired
@@ -54,11 +62,27 @@ func (k *JWTKeysIssuerSet) Valid() bool {
 	return true
 }
 
+// Public returns SigEncKeys with public sig and enc keys
+func (k *JWTKeysIssuerSet) Public() SigEncKeys {
+	return SigEncKeys{
+		Sig:    &k.pubSig,
+		Enc:    &k.pubEnc,
+		Expiry: k.Expiry,
+		Valid:  !k.invalid,
+	}
+}
+
+func (k *JWTKeysIssuerSet) attachPublic() {
+	k.pubEnc = k.Enc.Public()
+	k.pubSig = k.Sig.Public()
+}
+
 // SigEncKeys represents a structure that holds public or private JWT keys
 type SigEncKeys struct {
-	Sig    jose.JSONWebKey
-	Enc    jose.JSONWebKey
+	Sig    *jose.JSONWebKey
+	Enc    *jose.JSONWebKey
 	Expiry jwt.NumericDate
+	Valid  bool
 }
 
 // KeyOptions represent the set of option to create sig or enc keys
@@ -69,11 +93,13 @@ type KeyOptions struct {
 
 // DefaultOptions represents default sig ang enc options
 type DefaultOptions struct {
-	SigAlg  string // Default algorithn to be used for sign
-	SigBits int    // Default key size in bits for sign
-	EncAlg  string // Default algorithn to be used for encrypt
-	EncBits int    // Default key size in bits for encrypt
-	Expiry  time.Duration
+	SigAlg     string        // Default algorithn to be used for sign
+	SigBits    int           // Default key size in bits for sign
+	EncAlg     string        // Default algorithn to be used for encrypt
+	EncBits    int           // Default key size in bits for encrypt
+	Expiry     time.Duration // Default value for keys ttl
+	AuthTTL    time.Duration // Default value for auth jwt ttl
+	RefreshTTL time.Duration // Default value for refresh jwt ttl
 }
 
 // KeysRepository holds all jose.JSONWebKey's
@@ -92,7 +118,7 @@ type KeysRepository struct {
 
 // Init initiates created KeysRepository
 func (p *KeysRepository) Init(db *bolt.DB, bucketName []byte,
-	opts *DefaultOptions, encKey *Key, nonce []byte) {
+	opts *DefaultOptions, encKey *Key, nonce []byte) error {
 	if p == nil {
 		panic("KeysRepository pointer is nil")
 	}
@@ -115,6 +141,11 @@ func (p *KeysRepository) Init(db *bolt.DB, bucketName []byte,
 	}
 	p.encKey = encKey
 	p.nonce = nonce
+	err := p.LoadAll()
+	if err != nil {
+		return fmt.Errorf("error initianing keys repository: %s", err.Error())
+	}
+	return nil
 }
 
 // CheckKeys checks if all keys are valid and are not expired
@@ -134,20 +165,26 @@ func (p *KeysRepository) CheckKeys() error {
 // NewKey creates new key with key_id and adds it to repository
 // returns public jose.JSONWebKey
 func (p *KeysRepository) NewKey(kid string, opts *DefaultOptions) (SigEncKeys, error) {
+	if p == nil {
+		return SigEncKeys{},
+			fmt.Errorf("error in NewKey: pointer to KeysRepository is nil")
+	}
+	if opts == nil {
+		return SigEncKeys{},
+			fmt.Errorf("error in NewKey: pointer to key options is nil")
+	}
 	// Keys in db must be checked for strong consistency
-	exists, privKeys, err := p.keyExists([]byte(kid))
+	exists, privKeys, err := p.KeyExists([]byte(kid))
 	if err != nil {
 		return SigEncKeys{},
 			fmt.Errorf("error in NewKey checking key existance: %s", err.Error())
 	}
 	if exists {
 		if !privKeys.Valid() {
-			return SigEncKeys{},
-				fmt.Errorf("error creating new keys: keys with kid %s exist in db and not valid", string(kid))
+			return SigEncKeys{}, ErrKeysExistInvalid
 		}
 		if !privKeys.Expired() {
-			return SigEncKeys{},
-				fmt.Errorf("error creating new keys: keys with kid %s exist and not expired", string(kid))
+			return SigEncKeys{}, ErrKeysExist
 		}
 		return SigEncKeys{}, ErrKeysExpired
 	}
@@ -156,7 +193,6 @@ func (p *KeysRepository) NewKey(kid string, opts *DefaultOptions) (SigEncKeys, e
 	privKeys.KID = []byte(kid)
 	privKeys.Locked = false
 
-	pubKeys := SigEncKeys{}
 	s := p.defSigOptions
 	e := p.defEncOptions
 	now := time.Now()
@@ -169,19 +205,21 @@ func (p *KeysRepository) NewKey(kid string, opts *DefaultOptions) (SigEncKeys, e
 	} else {
 		privKeys.Expiry = jwt.NewNumericDate(now.Add(p.DefaultOptions.Expiry))
 	}
-	pubKeys.Expiry = privKeys.Expiry
-	privKeys.Sig, pubKeys.Sig, err = GenerateKeys(kid, s)
+	privKeys.Sig, _, err = GenerateKeys(kid, s)
 	if err != nil {
 		return SigEncKeys{}, fmt.Errorf("error generating sig keys: %s", err.Error())
 	}
-	privKeys.Enc, pubKeys.Enc, err = GenerateKeys(kid, e)
+	privKeys.Enc, _, err = GenerateKeys(kid, e)
 	if err != nil {
 		return SigEncKeys{}, fmt.Errorf("error generating enc keys: %s", err.Error())
 	}
-	return p.AddKey(&privKeys)
+	privKeys.AuthTTL = opts.AuthTTL
+	privKeys.RefreshTTL = opts.RefreshTTL
+	return p.AddKey(privKeys)
 }
 
-func (p *KeysRepository) keyExists(kid []byte) (bool, JWTKeysIssuerSet, error) {
+// KeyExists return true is key with kid is in boltDB
+func (p *KeysRepository) KeyExists(kid []byte) (bool, *JWTKeysIssuerSet, error) {
 	privKeys := JWTKeysIssuerSet{}
 	exists := false
 	if err := p.boltDB.View(func(tx *bolt.Tx) error {
@@ -195,31 +233,35 @@ func (p *KeysRepository) keyExists(kid []byte) (bool, JWTKeysIssuerSet, error) {
 		exists = true
 		return nil
 	}); err != nil {
-		return exists, JWTKeysIssuerSet{}, fmt.Errorf("error looking for key %s: %s", string(kid), err.Error())
+		return exists, nil, fmt.Errorf("error looking for key %s: %s", string(kid), err.Error())
 	}
-	return exists, privKeys, nil
+	return exists, &privKeys, nil
 }
 
 // AddKey adds jose.JSONWebKey with key.KeyID to repository
 // returns public jose.JSONWebKey
 func (p *KeysRepository) AddKey(key *JWTKeysIssuerSet) (SigEncKeys, error) {
-	exists, privKeys, err := p.keyExists(key.KID)
+	exists, privKeys, err := p.KeyExists(key.KID)
 	if err != nil {
 		return SigEncKeys{},
 			fmt.Errorf("error in AddKey checking key existance: %s", err.Error())
 	}
 	if exists {
-		if !privKeys.Valid() {
-			return SigEncKeys{},
-				fmt.Errorf("error adding new keys: keys with kid %s exist in db and not valid", key.KID)
-		}
 		if !privKeys.Expired() {
 			return SigEncKeys{},
 				fmt.Errorf("error adding new keys: keys with kid %s exist and not expired", key.KID)
 		}
 		return SigEncKeys{}, ErrKeysExpired
 	}
-
+	if !key.Valid() {
+		return SigEncKeys{},
+			fmt.Errorf("error adding new keys: new keys with kid %s are not valid", key.KID)
+	}
+	if key.Expired() {
+		return SigEncKeys{},
+			fmt.Errorf("error adding new keys: new key with kid %s is expired", key.KID)
+	}
+	key.attachPublic()
 	if err := p.boltDB.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket(p.bucketName)
 		if err := SaveSealed(p.encKey, p.nonce, b, key.KID, key); err != nil {
@@ -231,9 +273,10 @@ func (p *KeysRepository) AddKey(key *JWTKeysIssuerSet) (SigEncKeys, error) {
 	}
 	p.Keys[string(key.KID)] = *key
 	pubKeys := SigEncKeys{
-		Enc:    key.Enc.Public(),
-		Sig:    key.Sig.Public(),
+		Enc:    &key.pubEnc,
+		Sig:    &key.pubSig,
 		Expiry: key.Expiry,
+		Valid:  !key.invalid,
 	}
 	return pubKeys, nil
 }
@@ -264,9 +307,10 @@ func (p *KeysRepository) GetPublicKeys(kid string) (SigEncKeys, error) {
 		return SigEncKeys{}, ErrKeysExpired
 	}
 	pubKeys := SigEncKeys{
-		Enc:    key.Enc.Public(),
-		Sig:    key.Sig.Public(),
+		Enc:    &key.pubEnc,
+		Sig:    &key.pubSig,
 		Expiry: key.Expiry,
+		Valid:  !key.invalid,
 	}
 	return pubKeys, nil
 }
@@ -282,9 +326,10 @@ func (p *KeysRepository) GetPrivateKeys(kid string) (SigEncKeys, error) {
 		return SigEncKeys{}, ErrKeysExpired
 	}
 	privKeys := SigEncKeys{
-		Enc:    key.Enc,
-		Sig:    key.Sig,
+		Enc:    &key.Enc,
+		Sig:    &key.Sig,
 		Expiry: key.Expiry,
+		Valid:  !key.invalid,
 	}
 	return privKeys, nil
 }
@@ -325,6 +370,7 @@ func (p *KeysRepository) LoadAll() error {
 			}
 			res.Valid()
 			res.Expired()
+			res.attachPublic()
 			p.Keys[string(res.KID)] = res
 			return nil
 		})

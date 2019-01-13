@@ -52,7 +52,7 @@ func ClaimsSigned(sigkey *jose.JSONWebKey,
 	return nil
 }
 
-// JWTSignedAndEncrypted ecryptes and signes jwt token
+// JWTSignedAndEncrypted ecryptes and signes claims, returns jwt token string and error
 func JWTSignedAndEncrypted(enckey *jose.JSONWebKey, sigkey *jose.JSONWebKey,
 	claims ...interface{}) (string, error) {
 	enc, err := jose.NewEncrypter(
@@ -80,7 +80,7 @@ func JWTSignedAndEncrypted(enckey *jose.JSONWebKey, sigkey *jose.JSONWebKey,
 	return raw, nil
 }
 
-// JWTSigned signes jwt token
+// JWTSigned signes claims, returns jwt token string and error
 func JWTSigned(sigkey *jose.JSONWebKey, claims ...interface{}) (string, error) {
 	sig, err := jose.NewSigner(jose.SigningKey{Algorithm: jose.SignatureAlgorithm(sigkey.Algorithm), Key: sigkey.Key}, nil)
 	if err != nil {

@@ -11,6 +11,7 @@ func LoadRouter(mode string, middleware ...gin.HandlerFunc) http.Handler {
 	gin.SetMode(mode)
 	r := gin.New()
 	r.Use(gin.Recovery())
+	r.Use(gin.Logger())
 	r.Use(middleware...)
 	r.GET("/", func(c *gin.Context) {
 		// time.Sleep(10 * time.Second)

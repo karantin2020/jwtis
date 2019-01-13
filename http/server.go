@@ -8,6 +8,8 @@ import (
 	"os/signal"
 	"time"
 
+	"github.com/karantin2020/jwtis"
+	"github.com/karantin2020/jwtis/services/keyservice"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -47,8 +49,12 @@ func StartServer(srv *http.Server) error {
 }
 
 // SetupServer configures new http server
-func SetupServer(listen, mode string) *http.Server {
-	r := LoadRouter(mode)
+func SetupServer(listen, mode string, keysRepo *jwtis.KeysRepository) (*http.Server, error) {
+	keySrvc, err := keyservice.New(keysRepo)
+	if err != nil {
+		return nil, fmt.Errorf("error creating key service: %s", err.Error())
+	}
+	r := LoadRouter(mode, keySrvc)
 	return &http.Server{
 		Addr:              listen,
 		Handler:           r,
@@ -57,5 +63,5 @@ func SetupServer(listen, mode string) *http.Server {
 		IdleTimeout:       60 * time.Second,
 		WriteTimeout:      15 * time.Second,
 		MaxHeaderBytes:    1 << 20,
-	}
+	}, nil
 }

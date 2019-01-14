@@ -24,9 +24,10 @@
     ```
   - [ ] add tests
 - [ ] server-side [tag 0.1.1]
-  - [ ] add github.com/gin-gonic/gin HTTP web framework
+  - [x] add github.com/gin-gonic/gin HTTP web framework
   - [ ] add keys routes `/register` and `/keys`
   - [ ] add jwt routes `/issue_token` and `/renew_token`
+  - [ ] add app's logger to server to log events
   - [ ] add tests
 - [ ] client-side; middleware with automatic key fetching [tag 0.2.1]
   - [ ] http client to fetch public sign and encrypt keys

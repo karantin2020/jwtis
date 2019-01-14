@@ -3,6 +3,7 @@ package jwtis
 import (
 	"encoding/json"
 	"fmt"
+	"sync"
 	"time"
 
 	bolt "github.com/coreos/bbolt"
@@ -114,6 +115,7 @@ type KeysRepository struct {
 	bucketName []byte // repository bucket name in boltDB
 	encKey     *Key
 	nonce      []byte
+	ml         sync.RWMutex
 }
 
 // Init initiates created KeysRepository
@@ -151,6 +153,8 @@ func (p *KeysRepository) Init(db *bolt.DB, bucketName []byte,
 // CheckKeys checks if all keys are valid and are not expired
 func (p *KeysRepository) CheckKeys() error {
 	var res Error
+	p.ml.RLock()
+	defer p.ml.RUnlock()
 	for k, v := range p.Keys {
 		if v.invalid || !v.Valid() {
 			res.Append(fmt.Errorf("keys with kid %s are invalid", k))
@@ -222,6 +226,8 @@ func (p *KeysRepository) NewKey(kid string, opts *DefaultOptions) (SigEncKeys, e
 func (p *KeysRepository) KeyExists(kid []byte) (bool, *JWTKeysIssuerSet, error) {
 	privKeys := JWTKeysIssuerSet{}
 	exists := false
+	p.ml.RLock()
+	defer p.ml.RUnlock()
 	if err := p.boltDB.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket(p.bucketName)
 		if err := LoadSealed(p.encKey, p.nonce, b, kid, &privKeys); err != nil {
@@ -262,6 +268,8 @@ func (p *KeysRepository) AddKey(key *JWTKeysIssuerSet) (SigEncKeys, error) {
 			fmt.Errorf("error adding new keys: new key with kid %s is expired", key.KID)
 	}
 	key.attachPublic()
+	p.ml.Lock()
+	defer p.ml.Unlock()
 	if err := p.boltDB.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket(p.bucketName)
 		if err := SaveSealed(p.encKey, p.nonce, b, key.KID, key); err != nil {
@@ -283,6 +291,8 @@ func (p *KeysRepository) AddKey(key *JWTKeysIssuerSet) (SigEncKeys, error) {
 
 // DelKey deletes key from cache and boltDB
 func (p *KeysRepository) DelKey(kid string) error {
+	p.ml.Lock()
+	defer p.ml.Unlock()
 	if err := p.boltDB.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket(p.bucketName)
 		if err := b.Delete([]byte(kid)); err != nil {
@@ -299,7 +309,9 @@ func (p *KeysRepository) DelKey(kid string) error {
 // GetPublicKeys returns from boltDB public keys with kid
 // returns pointer to public jose.JSONWebKey
 func (p *KeysRepository) GetPublicKeys(kid string) (SigEncKeys, error) {
+	p.ml.RLock()
 	key, ok := p.Keys[kid]
+	p.ml.RUnlock()
 	if !ok {
 		return SigEncKeys{}, ErrKeysNotFound
 	}
@@ -318,7 +330,9 @@ func (p *KeysRepository) GetPublicKeys(kid string) (SigEncKeys, error) {
 // GetPrivateKeys returns from boltDB private keys with kid
 // returns pointer to public jose.JSONWebKey
 func (p *KeysRepository) GetPrivateKeys(kid string) (SigEncKeys, error) {
+	p.ml.RLock()
 	key, ok := p.Keys[kid]
+	p.ml.RUnlock()
 	if !ok {
 		return SigEncKeys{}, ErrKeysNotFound
 	}
@@ -336,6 +350,8 @@ func (p *KeysRepository) GetPrivateKeys(kid string) (SigEncKeys, error) {
 
 // SaveAll puts all keys from memory to boltDB
 func (p *KeysRepository) SaveAll() error {
+	p.ml.Lock()
+	defer p.ml.Unlock()
 	if err := p.boltDB.Batch(func(tx *bolt.Tx) error {
 		b := tx.Bucket(p.bucketName)
 		for _, v := range p.Keys {
@@ -352,6 +368,8 @@ func (p *KeysRepository) SaveAll() error {
 
 // LoadAll loads all keys from boltDB to memory
 func (p *KeysRepository) LoadAll() error {
+	p.ml.Lock()
+	defer p.ml.Unlock()
 	if err := p.boltDB.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket(p.bucketName)
 		err := b.ForEach(func(k, v []byte) error {

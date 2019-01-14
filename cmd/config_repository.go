@@ -1,7 +1,10 @@
 package main
 
 import (
+	"fmt"
+
 	bolt "github.com/coreos/bbolt"
+	"github.com/karantin2020/jwtis"
 )
 
 // http config
@@ -116,5 +119,68 @@ func (p *configRepository) setDefaults() *configRepository {
 }
 
 func (p configRepository) validate() error {
+	var mErr jwtis.Error
+
+	switch *p.sigAlg {
+	case "RS256", "RS384", "RS512", "PS256", "PS384", "PS512":
+		if *p.sigBits != 0 && *p.sigBits < 2048 {
+			mErr.Append(errInvalidSigBitsValue)
+		}
+	case "ES256", "ES384", "ES512", "EdDSA":
+		if !containsInt(bits, *p.sigBits) {
+			mErr.Append(errInvalidSigBitsValueA)
+		}
+	default:
+		mErr.Append(errInvalidSigConfig)
+	}
+
+	switch *p.encAlg {
+	case "RSA1_5", "RSA-OAEP", "RSA-OAEP-256":
+		if *p.encBits != 0 && *p.encBits < 2048 {
+			mErr.Append(errInvalidEncBitsValue)
+		}
+	case "ECDH-ES", "ECDH-ES+A128KW", "ECDH-ES+A192KW", "ECDH-ES+A256KW":
+		if !containsInt(bits, *p.encBits) {
+			mErr.Append(errInvalidEncBitsValueA)
+		}
+	default:
+		mErr.Append(errInvalidEncConfig)
+	}
+	if len(mErr) != 0 {
+		return mErr
+	}
 	return nil
+}
+
+var (
+	sigAlgs = []string{"ES256", "ES384", "ES512", "EdDSA", "RS256", "RS384", "RS512", "PS256", "PS384", "PS512"}
+	encAlgs = []string{"RSA1_5", "RSA-OAEP", "RSA-OAEP-256", "ECDH-ES", "ECDH-ES+A128KW", "ECDH-ES+A192KW", "ECDH-ES+A256KW"}
+	bits    = []int{0, 256, 384, 521}
+)
+
+var (
+	errInvalidEncBitsValue  = fmt.Errorf("too short enc key for RSA `alg`, 2048+ is required")
+	errInvalidEncBitsValueA = fmt.Errorf("this enc `alg` does not support arbitrary key length")
+	errInvalidEncConfig     = fmt.Errorf("invalid encrypt config flags")
+	errInvalidSigBitsValue  = fmt.Errorf("too short sig key for RSA `alg`, 2048+ is required")
+	errInvalidSigBitsValueA = fmt.Errorf("this sig `alg` does not support arbitrary key length")
+	errInvalidSigConfig     = fmt.Errorf("invalid sign config flags")
+)
+
+func containsString(l []string, s string) bool {
+	for i := range l {
+		if l[i] == s {
+			return true
+		}
+	}
+	return false
+}
+
+func containsInt(l []int, s int) bool {
+	for i := range l {
+		if l[i] == s {
+			return true
+		}
+	}
+	return false
 }

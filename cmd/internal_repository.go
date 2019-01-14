@@ -155,10 +155,6 @@ func (p internalRepository) printConfigs() {
 	fmt.Printf("  confRepo.options.dbPath:\t\t%s\n", *confRepo.dbPath)
 }
 
-func (p internalRepository) validate() error {
-	return nil
-}
-
 func (p *internalRepository) setDB(db *bolt.DB) *internalRepository {
 	p.repoDB = db
 	return p
@@ -260,4 +256,8 @@ func newDBPassword() {
 		FatalF("wrong lengths of internalsRepo.encKey.EncryptionKey or internalsRepo.password\n")
 	}
 	copy(internalsRepo.encKey.EncryptionKey[:], internalsRepo.password)
+}
+
+func (p internalRepository) validate() error {
+	return nil
 }

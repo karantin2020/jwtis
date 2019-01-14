@@ -119,11 +119,6 @@ func newConfigApp() *cli.Cli {
 		EnvVar:    envPrefix + "VERBOSE",
 		SetByUser: &confRepo.VerboseSetByUser,
 	})
-	if err := confRepo.validate(); err != nil {
-		log.Printf("Invalid options:\n%s\n", err.Error())
-		app.PrintLongHelp()
-		cli.Exit(1)
-	}
 	return app
 }
 

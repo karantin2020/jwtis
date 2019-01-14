@@ -41,9 +41,14 @@ func main() {
 		if *confRepo.verbose {
 			zerolog.SetGlobalLevel(zerolog.InfoLevel)
 		}
-		log = logger("")
-		log.Info().Msgf("started %s %s", appName, appVersion)
 		var err error
+		log = logger("")
+		if err = confRepo.validate(); err != nil {
+			fmt.Printf("error validating flags:\n%s\n", err)
+			app.PrintLongHelp()
+			cli.Exit(1)
+		}
+		log.Info().Msgf("started %s %s", appName, appVersion)
 		log.Info().Msg("open db")
 		boltDB, err = openDB()
 		if err != nil {
@@ -51,6 +56,7 @@ func main() {
 			cli.Exit(1)
 		}
 		internalsRepo.init(boltDB, &confRepo)
+
 		err = keysRepo.Init(boltDB, buckets["keysBucketName"],
 			&jwtis.DefaultOptions{
 				SigAlg:     internalsRepo.SigAlg,
@@ -63,18 +69,14 @@ func main() {
 			}, &internalsRepo.encKey, internalsRepo.nonce)
 		if err != nil {
 			log.Error().Err(err).Msg("error in start up init keys repository; exit")
+			log.Info().Msg("close db")
+			boltDB.Close()
 			cli.Exit(1)
 		}
 		greetingMsg()
 		internalsRepo.printConfigs()
 	}
-	app.After = func() {
-		log.Info().Msg("save internals repository")
-		internalsRepo.save()
-		log.Info().Msg("close db")
-		boltDB.Close()
-		log.Info().Msgf("finished %s %s", appName, appVersion)
-	}
+	app.After = exit
 	app.Action = func() {
 		fmt.Println("jwtis works well")
 		srv, err := http.SetupServer(internalsRepo.Listen, "release", &keysRepo)
@@ -100,4 +102,12 @@ func greetingMsg() {
 		fmt.Printf("Found existing bbolt database storing app's data\n")
 		fmt.Printf("Use user inserted password to bboltDB\n")
 	}
+}
+
+func exit() {
+	log.Info().Msg("save internals repository")
+	internalsRepo.save()
+	log.Info().Msg("close db")
+	boltDB.Close()
+	log.Info().Msgf("finished %s %s", appName, appVersion)
 }

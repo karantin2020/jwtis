@@ -6,11 +6,13 @@
   - [x] flags handling
   - [x] db crypto check
   - [x] add zerolog logging support
+  - [x] validate flags [for valid values and for values in internal repo]
   - [ ] add tests
 - [ ] keys repository [tag 0.0.2]
   - [x] keys creation
   - [x] keys persistance
   - [x] keys deletion
+  - [ ] pass Logger instance to repository
   - [ ] implement key rotation mechanism
     ```
     When keys renewed client servers must be able to renew refresh jwt tokens signed with old keys
@@ -23,6 +25,13 @@
         - if sign or enc verification fails try to use old keys
     ```
   - [ ] add tests
+- [ ] implement services [tag 0.0.3]
+  - [ ] key service
+    - [x] new, update, getPublic, getPrivate, delete
+  - [ ] jwt service
+    - [x] newJWT, renewJWT
+    - [x] in newJWT: fill standard jwt claims with default values then pass custom claims
+  - [ ] pass Logger instance to all services
 - [ ] server-side [tag 0.1.1]
   - [x] add github.com/gin-gonic/gin HTTP web framework
   - [ ] add keys routes `/register` and `/keys`

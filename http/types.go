@@ -32,6 +32,36 @@ type NewTokenResponse struct {
 	RefreshToken string `json:"refresh_token"` // Long lived refresh token
 }
 
+// Token represents the credentials used to authenticate
+// the requests
+// This is a copy of https://github.com/golang/oauth2 Token
+type Token struct {
+	// AccessToken is the token that authenticates
+	// the requests
+	AccessToken string `json:"access_token"`
+
+	// TokenType is the type of token.
+	// The Type method returns either this or "Bearer".
+	// By default this field is empty for jwtis purposes
+	TokenType string `json:"token_type,omitempty"`
+
+	// RefreshToken is a token that's used by the application
+	// (as opposed to the user) to refresh the access token
+	// if it expires.
+	RefreshToken string `json:"refresh_token,omitempty"`
+
+	// Expiry is the optional expiration time of the access token.
+	//
+	// If zero, TokenSource implementations will reuse the same
+	// token forever and RefreshToken or equivalent
+	// mechanisms for that TokenSource will not be used.
+	Expiry time.Time `json:"expiry,omitempty"`
+
+	// raw optionally contains extra metadata from the server
+	// when updating a token.
+	raw interface{}
+}
+
 // RegisterClientRequest sent to jwtis to register new client
 type RegisterClientRequest struct {
 	Expiry Duration `json:"expiry,omitempty"` // keys ttl, optional

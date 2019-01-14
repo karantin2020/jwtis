@@ -14,9 +14,33 @@ type KeyHandlersGroup struct {
 	srvc *keyservice.KeyService
 }
 
+/**
+ *
+ * @api {POST} /register/:kid Register new client with kid
+ * @apiName Register client
+ * @apiGroup KeyHandler
+ * @apiVersion  0.0.1
+ *
+ *
+ * @apiParam  {String} kid Key id to register
+ *
+ * @apiSuccess 201 {Object} RegisterClientResponse Send client registration info
+ *
+ * @apiParamExample  {String} Request-Example:
+ * {
+ *     kid : testkid
+ * }
+ *
+ *
+ * @apiSuccessExample {type} Success-Response:
+ * {
+ *     RegisterClientResponse : RegisterClientResponse{}
+ * }
+ *
+ *
+ */
+
 // Register handler
-// path: /register/:kid
-// body: RegisterClientRequest{}
 func (g *KeyHandlersGroup) Register(c *gin.Context) {
 	var req RegisterClientRequest
 	if err := c.ShouldBindJSON(&req); err != nil {

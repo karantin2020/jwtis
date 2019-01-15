@@ -7,6 +7,99 @@ Used `gopkg.in/square/go-jose.v2` library.
 But produced JSON Web Tokens are standard and may be verified and decrypted with any other library.  
 Client server (app) may use `github.com/dgrijalva/jwt-go` to verify tokens.
 
+#### Installation
+
+To install JWTIS, you need to install Go and set your Go workspace first.
+
+1. Download and install it:
+
+```sh
+$ go get -u -d github.com/karantin2020/jwtis/cmd
+$ go install -o jwtis github.com/karantin2020/jwtis/cmd
+```
+
+2. Import as library:
+
+```go
+import "github.com/karantin2020/jwtis"
+```
+
+#### Server configuration
+
+```sh
+./jwtis -h
+
+Usage: jwtis [OPTIONS]
+
+JWT issuer server. Provides trusted JWT tokens
+
+Source https://github.com/karantin2020/jwtis
+
+Options:
+  -V, --version      Show the version and exit
+  -l, --listen       ip:port to listen to (env $JWTIS_ADDRESS) (default "127.0.0.1:4343")
+      --tls          Use tls connection [not implemented yet] (env $JWTIS_TLS)
+      --sigAlg       Default algorithn to be used for sign. Possible values are: ES256 ES384 ES512 EdDSA RS256 RS384 RS512 PS256 PS384 PS512 (env $JWTIS_SIG_ALG) (default "RS256")
+      --sigBits      Default key size in bits for sign key (env $JWTIS_SIG_BITS) (default 2048)
+      --encAlg       Default algorithn to be used for encrypt. Possible values are RSA1_5 RSA-OAEP RSA-OAEP-256 ECDH-ES ECDH-ES+A128KW ECDH-ES+A192KW ECDH-ES+A256KW (env $JWTIS_ENC_ALG) (default "ECDH-ES+A256KW")
+      --encBits      Default key size in bits for encrypt (env $JWTIS_ENC_BITS) (default 521)
+  -e, --expiry       Default keys time to live, expiration time [Duration string] (env $JWTIS_EXPIRY) (default "4320h")
+  -a, --authTTL      Default auth JWT token time to live, expiration time [Duration string] (env $JWTIS_AUTH_TTL) (default "72h")
+  -r, --refreshTTL   Default refresh JWT token time to live, expiration time [Duration string] (env $JWTIS_REFRESH_TTL) (default "720h")
+  -n, --name         Name of this service (env $JWTIS_NAME) (default "JWTIS")
+  -p, --pswd         Storage password. App generates password with db creation. Later user must provide a password to access the database (env $JWTIS_PSWD)
+  -d, --dbPath       Path to store keys db (env $JWTIS_DB_PATH) (default "./data/keys.db")
+  -v, --verbose      Verbose. Show detailed logs (env $JWTIS_VERBOSE)
+```
+
+#### Start server
+
+```sh
+./jwtis
+Welcome. Started jwtis version v0.0.1
+Created new bbolt database to store app's data
+Generated new password: '8jf*4FrKZBwhJ&]A!W0G!3~79jP$K2Wz'
+Please save the password safely, it's not recoverable
+Current configuration:
+  internalRepo.configs.listen:          127.0.0.1:4343
+  internalRepo.configs.tls:             false
+  internalRepo.configs.sigAlg:          RS256
+  internalRepo.configs.sigBits:         2048
+  internalRepo.configs.encAlg:          ECDH-ES+A256KW
+  internalRepo.configs.encBits:         521
+  internalRepo.configs.selfName:        JWTIS
+  internalRepo.configs.expiry:          4320h0m0s
+  internalRepo.configs.authTTL:         72h0m0s
+  internalRepo.configs.refreshTTL:      720h0m0s
+  confRepo.options.dbPath:              ./data/keys.db
+jwtis works well
+jwtis finished work
+
+./jwtis -p '8jf*4FrKZBwhJ&]A!W0G!3~79jP$K2Wz'
+Welcome. Started jwtis version v0.0.1
+Found existing bbolt database storing app's data
+Use user inserted password to bboltDB
+Current configuration:
+  internalRepo.configs.listen:          127.0.0.1:4343
+  internalRepo.configs.tls:             false
+  internalRepo.configs.sigAlg:          RS256
+  internalRepo.configs.sigBits:         2048
+  internalRepo.configs.encAlg:          ECDH-ES+A256KW
+  internalRepo.configs.encBits:         521
+  internalRepo.configs.selfName:        JWTIS
+  internalRepo.configs.expiry:          4320h0m0s
+  internalRepo.configs.authTTL:         72h0m0s
+  internalRepo.configs.refreshTTL:      720h0m0s
+  confRepo.options.dbPath:              ./data/keys.db
+```
+
+#### When started first time JWTIS will:
+
+- generate new boltdb password
+  - You must save this password, it's not recoverable
+- create boltdb database file
+- start server with default or user provided configuration
+
 #### Terms
 
 - jwtis - is this server

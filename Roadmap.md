@@ -30,12 +30,12 @@
   - [ ] jwt service
     - [x] newJWT, renewJWT
     - [x] in newJWT: fill standard jwt claims with default values then pass custom claims
-  - [ ] pass Logger instance to all services
+  - [x] pass Logger instance to all services
 - [ ] server-side [tag 0.1.1]
   - [x] add github.com/gin-gonic/gin HTTP web framework
+  - [x] add app's logger to server to log events
   - [ ] add keys routes `/register` and `/keys`
   - [ ] add jwt routes `/issue_token` and `/renew_token`
-  - [ ] add app's logger to server to log events
   - [ ] add tests
 - [ ] client-side; middleware with automatic key fetching [tag 0.2.1]
   - [ ] http client to fetch public sign and encrypt keys

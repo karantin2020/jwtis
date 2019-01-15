@@ -21,35 +21,31 @@ var (
 // StartServer starts http server
 func StartServer(srv *http.Server) error {
 	var g errgroup.Group
-	// idleConnsClosed := make(chan struct{})
 	sigint := make(chan os.Signal, 1)
 	signal.Notify(sigint, os.Interrupt)
 	g.Go(func() error {
 		<-sigint
 
 		// We received an interrupt signal, shut down.
+		log.Info().Msgf("server shutdown")
 		err := srv.Shutdown(context.Background())
-		// close(idleConnsClosed)
 		if err != nil {
-			// Error from closing listeners, or context timeout:
+			log.Error().Err(err).Msgf("error from closing listeners, or context timeout")
 			return fmt.Errorf("HTTP server Shutdown: %+v", err)
 		}
 		fmt.Print("\r")
-		// fmt.Println("\rstop server shutdown")
 		return nil
 	})
 
 	g.Go(func() error {
+		log.Info().Msgf("listening and serving HTTP on %s", srv.Addr)
 		if err := srv.ListenAndServe(); err != http.ErrServerClosed {
-			// Error starting or closing listener:
+			log.Error().Err(err).Msg("error starting or closing listener")
 			return fmt.Errorf("HTTP server ListenAndServe: %+v", err)
 		}
-		fmt.Print("\r")
-		// fmt.Println("\rstop listen and serve")
 		return nil
 	})
 
-	// <-idleConnsClosed
 	return g.Wait()
 }
 
@@ -58,6 +54,7 @@ func SetupServer(listen, mode string, keysRepo *jwtis.KeysRepository, zlog *zero
 	log = zlog.With().Str("c", "http").Logger()
 	keySrvc, err := keyservice.New(keysRepo, zlog)
 	if err != nil {
+		log.Error().Err(err).Msg("error creating key service")
 		return nil, fmt.Errorf("error creating key service: %s", err.Error())
 	}
 	r := LoadRouter(mode, keySrvc)

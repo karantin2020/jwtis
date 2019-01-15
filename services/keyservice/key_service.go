@@ -31,6 +31,7 @@ func New(keysrepo *jwtis.KeysRepository, zlog *zerolog.Logger) (*KeyService, err
 // returns public keys and error or nil
 func (k *KeyService) Register(kid string, opts *jwtis.DefaultOptions) (jwtis.SigEncKeys, error) {
 	if k == nil {
+		log.Error().Msg("error in Register: keyservice pointer is nil")
 		return jwtis.SigEncKeys{}, fmt.Errorf("error in Register: keyservice pointer is nil")
 	}
 	k.checkOptions(opts)

@@ -133,6 +133,10 @@ func (p *internalRepository) init(db *bolt.DB, confRepo *configRepository) {
 			cli.Exit(1)
 		}
 	}
+	if err = p.validate(); err != nil {
+		fmt.Printf("error configuration validating:\n%s\n", err)
+		cli.Exit(1)
+	}
 	if err := p.save(); err != nil {
 		log.Error().Err(err).Msg("can't save internalRepo; exit")
 		cli.Exit(1)
@@ -259,5 +263,68 @@ func newDBPassword() {
 }
 
 func (p internalRepository) validate() error {
+	var mErr jwtis.Error
+
+	switch p.SigAlg {
+	case "RS256", "RS384", "RS512", "PS256", "PS384", "PS512":
+		if p.SigBits != 0 && p.SigBits < 2048 {
+			mErr.Append(f(errInvalidSigBitsValue, p.SigAlg, p.SigBits))
+		}
+	case "ES256", "ES384", "ES512", "EdDSA":
+		if !containsInt(bits, p.SigBits) {
+			mErr.Append(f(errInvalidSigBitsValueA, p.SigAlg, p.SigBits))
+		}
+	default:
+		mErr.Append(errInvalidSigConfig)
+	}
+
+	switch p.EncAlg {
+	case "RSA1_5", "RSA-OAEP", "RSA-OAEP-256":
+		if p.EncBits != 0 && p.EncBits < 2048 {
+			mErr.Append(f(errInvalidEncBitsValue, p.EncAlg, p.EncBits))
+		}
+	case "ECDH-ES", "ECDH-ES+A128KW", "ECDH-ES+A192KW", "ECDH-ES+A256KW":
+		if !containsInt(bits, p.EncBits) {
+			mErr.Append(f(errInvalidEncBitsValueA, p.EncAlg, p.EncBits))
+		}
+	default:
+		mErr.Append(errInvalidEncConfig)
+	}
+	if len(mErr) != 0 {
+		return mErr
+	}
 	return nil
+}
+
+var (
+	bits = []int{0, 256, 384, 521}
+)
+
+var (
+	f = fmt.Errorf
+
+	errInvalidEncBitsValue  = "%s: too short enc key for RSA `alg`, 2048+ is required, have: %d"
+	errInvalidEncBitsValueA = "%s: this elliptic curve supports bit length one of 256, 384, 521, have: %d"
+	errInvalidEncConfig     = fmt.Errorf("invalid encrypt config flags")
+	errInvalidSigBitsValue  = "%s: too short sig key for RSA `alg`, 2048+ is required, have: %d"
+	errInvalidSigBitsValueA = "%s: this elliptic curve supports bit length one of 256, 384, 521, have: %d"
+	errInvalidSigConfig     = fmt.Errorf("invalid sign config flags")
+)
+
+func containsString(l []string, s string) bool {
+	for i := range l {
+		if l[i] == s {
+			return true
+		}
+	}
+	return false
+}
+
+func containsInt(l []int, s int) bool {
+	for i := range l {
+		if l[i] == s {
+			return true
+		}
+	}
+	return false
 }

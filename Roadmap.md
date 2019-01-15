@@ -12,7 +12,6 @@
   - [x] keys creation
   - [x] keys persistance
   - [x] keys deletion
-  - [ ] pass Logger instance to repository
   - [ ] implement key rotation mechanism
     ```
     When keys renewed client servers must be able to renew refresh jwt tokens signed with old keys

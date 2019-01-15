@@ -12,6 +12,7 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"errors"
+	"fmt"
 
 	"golang.org/x/crypto/ed25519"
 
@@ -56,14 +57,14 @@ func KeygenSig(alg jose.SignatureAlgorithm, bits int) (crypto.PublicKey, crypto.
 			jose.EdDSA: 256,
 		}
 		if bits != 0 && bits != keylen[alg] {
-			return nil, nil, errors.New("this `alg` does not support arbitrary key length")
+			return nil, nil, fmt.Errorf(errInvalidSigBitsValueA, alg, bits)
 		}
 	case jose.RS256, jose.RS384, jose.RS512, jose.PS256, jose.PS384, jose.PS512:
 		if bits == 0 {
 			bits = 2048
 		}
 		if bits < 2048 {
-			return nil, nil, errors.New("too short key for RSA `alg`, 2048+ is required")
+			return nil, nil, fmt.Errorf(errInvalidSigBitsValue, alg, bits)
 		}
 	}
 	switch alg {
@@ -98,7 +99,7 @@ func KeygenEnc(alg jose.KeyAlgorithm, bits int) (crypto.PublicKey, crypto.Privat
 			bits = 2048
 		}
 		if bits < 2048 {
-			return nil, nil, errors.New("too short key for RSA `alg`, 2048+ is required")
+			return nil, nil, fmt.Errorf(errInvalidEncBitsValue, alg, bits)
 		}
 		key, err := rsa.GenerateKey(rand.Reader, bits)
 		return key.Public(), key, err
@@ -112,7 +113,7 @@ func KeygenEnc(alg jose.KeyAlgorithm, bits int) (crypto.PublicKey, crypto.Privat
 		case 521:
 			crv = elliptic.P521()
 		default:
-			return nil, nil, errors.New("unknown elliptic curve bit length, use one of 256, 384, 521")
+			return nil, nil, fmt.Errorf(errInvalidEncBitsValueA, alg, bits)
 		}
 		key, err := ecdsa.GenerateKey(crv, rand.Reader)
 		return key.Public(), key, err
@@ -144,3 +145,10 @@ func GenerateKeys(kid string, opt KeyOptions) (jose.JSONWebKey, jose.JSONWebKey,
 	}
 	return priv, pub, nil
 }
+
+var (
+	errInvalidEncBitsValue  = "%s: too short enc key for RSA `alg`, 2048+ is required, have: %d"
+	errInvalidEncBitsValueA = "%s: this elliptic curve supports bit length one of 256, 384, 521, have: %d"
+	errInvalidSigBitsValue  = "%s: too short sig key for RSA `alg`, 2048+ is required, have: %d"
+	errInvalidSigBitsValueA = "%s: this elliptic curve supports bit length one of 256, 384, 521, have: %d"
+)

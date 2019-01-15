@@ -11,6 +11,7 @@ import (
 func LoadRouter(mode string, keySrvc *keyservice.KeyService, middleware ...gin.HandlerFunc) http.Handler {
 	gin.SetMode(mode)
 	r := gin.New()
+	r.RedirectFixedPath = true
 	r.Use(gin.Recovery())
 	r.Use(gin.Logger())
 	r.Use(middleware...)

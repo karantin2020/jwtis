@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/karantin2020/jwtis"
+	"github.com/rs/zerolog"
 	uuid "github.com/satori/go.uuid"
 	jwt "gopkg.in/square/go-jose.v2/jwt"
 )
@@ -16,6 +17,10 @@ var (
 	ErrInvalidClaimsExpiry = fmt.Errorf("claims expiry field is invalid")
 	// ErrKIDNotExists if kid is not in boltdb
 	ErrKIDNotExists = fmt.Errorf("enc, sig keys are not found")
+)
+
+var (
+	log zerolog.Logger
 )
 
 // JWTPair holds auth and refresh tokens
@@ -30,10 +35,11 @@ type JWTService struct {
 }
 
 // New returns pointer to new JWTService instance and error
-func New(keysrepo *jwtis.KeysRepository) (*JWTService, error) {
+func New(keysrepo *jwtis.KeysRepository, zlog *zerolog.Logger) (*JWTService, error) {
 	if keysrepo == nil {
 		return nil, fmt.Errorf("error in New jwtservice: pointer to jwtis.KeysRepository is nil")
 	}
+	log = zlog.With().Str("c", "jwt_service").Logger()
 	return &JWTService{keysRepo: keysrepo}, nil
 }
 

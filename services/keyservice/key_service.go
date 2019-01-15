@@ -4,11 +4,13 @@ import (
 	"fmt"
 
 	"github.com/karantin2020/jwtis"
+	"github.com/rs/zerolog"
 )
 
 var (
 	// ErrKIDExists if kid exist when register new key set
 	ErrKIDExists = fmt.Errorf("cann't register new keys: kid exists")
+	log          zerolog.Logger
 )
 
 // KeyService implements server-side key service logic
@@ -17,10 +19,11 @@ type KeyService struct {
 }
 
 // New returns pointer to new KeyService instance and error
-func New(keysrepo *jwtis.KeysRepository) (*KeyService, error) {
+func New(keysrepo *jwtis.KeysRepository, zlog *zerolog.Logger) (*KeyService, error) {
 	if keysrepo == nil {
 		return nil, fmt.Errorf("error in New keyservice: pointer to jwtis.KeysRepository is nil")
 	}
+	log = zlog.With().Str("c", "key_service").Logger()
 	return &KeyService{keysRepo: keysrepo}, nil
 }
 

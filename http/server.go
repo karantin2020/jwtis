@@ -10,7 +10,12 @@ import (
 
 	"github.com/karantin2020/jwtis"
 	"github.com/karantin2020/jwtis/services/keyservice"
+	"github.com/rs/zerolog"
 	"golang.org/x/sync/errgroup"
+)
+
+var (
+	log zerolog.Logger
 )
 
 // StartServer starts http server
@@ -49,8 +54,9 @@ func StartServer(srv *http.Server) error {
 }
 
 // SetupServer configures new http server
-func SetupServer(listen, mode string, keysRepo *jwtis.KeysRepository) (*http.Server, error) {
-	keySrvc, err := keyservice.New(keysRepo)
+func SetupServer(listen, mode string, keysRepo *jwtis.KeysRepository, zlog *zerolog.Logger) (*http.Server, error) {
+	log = zlog.With().Str("c", "http").Logger()
+	keySrvc, err := keyservice.New(keysRepo, zlog)
 	if err != nil {
 		return nil, fmt.Errorf("error creating key service: %s", err.Error())
 	}

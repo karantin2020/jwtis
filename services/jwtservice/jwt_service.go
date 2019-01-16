@@ -25,8 +25,10 @@ var (
 
 // JWTPair holds auth and refresh tokens
 type JWTPair struct {
-	AuthToken    string `json:"auth_token"`    // Short lived auth token
-	RefreshToken string `json:"refresh_token"` // Long lived refresh token
+	ID           string          `json:"id"`
+	AuthToken    string          `json:"auth_token"`              // Short lived auth token
+	RefreshToken string          `json:"refresh_token,omitempty"` // Long lived refresh token
+	Expiry       jwt.NumericDate `json:"expiry,omitempty"`
 }
 
 // JWTService implements server-side jwt logic
@@ -47,11 +49,13 @@ func New(keysrepo *jwtis.KeysRepository, zlog *zerolog.Logger) (*JWTService, err
 // ttl is a list of auth and refresh tokens valid time
 func (s *JWTService) NewJWT(kid string, claims map[string]interface{},
 	ttl ...time.Duration) (*JWTPair, error) {
+	log.Info().Msgf("jwt service creating new JWT for kid '%s'", kid)
 	ok, jwtset, err := s.keysRepo.KeyExists([]byte(kid))
 	if err != nil {
 		return nil, fmt.Errorf("error in NewJWT: %s", err.Error())
 	}
 	if !ok {
+		log.Info().Err(err).Bool("ok", ok).Msgf("key exists response: '%#v'", *jwtset)
 		return nil, ErrKIDNotExists
 	}
 
@@ -135,11 +139,13 @@ func newTokenPair(privKeys *jwtis.SigEncKeys, claims map[string]interface{},
 	if len(ttl) < 2 {
 		return nil, fmt.Errorf("jwtservice internal error: invalid ttl array in create token pair")
 	}
+	id := claims["jti"]
 	// define jwt issued at field
 	claims["iat"] = jwt.NewNumericDate(time.Now())
 	// define jwt not before; equal to issued at field
 	claims["nbf"] = claims["iat"]
-	claims["exp"] = jwt.NumericDate(time.Now().Add(ttl[0]).Unix())
+	exp := jwt.NumericDate(time.Now().Add(ttl[0]).Unix())
+	claims["exp"] = exp
 	auth, err := jwtis.JWTSigned(privKeys.Sig, claims)
 	if err != nil {
 		return nil, fmt.Errorf("error in NewJWT create auth token: %s", err.Error())
@@ -150,8 +156,10 @@ func newTokenPair(privKeys *jwtis.SigEncKeys, claims map[string]interface{},
 		return nil, fmt.Errorf("error in NewJWT create refresh token: %s", err.Error())
 	}
 	res := &JWTPair{
+		ID:           id.(string),
 		AuthToken:    auth,
 		RefreshToken: refresh,
+		Expiry:       exp,
 	}
 	return res, nil
 }

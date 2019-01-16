@@ -12,11 +12,11 @@ import (
 
 // NewTokenRequest sent to jwtis to fetch new jwt
 type NewTokenRequest struct {
-	Kid                   string        `json:"kid"`          // Keys id to use
-	ClientToken           string        `json:"client_token"` // Client token given after registration
-	AuthTokenValidTime    time.Duration `json:"auth_token_valid_time"`
-	ResreshTokenValidTime time.Duration `json:"resresh_token_valid_time"`
-	Claims                interface{}   `json:"claims"` // Custom claims
+	Kid                   string                 `json:"kid"`          // Keys id to use
+	ClientToken           string                 `json:"client_token"` // Client token given after registration
+	AuthTokenValidTime    time.Duration          `json:"auth_token_valid_time"`
+	ResreshTokenValidTime time.Duration          `json:"resresh_token_valid_time"`
+	Claims                map[string]interface{} `json:"claims"` // Custom claims
 }
 
 // RenewTokenRequest sent to jwtis to fetch new jwt
@@ -26,10 +26,12 @@ type RenewTokenRequest struct {
 	RefreshToken string `json:"refresh_token"`
 }
 
-// NewTokenResponse sent to client that requested tokens
-type NewTokenResponse struct {
-	AuthToken    string `json:"auth_token"`    // Short lived auth token
-	RefreshToken string `json:"refresh_token"` // Long lived refresh token
+// TokenResponse sent to client that requested tokens
+type TokenResponse struct {
+	ID           string          `json:"id,omitempty"`
+	AuthToken    string          `json:"auth_token,omitempty"`    // Short lived auth token
+	RefreshToken string          `json:"refresh_token,omitempty"` // Long lived refresh token
+	Expiry       jwt.NumericDate `json:"expiry,omitempty"`
 }
 
 // Token represents the credentials used to authenticate

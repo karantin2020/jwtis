@@ -55,10 +55,14 @@ func ClaimsSigned(sigkey *jose.JSONWebKey,
 // JWTSignedAndEncrypted ecryptes and signes claims, returns jwt token string and error
 func JWTSignedAndEncrypted(enckey *jose.JSONWebKey, sigkey *jose.JSONWebKey,
 	claims ...interface{}) (string, error) {
+	if !enckey.IsPublic() {
+		tkey := enckey.Public()
+		enckey = &tkey
+	}
 	enc, err := jose.NewEncrypter(
 		jose.A128GCM,
 		jose.Recipient{
-			Algorithm: jose.DIRECT,
+			Algorithm: jose.ECDH_ES,
 			Key:       enckey,
 		},
 		(&jose.EncrypterOptions{}).WithType("JWT").WithContentType("JWT"))

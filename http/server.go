@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/karantin2020/jwtis"
+	"github.com/karantin2020/jwtis/services/jwtservice"
 	"github.com/karantin2020/jwtis/services/keyservice"
 	"github.com/rs/zerolog"
 	"golang.org/x/sync/errgroup"
@@ -57,7 +58,12 @@ func SetupServer(listen, mode string, keysRepo *jwtis.KeysRepository, zlog *zero
 		log.Error().Err(err).Msg("error creating key service")
 		return nil, fmt.Errorf("error creating key service: %s", err.Error())
 	}
-	r := LoadRouter(mode, keySrvc)
+	jwtSrvc, err := jwtservice.New(keysRepo, zlog)
+	if err != nil {
+		log.Error().Err(err).Msg("error creating jwt service")
+		return nil, fmt.Errorf("error creating key service: %s", err.Error())
+	}
+	r := LoadRouter(mode, keySrvc, jwtSrvc)
 	return &http.Server{
 		Addr:              listen,
 		Handler:           r,

@@ -18,13 +18,12 @@ type KeyHandlersGroup struct {
  *
  * @api {POST} /register/:kid Register new client with kid
  * @apiName Register client
- * @apiGroup KeyHandler
+ * @apiGroup KeyHandlers
  * @apiVersion  0.0.1
- *
  *
  * @apiParam  {String} kid Key id to register
  *
- * @apiSuccess 201 {Object} RegisterClientResponse Send client registration info
+ * @apiSuccess (201) {Object} RegisterClientResponse Send client registration info
  *
  * @apiParamExample  {String} Request-Example:
  * {
@@ -44,7 +43,8 @@ type KeyHandlersGroup struct {
 func (g *KeyHandlersGroup) Register(c *gin.Context) {
 	var req RegisterClientRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, ErrorRequest{
+		log.Error().Err(err).Msg("error parsing RegisterClientRequest from request body")
+		c.JSON(http.StatusBadRequest, &ErrorRequest{
 			Status: http.StatusBadRequest,
 			Errors: []ErrorBody{
 				{
@@ -71,11 +71,9 @@ func (g *KeyHandlersGroup) Register(c *gin.Context) {
 	}
 	pubKeys, err := g.srvc.Register(kid, opts)
 	if err != nil {
-
-		// First: log error
-
 		if err == jwtis.ErrKeysExist || err == jwtis.ErrKeysExpired || err == jwtis.ErrKeysExistInvalid {
-			c.JSON(http.StatusForbidden, ErrorRequest{
+			log.Error().Err(err).Msgf("error registering new client with kid '%s'; client with that kid exists", kid)
+			c.JSON(http.StatusForbidden, &ErrorRequest{
 				Status: http.StatusForbidden,
 				Errors: []ErrorBody{
 					{
@@ -87,7 +85,8 @@ func (g *KeyHandlersGroup) Register(c *gin.Context) {
 			})
 			return
 		}
-		c.JSON(http.StatusInternalServerError, ErrorRequest{
+		log.Error().Err(err).Msg("error registering new client, internal server error")
+		c.JSON(http.StatusInternalServerError, &ErrorRequest{
 			Status: http.StatusInternalServerError,
 			Errors: []ErrorBody{
 				{
@@ -99,8 +98,8 @@ func (g *KeyHandlersGroup) Register(c *gin.Context) {
 		})
 		return
 	}
-
-	c.JSON(http.StatusCreated, RegisterClientResponse{
+	log.Info().Msgf("registered new client with kid '%s', not expired and valid", kid)
+	c.JSON(http.StatusCreated, &RegisterClientResponse{
 		Kid:         kid,
 		ClientToken: "",
 		PubSigKey:   *pubKeys.Sig,

@@ -10,10 +10,13 @@ import (
 // ClaimsSignedAndEncrypted takes claims from encrypted and signed string jwt
 func ClaimsSignedAndEncrypted(enckey *jose.JSONWebKey, sigkey *jose.JSONWebKey,
 	raw string, dest ...interface{}) error {
-	if !enckey.IsPublic() {
-		pubEncKey := enckey.Public()
-		enckey = &pubEncKey
+	if enckey == nil || sigkey == nil {
+		return fmt.Errorf("error in ClaimsSignedAndEncrypted: nil pointer enckey or sigkey")
 	}
+	// if !enckey.IsPublic() {
+	// 	pubEncKey := enckey.Public()
+	// 	enckey = &pubEncKey
+	// }
 	if !sigkey.IsPublic() {
 		pubSigKey := sigkey.Public()
 		sigkey = &pubSigKey
@@ -37,6 +40,9 @@ func ClaimsSignedAndEncrypted(enckey *jose.JSONWebKey, sigkey *jose.JSONWebKey,
 // ClaimsSigned takes claims from signed string jwt
 func ClaimsSigned(sigkey *jose.JSONWebKey,
 	raw string, dest ...interface{}) error {
+	if sigkey == nil {
+		return fmt.Errorf("error in ClaimsSigned: nil pointer sigkey")
+	}
 	if !sigkey.IsPublic() {
 		pubSigKey := sigkey.Public()
 		sigkey = &pubSigKey
@@ -55,6 +61,9 @@ func ClaimsSigned(sigkey *jose.JSONWebKey,
 // JWTSignedAndEncrypted ecryptes and signes claims, returns jwt token string and error
 func JWTSignedAndEncrypted(enckey *jose.JSONWebKey, sigkey *jose.JSONWebKey,
 	claims ...interface{}) (string, error) {
+	if enckey == nil || sigkey == nil {
+		return "", fmt.Errorf("error in JWTSignedAndEncrypted: nil pointer enckey or sigkey")
+	}
 	if !enckey.IsPublic() {
 		tkey := enckey.Public()
 		enckey = &tkey
@@ -86,6 +95,9 @@ func JWTSignedAndEncrypted(enckey *jose.JSONWebKey, sigkey *jose.JSONWebKey,
 
 // JWTSigned signes claims, returns jwt token string and error
 func JWTSigned(sigkey *jose.JSONWebKey, claims ...interface{}) (string, error) {
+	if sigkey == nil {
+		return "", fmt.Errorf("error in JWTSigned: nil pointer sigkey")
+	}
 	sig, err := jose.NewSigner(jose.SigningKey{Algorithm: jose.SignatureAlgorithm(sigkey.Algorithm), Key: sigkey.Key}, nil)
 	if err != nil {
 		return "", fmt.Errorf("error make new signer to sign jwt: %s", err.Error())

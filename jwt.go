@@ -69,12 +69,14 @@ func JWTSignedAndEncrypted(enckey *jose.JSONWebKey, sigkey *jose.JSONWebKey,
 		enckey = &tkey
 	}
 	enc, err := jose.NewEncrypter(
-		jose.A128GCM,
+		jose.A256GCM,
 		jose.Recipient{
-			Algorithm: jose.ECDH_ES,
+			Algorithm: jose.KeyAlgorithm(enckey.Algorithm),
 			Key:       enckey,
 		},
-		(&jose.EncrypterOptions{}).WithType("JWT").WithContentType("JWT"))
+		(&jose.EncrypterOptions{
+			Compression: jose.DEFLATE,
+		}).WithType("JWT").WithContentType("JWT"))
 	if err != nil {
 		return "", fmt.Errorf("error make new encrypter to encrypt jwt: %s", err.Error())
 	}

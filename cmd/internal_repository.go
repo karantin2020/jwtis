@@ -271,7 +271,13 @@ func (p internalRepository) validate() error {
 			mErr.Append(f(errInvalidSigBitsValue, p.SigAlg, p.SigBits))
 		}
 	case "ES256", "ES384", "ES512", "EdDSA":
-		if !containsInt(bits, p.SigBits) {
+		keylen := map[string]int{
+			"ES256": 256,
+			"ES384": 384,
+			"ES512": 521,
+			"EdDSA": 256,
+		}
+		if p.SigBits != 0 && p.SigBits != keylen[p.SigAlg] {
 			mErr.Append(f(errInvalidSigBitsValueA, p.SigAlg, p.SigBits))
 		}
 	default:
@@ -304,10 +310,10 @@ var (
 	f = fmt.Errorf
 
 	errInvalidEncBitsValue  = "%s: too short enc key for RSA `alg`, 2048+ is required, have: %d"
-	errInvalidEncBitsValueA = "%s: this elliptic curve supports bit length one of 256, 384, 521, have: %d"
+	errInvalidEncBitsValueA = "%s: this enc elliptic curve supports bit length one of 256, 384, 521, have: %d"
 	errInvalidEncConfig     = fmt.Errorf("invalid encrypt config flags")
 	errInvalidSigBitsValue  = "%s: too short sig key for RSA `alg`, 2048+ is required, have: %d"
-	errInvalidSigBitsValueA = "%s: this elliptic curve supports bit length one of 256, 384, 521, have: %d"
+	errInvalidSigBitsValueA = "%s: this sig elliptic curve supports bit length one of 256, 384, 521, have: %d, you just can set it to 0"
 	errInvalidSigConfig     = fmt.Errorf("invalid sign config flags")
 )
 

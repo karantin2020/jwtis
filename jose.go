@@ -148,7 +148,7 @@ func GenerateKeys(kid string, opt KeyOptions) (jose.JSONWebKey, jose.JSONWebKey,
 
 var (
 	errInvalidEncBitsValue  = "%s: too short enc key for RSA `alg`, 2048+ is required, have: %d"
-	errInvalidEncBitsValueA = "%s: this elliptic curve supports bit length one of 256, 384, 521, have: %d"
+	errInvalidEncBitsValueA = "%s: this enc elliptic curve supports bit length one of 256, 384, 521, have: %d"
 	errInvalidSigBitsValue  = "%s: too short sig key for RSA `alg`, 2048+ is required, have: %d"
-	errInvalidSigBitsValueA = "%s: this elliptic curve supports bit length one of 256, 384, 521, have: %d"
+	errInvalidSigBitsValueA = "%s: this sig elliptic curve supports bit length one of 256, 384, 521, have: %d"
 )

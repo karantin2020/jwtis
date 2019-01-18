@@ -11,27 +11,29 @@ import (
 )
 
 // NewTokenRequest sent to jwtis to fetch new jwt
+// ClientToken {string} - must be in header
 type NewTokenRequest struct {
-	Kid                   string                 `json:"kid"`          // Keys id to use
-	ClientToken           string                 `json:"client_token"` // Client token given after registration
-	AuthTokenValidTime    time.Duration          `json:"auth_token_valid_time"`
-	ResreshTokenValidTime time.Duration          `json:"resresh_token_valid_time"`
-	Claims                map[string]interface{} `json:"claims"` // Custom claims
+	Kid                   string                 `json:"kid"` // Keys id to use
+	AccessTokenValidTime  Duration               `json:"access_token_valid_time,omitempty"`
+	ResreshTokenValidTime Duration               `json:"refresh_token_valid_time,omitempty"`
+	Claims                map[string]interface{} `json:"claims,omitempty"` // Custom claims
 }
 
 // RenewTokenRequest sent to jwtis to fetch new jwt
+// ClientToken {string} - must be in header
 type RenewTokenRequest struct {
-	Kid          string `json:"kid"`          // Keys id to use
-	ClientToken  string `json:"client_token"` // Client token given after registration
-	RefreshToken string `json:"refresh_token"`
+	Kid                   string   `json:"kid"` // Keys id to use
+	AccessTokenValidTime  Duration `json:"access_token_valid_time,omitempty"`
+	ResreshTokenValidTime Duration `json:"refresh_token_valid_time,omitempty"`
+	RefreshToken          string   `json:"refresh_token"`
 }
 
 // TokenResponse sent to client that requested tokens
 type TokenResponse struct {
-	ID           string          `json:"id,omitempty"`
-	AuthToken    string          `json:"auth_token,omitempty"`    // Short lived auth token
-	RefreshToken string          `json:"refresh_token,omitempty"` // Long lived refresh token
-	Expiry       jwt.NumericDate `json:"expiry,omitempty"`
+	ID           string          `json:"id"`
+	AccessToken  string          `json:"access_token"`  // Short lived auth token
+	RefreshToken string          `json:"refresh_token"` // Long lived refresh token
+	Expiry       jwt.NumericDate `json:"expiry"`
 }
 
 // Token represents the credentials used to authenticate
@@ -81,7 +83,7 @@ type RegisterClientRequest struct {
 type RegisterClientResponse struct {
 	Kid         string          `json:"kid,omitempty"`          // Keys id to use
 	ClientToken string          `json:"client_token,omitempty"` // Client token given after registration [reserved]
-	PubSigKey   jose.JSONWebKey `json:"pub_sig_key,omitempty"`  // Public sign key to verify AuthTokens
+	PubSigKey   jose.JSONWebKey `json:"pub_sig_key,omitempty"`  // Public sign key to verify AccessTokens
 	PubEncKey   jose.JSONWebKey `json:"pub_enc_key,omitempty"`  // Public enc key to decrypt RefreshTokens
 	Expiry      jwt.NumericDate `json:"expiry,omitempty"`
 	Valid       bool            `json:"valid,omitempty"`
@@ -95,7 +97,7 @@ type PubKeysClientRequest struct {
 // PubKeysResponse holds public keys
 type PubKeysResponse struct {
 	Kid       string          `json:"kid"`         // Keys id to use
-	PubSigKey jose.JSONWebKey `json:"pub_sig_key"` // Public sign key to verify AuthTokens
+	PubSigKey jose.JSONWebKey `json:"pub_sig_key"` // Public sign key to verify AccessTokens
 	PubEncKey jose.JSONWebKey `json:"pub_enc_key"` // Public enc key to decrypt RefreshTokens
 }
 

@@ -13,10 +13,6 @@ func ClaimsSignedAndEncrypted(enckey *jose.JSONWebKey, sigkey *jose.JSONWebKey,
 	if enckey == nil || sigkey == nil {
 		return fmt.Errorf("error in ClaimsSignedAndEncrypted: nil pointer enckey or sigkey")
 	}
-	// if !enckey.IsPublic() {
-	// 	pubEncKey := enckey.Public()
-	// 	enckey = &pubEncKey
-	// }
 	if !sigkey.IsPublic() {
 		pubSigKey := sigkey.Public()
 		sigkey = &pubSigKey
@@ -59,7 +55,7 @@ func ClaimsSigned(sigkey *jose.JSONWebKey,
 }
 
 // JWTSignedAndEncrypted ecryptes and signes claims, returns jwt token string and error
-func JWTSignedAndEncrypted(enckey *jose.JSONWebKey, sigkey *jose.JSONWebKey,
+func JWTSignedAndEncrypted(contEnc jose.ContentEncryption, enckey *jose.JSONWebKey, sigkey *jose.JSONWebKey,
 	claims ...interface{}) (string, error) {
 	if enckey == nil || sigkey == nil {
 		return "", fmt.Errorf("error in JWTSignedAndEncrypted: nil pointer enckey or sigkey")
@@ -68,14 +64,15 @@ func JWTSignedAndEncrypted(enckey *jose.JSONWebKey, sigkey *jose.JSONWebKey,
 		tkey := enckey.Public()
 		enckey = &tkey
 	}
+	fmt.Printf("contEnc: %s\n", contEnc)
 	enc, err := jose.NewEncrypter(
-		jose.A256GCM,
+		contEnc,
 		jose.Recipient{
 			Algorithm: jose.KeyAlgorithm(enckey.Algorithm),
 			Key:       enckey,
 		},
 		(&jose.EncrypterOptions{
-			Compression: jose.DEFLATE,
+			// Compression: jose.DEFLATE,
 		}).WithType("JWT").WithContentType("JWT"))
 	if err != nil {
 		return "", fmt.Errorf("error make new encrypter to encrypt jwt: %s", err.Error())

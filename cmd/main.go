@@ -79,7 +79,8 @@ func main() {
 	app.After = exit
 	app.Action = func() {
 		fmt.Println("jwtis works well")
-		srv, err := http.SetupServer(internalsRepo.Listen, "release", &keysRepo, &log)
+		srv, err := http.SetupServer(internalsRepo.Listen, "release",
+			&keysRepo, &log, internalsRepo.ContEnc)
 		if err != nil {
 			FatalF("error in setup server")
 		}

@@ -169,7 +169,7 @@ func TestJWTSignedAndEncrypted(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := JWTSignedAndEncrypted(tt.args.enckey, tt.args.sigkey, tt.args.claims...)
+			got, err := JWTSignedAndEncrypted(jose.A128GCM, tt.args.enckey, tt.args.sigkey, tt.args.claims...)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("JWTSignedAndEncrypted() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -314,7 +314,7 @@ func TestJWTKeys(t *testing.T) {
 	rawJWTs := []string{}
 	for i := range sig {
 		for j := range enc {
-			got, err := JWTSignedAndEncrypted(&enc[j][0], &sig[i][0], claims...)
+			got, err := JWTSignedAndEncrypted(jose.A128GCM, &enc[j][0], &sig[i][0], claims...)
 			if err != nil {
 				t.Errorf("TestJWTKeys() error = %v", err)
 				t.Errorf("enc alg = %v, sig alg = %v", enc[j][0].Algorithm, sig[i][0].Algorithm)
@@ -327,18 +327,30 @@ func TestJWTKeys(t *testing.T) {
 	fmt.Printf("generated jwt token '%s'\n", rawJWTs[len(rawJWTs)-1])
 	claimJWTs := []map[string]interface{}{}
 	k := 0
-	for i := range sig {
-		for j := range enc {
-			claimsJWT := make(map[string]interface{})
-			err := ClaimsSignedAndEncrypted(&enc[j][0], &sig[i][0], rawJWTs[k], &claimsJWT)
-			k++
-			if err != nil {
-				t.Errorf("TestJWTKeys() error = %v", err)
-				continue
+	br := false
+	if len(rawJWTs) > 0 {
+		for i := range sig {
+			for j := range enc {
+				claimsJWT := make(map[string]interface{})
+				err := ClaimsSignedAndEncrypted(&enc[j][0], &sig[i][1], rawJWTs[k], &claimsJWT)
+				k++
+				if err != nil {
+					t.Errorf("TestJWTKeys() error = %v", err)
+					continue
+				}
+				claimJWTs = append(claimJWTs, claimsJWT)
+				if k >= len(rawJWTs) {
+					br = true
+					break
+				}
 			}
-			claimJWTs = append(claimJWTs, claimsJWT)
+			if br {
+				break
+			}
 		}
 	}
 	fmt.Printf("parsed %d claims from tokens\n", len(claimJWTs))
-	fmt.Printf("parsed claim from token '%#v'\n", claimJWTs[len(claimJWTs)-1])
+	if len(claimJWTs) != 0 {
+		fmt.Printf("parsed claim from token '%#v'\n", claimJWTs[len(claimJWTs)-1])
+	}
 }

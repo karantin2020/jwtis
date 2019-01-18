@@ -7,6 +7,7 @@ import (
 	"github.com/karantin2020/jwtis"
 	"github.com/rs/zerolog"
 	uuid "github.com/satori/go.uuid"
+	jose "gopkg.in/square/go-jose.v2"
 	jwt "gopkg.in/square/go-jose.v2/jwt"
 )
 
@@ -26,23 +27,24 @@ var (
 // JWTPair holds auth and refresh tokens
 type JWTPair struct {
 	ID           string          `json:"id"`
-	AuthToken    string          `json:"auth_token"`              // Short lived auth token
+	AccessToken  string          `json:"access_token"`            // Short lived auth token
 	RefreshToken string          `json:"refresh_token,omitempty"` // Long lived refresh token
 	Expiry       jwt.NumericDate `json:"expiry,omitempty"`
 }
 
 // JWTService implements server-side jwt logic
 type JWTService struct {
-	keysRepo *jwtis.KeysRepository
+	keysRepo   *jwtis.KeysRepository
+	defContEnc jose.ContentEncryption
 }
 
 // New returns pointer to new JWTService instance and error
-func New(keysrepo *jwtis.KeysRepository, zlog *zerolog.Logger) (*JWTService, error) {
+func New(keysrepo *jwtis.KeysRepository, zlog *zerolog.Logger, contEnc jose.ContentEncryption) (*JWTService, error) {
 	if keysrepo == nil {
 		return nil, fmt.Errorf("error in New jwtservice: pointer to jwtis.KeysRepository is nil")
 	}
 	log = zlog.With().Str("c", "jwt_service").Logger()
-	return &JWTService{keysRepo: keysrepo}, nil
+	return &JWTService{keysRepo: keysrepo, defContEnc: contEnc}, nil
 }
 
 // NewJWT returns pair of new auth and refresh tokens
@@ -83,7 +85,7 @@ func (s *JWTService) NewJWT(kid string, claims map[string]interface{},
 	if err != nil {
 		return nil, fmt.Errorf("error in NewJWT get private keys: %s", err.Error())
 	}
-	return newTokenPair(&privKeys, claims, inttl...)
+	return s.newTokenPair(&privKeys, claims, inttl...)
 }
 
 // RenewJWT returns pair of old refresh token and new auth token
@@ -131,10 +133,10 @@ func (s *JWTService) RenewJWT(kid string, refresh string, ttl ...time.Duration) 
 	if err != nil {
 		return nil, fmt.Errorf("error in RenewJWT get private keys: %s", err.Error())
 	}
-	return newTokenPair(&privKeys, claimsMap, inttl...)
+	return s.newTokenPair(&privKeys, claimsMap, inttl...)
 }
 
-func newTokenPair(privKeys *jwtis.SigEncKeys, claims map[string]interface{},
+func (s *JWTService) newTokenPair(privKeys *jwtis.SigEncKeys, claims map[string]interface{},
 	ttl ...time.Duration) (*JWTPair, error) {
 	if len(ttl) < 2 {
 		return nil, fmt.Errorf("jwtservice internal error: invalid ttl array in create token pair")
@@ -144,20 +146,36 @@ func newTokenPair(privKeys *jwtis.SigEncKeys, claims map[string]interface{},
 	claims["iat"] = jwt.NewNumericDate(time.Now())
 	// define jwt not before; equal to issued at field
 	claims["nbf"] = claims["iat"]
-	exp := jwt.NumericDate(time.Now().Add(ttl[0]).Unix())
+	var exp jwt.NumericDate
+	if vexp, ok := claims["exp"]; !ok {
+		exp = jwt.NumericDate(time.Now().Add(ttl[0] * time.Second).Unix())
+	} else {
+		switch tExp := vexp.(type) {
+		case float64:
+			exp = jwt.NumericDate(tExp)
+		case int64:
+			exp = jwt.NumericDate(tExp)
+		case int:
+			exp = jwt.NumericDate(tExp)
+		case jwt.NumericDate:
+			exp = tExp
+		default:
+			return nil, fmt.Errorf("error in JWT token exp type assertion")
+		}
+	}
 	claims["exp"] = exp
 	auth, err := jwtis.JWTSigned(privKeys.Sig, claims)
 	if err != nil {
-		return nil, fmt.Errorf("error in NewJWT create auth token: %s", err.Error())
+		return nil, fmt.Errorf("error in JWT auth token: %s", err.Error())
 	}
-	claims["exp"] = jwt.NumericDate(time.Now().Add(ttl[1]).Unix())
-	refresh, err := jwtis.JWTSignedAndEncrypted(privKeys.Enc, privKeys.Sig, claims)
+	claims["exp"] = jwt.NumericDate(time.Now().Add(ttl[1] * time.Second).Unix())
+	refresh, err := jwtis.JWTSignedAndEncrypted(s.defContEnc, privKeys.Enc, privKeys.Sig, claims)
 	if err != nil {
-		return nil, fmt.Errorf("error in NewJWT create refresh token: %s", err.Error())
+		return nil, fmt.Errorf("error in JWT refresh token: %s", err.Error())
 	}
 	res := &JWTPair{
 		ID:           id.(string),
-		AuthToken:    auth,
+		AccessToken:  auth,
 		RefreshToken: refresh,
 		Expiry:       exp,
 	}

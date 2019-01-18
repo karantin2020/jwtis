@@ -6,20 +6,21 @@ import (
 	"time"
 
 	bolt "github.com/coreos/bbolt"
-	"github.com/karantin2020/jwtis"
-
 	cli "github.com/jawher/mow.cli"
+	"github.com/karantin2020/jwtis"
+	jose "gopkg.in/square/go-jose.v2"
 )
 
 // DefaultValues hold default key config values
 type DefaultValues struct {
-	SigAlg     string        // Default algorithm to be used for sign
-	SigBits    int           // Default key size in bits for sign
-	EncAlg     string        // Default algorithn to be used for encrypt
-	EncBits    int           // Default key size in bits for encrypt
-	Expiry     time.Duration // Default value for keys ttl
-	AuthTTL    time.Duration // Default value for auth jwt ttl
-	RefreshTTL time.Duration // Default value for refresh jwt ttl
+	SigAlg     string                 // Default algorithm to be used for sign
+	SigBits    int                    // Default key size in bits for sign
+	EncAlg     string                 // Default algorithn to be used for encrypt
+	EncBits    int                    // Default key size in bits for encrypt
+	ContEnc    jose.ContentEncryption // Default Content Encryption
+	Expiry     time.Duration          // Default value for keys ttl
+	AuthTTL    time.Duration          // Default value for auth jwt ttl
+	RefreshTTL time.Duration          // Default value for refresh jwt ttl
 }
 
 // http config
@@ -112,6 +113,9 @@ func (p *internalRepository) init(db *bolt.DB, confRepo *configRepository) {
 	if !dbExists || confRepo.encBitsSetByUser {
 		p.EncBits = *confRepo.encBits
 	}
+	if !dbExists || confRepo.contEncSetByUser || p.ContEnc == "" {
+		p.ContEnc = jose.ContentEncryption(*confRepo.contEnc)
+	}
 	if !dbExists || confRepo.expirySetByUser || p.Expiry == 0 {
 		p.Expiry, err = time.ParseDuration(*confRepo.expiry)
 		if err != nil {
@@ -151,6 +155,7 @@ func (p internalRepository) printConfigs() {
 	fmt.Printf("  internalRepo.configs.sigBits:\t\t%d\n", p.SigBits)
 	fmt.Printf("  internalRepo.configs.encAlg:\t\t%s\n", p.EncAlg)
 	fmt.Printf("  internalRepo.configs.encBits:\t\t%d\n", p.EncBits)
+	fmt.Printf("  internalRepo.configs.contEnc:\t\t%s\n", p.ContEnc)
 	fmt.Printf("  internalRepo.configs.selfName:\t%s\n", string(p.SelfName))
 	fmt.Printf("  internalRepo.configs.expiry:\t\t%s\n", p.Expiry)
 	fmt.Printf("  internalRepo.configs.authTTL:\t\t%s\n", p.AuthTTL)
@@ -296,6 +301,14 @@ func (p internalRepository) validate() error {
 	default:
 		mErr.Append(errInvalidEncConfig)
 	}
+
+	switch p.ContEnc {
+	case jose.A128GCM, jose.A192GCM, jose.A256GCM:
+	default:
+		mErr.Append(errInvalidContEnc)
+
+	}
+
 	if len(mErr) != 0 {
 		return mErr
 	}
@@ -315,6 +328,7 @@ var (
 	errInvalidSigBitsValue  = "%s: too short sig key for RSA `alg`, 2048+ is required, have: %d"
 	errInvalidSigBitsValueA = "%s: this sig elliptic curve supports bit length one of 256, 384, 521, have: %d, you just can set it to 0"
 	errInvalidSigConfig     = fmt.Errorf("invalid sign config flags")
+	errInvalidContEnc       = fmt.Errorf("invalid content encryption value")
 )
 
 func containsString(l []string, s string) bool {

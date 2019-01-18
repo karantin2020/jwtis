@@ -204,28 +204,32 @@ These refresh tokens can be revoked by an authorized client
   - method
 
   ```
-    POST
+  POST
   ```
 
   - payload
 
   ```go
-    type NewTokenRequest struct {
-        Kid                   string          `json:"kid"`          // Keys id to use
-        ClientToken           string          `json:"client_token"` // Client token given after registration
-        AuthTokenValidTime    jwt.NumericDate `json:"auth_token_valid_time"`
-        ResreshTokenValidTime jwt.NumericDate `json:"resresh_token_valid_time"`
-        Claims                interface{}     `json:"claims"` // Custom claims
-    }
+  // NewTokenRequest sent to jwtis to fetch new jwt
+  // ClientToken {string} - must be in header
+  type NewTokenRequest struct {
+    Kid                   string                 `json:"kid"` // Keys id to use
+    AuthTokenValidTime    time.Duration          `json:"auth_token_valid_time,omitempty"`
+    ResreshTokenValidTime time.Duration          `json:"resresh_token_valid_time,omitempty"`
+    Claims                map[string]interface{} `json:"claims,omitempty"` // Custom claims
+  }
   ```
 
   - response
 
   ```go
-  type NewTokenResponse struct {
-        AuthToken    string `json:"auth_token"`    // Short lived auth token
-        RefreshToken string `json:"refresh_token"` // Long lived refresh token
-    }
+  // TokenResponse sent to client that requested tokens
+  type TokenResponse struct {
+    ID           string          `json:"id"`
+    AuthToken    string          `json:"auth_token"`    // Short lived auth token
+    RefreshToken string          `json:"refresh_token"` // Long lived refresh token
+    Expiry       jwt.NumericDate `json:"expiry"`
+  }
   ```
 
 * /renew_token
@@ -235,26 +239,30 @@ These refresh tokens can be revoked by an authorized client
   - method
 
   ```
-    POST
+  POST
   ```
 
   - payload
 
   ```go
-    type RenewTokenRequest struct {
-        Kid          string `json:"kid"`          // Keys id to use
-        ClientToken  string `json:"client_token"` // Client token given after registration
-        RefreshToken string `json:"refresh_token"`
-    }
+  // RenewTokenRequest sent to jwtis to fetch new jwt
+  // ClientToken {string} - must be in header
+  type RenewTokenRequest struct {
+    Kid          string `json:"kid"` // Keys id to use
+    RefreshToken string `json:"refresh_token"`
+  }
   ```
 
   - response
 
   ```go
-  type NewTokenResponse struct {
-        AuthToken    string `json:"auth_token"`    // Short lived auth token
-        RefreshToken string `json:"refresh_token"` // Long lived refresh token
-    }
+  // TokenResponse sent to client that requested tokens
+  type TokenResponse struct {
+    ID           string          `json:"id"`
+    AuthToken    string          `json:"auth_token"`    // Short lived auth token
+    RefreshToken string          `json:"refresh_token"` // Long lived refresh token
+    Expiry       jwt.NumericDate `json:"expiry"`
+  }
   ```
 
 Contributions are welcome

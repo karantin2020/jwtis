@@ -68,7 +68,13 @@ func newConfigApp() *cli.Cli {
 		EnvVar:    envPrefix + "ENC_BITS",
 		SetByUser: &confRepo.encBitsSetByUser,
 	})
-
+	confRepo.contEnc = app.String(cli.StringOpt{
+		Name:      "contEnc",
+		Value:     confRepo.defContEnc,
+		Desc:      "Default content encryption. Possible values are A128GCM, A192GCM, A256GCM",
+		EnvVar:    envPrefix + "CONT_ENC",
+		SetByUser: &confRepo.contEncSetByUser,
+	})
 	confRepo.expiry = app.String(cli.StringOpt{
 		Name:      "e expiry",
 		Value:     confRepo.defExpiry,

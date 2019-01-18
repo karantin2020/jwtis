@@ -18,6 +18,7 @@ type sign struct {
 type encryption struct {
 	encAlg  *string // Default algorithn to be used for encrypt
 	encBits *int    // Default key size in bits for encrypt
+	contEnc *string // Default Content Encryption
 }
 type jwtttl struct {
 	authTTL    *string // Default value for auth jwt ttl
@@ -37,6 +38,7 @@ type setByUser struct {
 	sigBitsSetByUser    bool
 	encAlgSetByUser     bool
 	encBitsSetByUser    bool
+	contEncSetByUser    bool
 	expirySetByUser     bool
 	authTTLSetByUser    bool
 	refreshTTLSetByUser bool
@@ -52,6 +54,7 @@ type defaults struct {
 	defSigBits    int
 	defEncAlg     string
 	defEncBits    int
+	defContEnc    string
 	defExpiry     string
 	defAuthTTL    string
 	defRefreshTTL string
@@ -89,6 +92,7 @@ func (p *configRepository) init(db *bolt.DB) {
 	p.defSigBits = 2048
 	p.defEncAlg = "ECDH-ES+A256KW"
 	p.defEncBits = 521
+	p.defContEnc = "A256GCM"
 	p.defExpiry = "4320h"    // 180 days
 	p.defAuthTTL = "72h"     // 3 days
 	p.defRefreshTTL = "720h" // 30 days
@@ -106,6 +110,7 @@ func (p *configRepository) setDefaults() *configRepository {
 	p.sigBits = &p.defSigBits
 	p.encAlg = &p.defEncAlg
 	p.encBits = &p.defEncBits
+	p.contEnc = &p.defContEnc
 	p.expiry = &p.defExpiry
 	p.authTTL = &p.defAuthTTL
 	p.refreshTTL = &p.defRefreshTTL

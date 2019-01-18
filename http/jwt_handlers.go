@@ -59,7 +59,7 @@ func (g *JWTHandlersGroup) NewToken(c *gin.Context) {
 
 	tokens, err := g.srvc.NewJWT(req.Kid, req.Claims,
 		time.Duration(req.AccessTokenValidTime),
-		time.Duration(req.ResreshTokenValidTime))
+		time.Duration(req.RefreshTokenValidTime))
 	if err != nil {
 		log.Error().Err(err).Msgf("error creating new JWT for kid '%s'", req.Kid)
 		c.JSON(http.StatusInternalServerError, &ErrorRequest{
@@ -104,7 +104,7 @@ func (g *JWTHandlersGroup) RenewToken(c *gin.Context) {
 
 	tokens, err := g.srvc.RenewJWT(req.Kid, req.RefreshToken,
 		time.Duration(req.AccessTokenValidTime),
-		time.Duration(req.ResreshTokenValidTime))
+		time.Duration(req.RefreshTokenValidTime))
 	if err != nil {
 		log.Error().Err(err).Msgf("error renewing JWT for kid '%s'", req.Kid)
 		c.JSON(http.StatusInternalServerError, &ErrorRequest{

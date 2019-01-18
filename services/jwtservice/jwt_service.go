@@ -97,9 +97,9 @@ func (s *JWTService) RenewJWT(kid string, refresh string, ttl ...time.Duration) 
 	if !ok {
 		return nil, ErrKIDNotExists
 	}
-	pubKeys := jwtset.Public()
+	pubSig := jwtset.Sig.Public()
 	claimsMap := make(map[string]interface{})
-	err = jwtis.ClaimsSignedAndEncrypted(pubKeys.Enc, pubKeys.Sig, refresh, &claimsMap)
+	err = jwtis.ClaimsSignedAndEncrypted(&jwtset.Enc, &pubSig, refresh, &claimsMap)
 	if err != nil {
 		return nil, fmt.Errorf("error in RenewJWT parse refresh token: %s", err.Error())
 	}

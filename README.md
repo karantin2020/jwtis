@@ -185,7 +185,7 @@ These refresh tokens can be revoked by an authorized client
     }
   ```
 
-- /keys
+- /keys/:kid
   `- fetch client server (app) public keys [TODO]`
 
   - request for previously generated public keys for JWT

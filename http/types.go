@@ -13,19 +13,19 @@ import (
 // NewTokenRequest sent to jwtis to fetch new jwt
 // ClientToken {string} - must be in header
 type NewTokenRequest struct {
-	Kid                   string                 `json:"kid"` // Keys id to use
-	AccessTokenValidTime  Duration               `json:"access_token_valid_time,omitempty"`
-	RefreshTokenValidTime Duration               `json:"refresh_token_valid_time,omitempty"`
-	Claims                map[string]interface{} `json:"claims,omitempty"` // Custom claims
+	Kid string `json:"kid"` // Keys id to use
+	// AccessTokenValidTime  Duration               `json:"access_token_valid_time,omitempty"`
+	// RefreshTokenValidTime Duration               `json:"refresh_token_valid_time,omitempty"`
+	Claims map[string]interface{} `json:"claims,omitempty"` // Custom claims
 }
 
 // RenewTokenRequest sent to jwtis to fetch new jwt
 // ClientToken {string} - must be in header
 type RenewTokenRequest struct {
-	Kid                   string   `json:"kid"` // Keys id to use
-	AccessTokenValidTime  Duration `json:"access_token_valid_time,omitempty"`
-	RefreshTokenValidTime Duration `json:"refresh_token_valid_time,omitempty"`
-	RefreshToken          string   `json:"refresh_token"`
+	Kid string `json:"kid"` // Keys id to use
+	// AccessTokenValidTime  Duration `json:"access_token_valid_time,omitempty"`
+	// RefreshTokenValidTime Duration `json:"refresh_token_valid_time,omitempty"`
+	RefreshToken string `json:"refresh_token"`
 }
 
 // TokenResponse sent to client that requested tokens

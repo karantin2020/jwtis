@@ -80,10 +80,10 @@ func (k *JWTKeysIssuerSet) attachPublic() {
 
 // SigEncKeys represents a structure that holds public or private JWT keys
 type SigEncKeys struct {
-	Sig    *jose.JSONWebKey
-	Enc    *jose.JSONWebKey
-	Expiry jwt.NumericDate
-	Valid  bool
+	Sig    *jose.JSONWebKey `json:"sig"`
+	Enc    *jose.JSONWebKey `json:"enc"`
+	Expiry jwt.NumericDate  `json:"expiry"`
+	Valid  bool             `json:"valid"`
 }
 
 // KeyOptions represent the set of option to create sig or enc keys
@@ -205,9 +205,9 @@ func (p *KeysRepository) NewKey(kid string, opts *DefaultOptions) (SigEncKeys, e
 		s.Bits = opts.SigBits
 		e.Alg = opts.EncAlg
 		e.Bits = opts.EncBits
-		privKeys.Expiry = jwt.NewNumericDate(now.Add(opts.Expiry))
+		privKeys.Expiry = jwt.NumericDate(now.Add(opts.Expiry).Unix())
 	} else {
-		privKeys.Expiry = jwt.NewNumericDate(now.Add(p.DefaultOptions.Expiry))
+		privKeys.Expiry = jwt.NumericDate(now.Add(p.DefaultOptions.Expiry).Unix())
 	}
 	privKeys.Sig, _, err = GenerateKeys(kid, s)
 	if err != nil {

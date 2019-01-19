@@ -2,7 +2,6 @@ package http
 
 import (
 	"net/http"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/karantin2020/jwtis/services/jwtservice"
@@ -48,7 +47,7 @@ func (g *JWTHandlersGroup) NewToken(c *gin.Context) {
 				{
 					Source: "/",
 					Title:  "invalid request data",
-					Detail: "request body must be json and correspond to NewTokenRequest{} structure, atleast kid must be provided",
+					Detail: "request body must be valid json and correspond to NewTokenRequest{} structure, atleast kid must be provided",
 				},
 			},
 		})
@@ -57,10 +56,22 @@ func (g *JWTHandlersGroup) NewToken(c *gin.Context) {
 
 	// Must validate request data
 
-	tokens, err := g.srvc.NewJWT(req.Kid, req.Claims,
-		time.Duration(req.AccessTokenValidTime),
-		time.Duration(req.RefreshTokenValidTime))
+	tokens, err := g.srvc.NewJWT(req.Kid, req.Claims)
 	if err != nil {
+		if err == jwtservice.ErrKIDNotExists {
+			log.Error().Err(err).Msgf("error creating new JWT for kid '%s': keys not exist", req.Kid)
+			c.JSON(http.StatusNotFound, &ErrorRequest{
+				Status: http.StatusNotFound,
+				Errors: []ErrorBody{
+					{
+						Source: "",
+						Title:  "keys not found",
+						Detail: "jwt service error, couldn't create new tokens, not found keys; err: " + err.Error(),
+					},
+				},
+			})
+			return
+		}
 		log.Error().Err(err).Msgf("error creating new JWT for kid '%s'", req.Kid)
 		c.JSON(http.StatusInternalServerError, &ErrorRequest{
 			Status: http.StatusInternalServerError,
@@ -93,7 +104,7 @@ func (g *JWTHandlersGroup) RenewToken(c *gin.Context) {
 				{
 					Source: "/",
 					Title:  "invalid request data",
-					Detail: "request body must be json and correspond to RenewTokenRequest{} structure, atleast kid must be provided",
+					Detail: "request body must be valid json and correspond to RenewTokenRequest{} structure, atleast kid must be provided",
 				},
 			},
 		})
@@ -102,10 +113,64 @@ func (g *JWTHandlersGroup) RenewToken(c *gin.Context) {
 
 	// Must validate request data
 
-	tokens, err := g.srvc.RenewJWT(req.Kid, req.RefreshToken,
-		time.Duration(req.AccessTokenValidTime),
-		time.Duration(req.RefreshTokenValidTime))
+	tokens, err := g.srvc.RenewJWT(req.Kid, req.RefreshToken)
 	if err != nil {
+		if err == jwtservice.ErrKIDNotExists {
+			log.Error().Err(err).Msgf("error renew JWT for kid '%s': keys not exist", req.Kid)
+			c.JSON(http.StatusNotFound, &ErrorRequest{
+				Status: http.StatusNotFound,
+				Errors: []ErrorBody{
+					{
+						Source: "",
+						Title:  "keys not found",
+						Detail: "jwt service error, couldn't renew tokens, not found keys; err: " + err.Error(),
+					},
+				},
+			})
+			return
+		}
+		if err == jwtservice.ErrDecryptRefreshToken {
+			log.Error().Err(err).Msgf("error renew JWT for kid '%s': invalid crypto primitives", req.Kid)
+			c.JSON(http.StatusForbidden, &ErrorRequest{
+				Status: http.StatusForbidden,
+				Errors: []ErrorBody{
+					{
+						Source: "",
+						Title:  "invalid crypto primitives",
+						Detail: "jwt service error, couldn't renew tokens, invalid cryptographic primitives; err: " + err.Error(),
+					},
+				},
+			})
+			return
+		}
+		if err == jwtservice.ErrRefreshTokenExpired {
+			log.Error().Err(err).Msgf("error renew JWT for kid '%s': refresh token expired", req.Kid)
+			c.JSON(http.StatusConflict, &ErrorRequest{
+				Status: http.StatusConflict,
+				Errors: []ErrorBody{
+					{
+						Source: "",
+						Title:  "refresh token expired",
+						Detail: "jwt service error, couldn't renew tokens, refresh token expired; err: " + err.Error(),
+					},
+				},
+			})
+			return
+		}
+		if err == jwtservice.ErrInvalidRefreshClaims {
+			log.Error().Err(err).Msgf("error renew JWT for kid '%s': invalid refresh claims", req.Kid)
+			c.JSON(http.StatusUnprocessableEntity, &ErrorRequest{
+				Status: http.StatusUnprocessableEntity,
+				Errors: []ErrorBody{
+					{
+						Source: "",
+						Title:  "invalid refresh claims",
+						Detail: "jwt service error, couldn't renew tokens, invalid refresh claims; err: " + err.Error(),
+					},
+				},
+			})
+			return
+		}
 		log.Error().Err(err).Msgf("error renewing JWT for kid '%s'", req.Kid)
 		c.JSON(http.StatusInternalServerError, &ErrorRequest{
 			Status: http.StatusInternalServerError,

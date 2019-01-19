@@ -18,6 +18,12 @@ var (
 	ErrInvalidClaimsExpiry = fmt.Errorf("claims expiry field is invalid")
 	// ErrKIDNotExists if kid is not in boltdb
 	ErrKIDNotExists = fmt.Errorf("enc, sig keys are not found")
+	// ErrRefreshTokenExpired error
+	ErrRefreshTokenExpired = fmt.Errorf("refresh token is expired")
+	// ErrInvalidRefreshClaims error
+	ErrInvalidRefreshClaims = fmt.Errorf("refresh token claim are invalid")
+	// ErrDecryptRefreshToken err
+	ErrDecryptRefreshToken = fmt.Errorf("refresh token couldn't be decrypted")
 )
 
 var (
@@ -49,8 +55,7 @@ func New(keysrepo *jwtis.KeysRepository, zlog *zerolog.Logger, contEnc jose.Cont
 
 // NewJWT returns pair of new auth and refresh tokens
 // ttl is a list of auth and refresh tokens valid time
-func (s *JWTService) NewJWT(kid string, claims map[string]interface{},
-	ttl ...time.Duration) (*JWTPair, error) {
+func (s *JWTService) NewJWT(kid string, claims map[string]interface{}) (*JWTPair, error) {
 	log.Info().Msgf("jwt service creating new JWT for kid '%s'", kid)
 	ok, jwtset, err := s.keysRepo.KeyExists([]byte(kid))
 	if err != nil {
@@ -72,24 +77,65 @@ func (s *JWTService) NewJWT(kid string, claims map[string]interface{},
 		claims["iss"] = string(kid)
 	}
 	// define default expiry times
-	inttl := make([]time.Duration, 2)
-	copy(inttl, ttl)
-	if len(ttl) < 2 {
-		inttl[1] = jwtset.RefreshTTL
-	}
-	if len(ttl) < 1 {
-		inttl[0] = jwtset.AuthTTL
-	}
+	ttl := [2]time.Duration{jwtset.AuthTTL, jwtset.RefreshTTL}
 
 	privKeys, err := s.keysRepo.GetPrivateKeys(kid)
 	if err != nil {
 		return nil, fmt.Errorf("error in NewJWT get private keys: %s", err.Error())
 	}
-	return s.newTokenPair(&privKeys, claims, inttl...)
+	if _, ok := claims["iat"]; !ok {
+		claims["iat"] = jwt.NewNumericDate(time.Now())
+	}
+	if _, ok := claims["nbf"]; !ok {
+		claims["nbf"] = claims["iat"]
+	}
+
+	var exp jwt.NumericDate
+	if vexp, ok := claims["exp"]; !ok {
+		exp = jwt.NumericDate(time.Now().Add(ttl[0]).Unix())
+	} else {
+		switch tExp := vexp.(type) {
+		case float64:
+			exp = jwt.NumericDate(tExp)
+		case int64:
+			exp = jwt.NumericDate(tExp)
+		case int:
+			exp = jwt.NumericDate(tExp)
+		case jwt.NumericDate:
+			exp = tExp
+		default:
+			return nil, fmt.Errorf("error in JWT token exp type assertion")
+		}
+		if int64(exp) != 0 {
+			if time.Now().After(exp.Time()) {
+				return nil, fmt.Errorf("error in NewJWT: exp %v is expired", exp.Time())
+			}
+		}
+	}
+	fmt.Printf("exp is: %v\n", exp)
+	// expiry := jwt.NumericDate(time.Now().Add(exp).Unix())
+	claims["exp"] = &exp
+	auth, err := jwtis.JWTSigned(privKeys.Sig, claims)
+	if err != nil {
+		return nil, fmt.Errorf("error in JWT auth token: %s", err.Error())
+	}
+	claims["exp"] = jwt.NewNumericDate(time.Now().Add(ttl[1]))
+	refresh, err := jwtis.JWTSignedAndEncrypted(s.defContEnc, privKeys.Enc, privKeys.Sig, claims)
+	if err != nil {
+		return nil, fmt.Errorf("error in JWT refresh token: %s", err.Error())
+	}
+	res := &JWTPair{
+		ID:           claims["jti"].(string),
+		AccessToken:  auth,
+		RefreshToken: refresh,
+		Expiry:       exp,
+	}
+
+	return res, nil
 }
 
 // RenewJWT returns pair of old refresh token and new auth token
-func (s *JWTService) RenewJWT(kid string, refresh string, ttl ...time.Duration) (*JWTPair, error) {
+func (s *JWTService) RenewJWT(kid string, refresh string) (*JWTPair, error) {
 	ok, jwtset, err := s.keysRepo.KeyExists([]byte(kid))
 	if err != nil {
 		return nil, fmt.Errorf("error in RenewJWT: %s", err.Error())
@@ -101,7 +147,7 @@ func (s *JWTService) RenewJWT(kid string, refresh string, ttl ...time.Duration) 
 	claimsMap := make(map[string]interface{})
 	err = jwtis.ClaimsSignedAndEncrypted(&jwtset.Enc, &pubSig, refresh, &claimsMap)
 	if err != nil {
-		return nil, fmt.Errorf("error in RenewJWT parse refresh token: %s", err.Error())
+		return nil, ErrDecryptRefreshToken
 	}
 
 	var mErr jwtis.Error
@@ -111,29 +157,60 @@ func (s *JWTService) RenewJWT(kid string, refresh string, ttl ...time.Duration) 
 	if _, ok := claimsMap["iss"]; !ok {
 		mErr.Append(fmt.Errorf("iss field is empty"))
 	}
+	if _, ok := claimsMap["iat"]; !ok {
+		mErr.Append(fmt.Errorf("iat field is empty"))
+	}
+	if _, ok := claimsMap["nbf"]; !ok {
+		mErr.Append(fmt.Errorf("nbf field is empty"))
+	}
+	var nExp jwt.NumericDate
+	if sExp, ok := claimsMap["exp"]; !ok {
+		mErr.Append(fmt.Errorf("exp field is empty"))
+	} else {
+		switch tExp := sExp.(type) {
+		case float64:
+			nExp = jwt.NumericDate(tExp)
+		case int64:
+			nExp = jwt.NumericDate(tExp)
+		case int:
+			nExp = jwt.NumericDate(tExp)
+		case jwt.NumericDate:
+			nExp = tExp
+		default:
+			mErr.Append(fmt.Errorf("error in JWT token exp type assertion"))
+		}
+	}
+	if nExp == 0 {
+		mErr.Append(fmt.Errorf("zero value of exp claim"))
+	}
+	if time.Now().After(time.Unix(int64(nExp), 0)) {
+		return nil, ErrRefreshTokenExpired
+	}
 	if len(mErr) != 0 {
-		return nil, fmt.Errorf("error in RenewJWT, invalid jwt fields: %s", mErr)
+		return nil, ErrInvalidRefreshClaims
 	}
 
 	// define default expiry times
-	inttl := make([]time.Duration, 2)
-	copy(inttl, ttl)
-	if len(ttl) < 2 {
-		inttl[1] = jwtset.RefreshTTL
-	}
-	if len(ttl) < 1 {
-		inttl[0] = jwtset.AuthTTL
-	}
+	ttl := [2]time.Duration{jwtset.AuthTTL, jwtset.RefreshTTL}
 
 	// [TODO] Validate and verify refresh token
 	// Check refresh token expiration
 	// create new auth claims
 
-	privKeys, err := s.keysRepo.GetPrivateKeys(kid)
+	claimsMap["exp"] = jwt.NewNumericDate(time.Now().Add(ttl[0]))
+	auth, err := jwtis.JWTSigned(&jwtset.Sig, claimsMap)
 	if err != nil {
-		return nil, fmt.Errorf("error in RenewJWT get private keys: %s", err.Error())
+		return nil, fmt.Errorf("error in JWT auth token: %s", err.Error())
 	}
-	return s.newTokenPair(&privKeys, claimsMap, inttl...)
+
+	res := &JWTPair{
+		ID:           claimsMap["jti"].(string),
+		AccessToken:  auth,
+		RefreshToken: refresh,
+		Expiry:       *(claimsMap["exp"].(*jwt.NumericDate)),
+	}
+
+	return res, nil
 }
 
 func (s *JWTService) newTokenPair(privKeys *jwtis.SigEncKeys, claims map[string]interface{},

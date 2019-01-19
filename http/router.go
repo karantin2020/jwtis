@@ -27,6 +27,7 @@ func LoadRouter(mode string, keySrvc *keyservice.KeyService,
 		c.String(http.StatusOK, "Welcome to Gin Server")
 	})
 	r.POST("/register/:kid", khg.Register)
+	r.GET("/keys/:kid", khg.GetPubKeys)
 	r.POST("/issue_token", jhg.NewToken)
 	r.POST("/renew_token", jhg.RenewToken)
 	pingGroup(r.Group("/ping"))

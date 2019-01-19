@@ -14,7 +14,7 @@ import (
 
 const (
 	appName        = "jwtis"
-	appVersion     = "v0.0.1"
+	appVersion     = "v0.1.1"
 	appDescription = "JWT issuer server. Provides trusted JWT tokens\n" +
 		"\nSource https://github.com/karantin2020/jwtis"
 	envPrefix      = "JWTIS_"

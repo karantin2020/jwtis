@@ -1,5 +1,7 @@
 ## JWTIS - JWT issuer server
 
+[![GoDoc](https://godoc.org/github.com/karantin2020/jwtis?status.svg)](https://godoc.org/github.com/karantin2020/jwtis)
+
 Stand alone JWT issuer server. Just creates and renews JSON Web Tokens.
 
 Used `gopkg.in/square/go-jose.v2` library.  

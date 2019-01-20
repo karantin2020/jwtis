@@ -26,6 +26,15 @@ var (
 	ErrDecryptRefreshToken = fmt.Errorf("refresh token couldn't be decrypted")
 )
 
+const (
+	// StrategyRefreshBoth refresh strategy to issue refresh token on every access token renew
+	StrategyRefreshBoth = "refreshBoth"
+	// StrategyRefreshOnExpire refresh strategy to issue refresh token if it's expiration time is close
+	StrategyRefreshOnExpire = "refreshOnExpire"
+	// StrategyNoRefresh refresh strategy means refresh token issue must be explicit, only by calling NewJWT
+	StrategyNoRefresh = "noRefresh"
+)
+
 var (
 	log zerolog.Logger
 )
@@ -201,6 +210,13 @@ func (s *JWTService) RenewJWT(kid string, refresh string) (*JWTPair, error) {
 	auth, err := jwtis.JWTSigned(&jwtset.Sig, claimsMap)
 	if err != nil {
 		return nil, fmt.Errorf("error in JWT auth token: %s", err.Error())
+	}
+
+	if jwtset.RefreshStrategy == StrategyRefreshBoth {
+		// issue refresh token here
+	}
+	if jwtset.RefreshStrategy == StrategyRefreshOnExpire {
+		// issue refresh token here
 	}
 
 	res := &JWTPair{

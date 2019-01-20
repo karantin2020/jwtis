@@ -19,7 +19,7 @@ import (
 
 var (
 	// ErrClientRegistered error if client is registered when try to register itz
-	ErrClientRegistered = fmt.Errorf("client registered on jwtis server")
+	ErrClientRegistered = fmt.Errorf("client exists, cann't register again")
 )
 
 // Client is jwtis client type
@@ -100,7 +100,7 @@ func endpoints(issuerURL, id string) paths {
 
 // Register registers new jwtis client with client id as kid
 func (c *Client) Register(cltReq interface{}) error {
-	if cltReq != nil {
+	if cltReq == nil {
 		return fmt.Errorf("Register claims are nil pointer")
 	}
 	m, err := mapOrStruct(cltReq)
@@ -113,10 +113,10 @@ func (c *Client) Register(cltReq interface{}) error {
 		SetResult(&jwthttp.RegisterClientResponse{}).
 		SetError(&jwthttp.ErrorResponse{}).
 		Post(c.cfg.registerPath)
-	defer resp.RawResponse.Body.Close()
 	if err != nil {
 		return fmt.Errorf("Got error: %v", err)
 	}
+	defer resp.RawResponse.Body.Close()
 	if resp.StatusCode() == http.StatusForbidden {
 		return ErrClientRegistered
 	}

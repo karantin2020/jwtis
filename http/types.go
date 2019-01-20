@@ -26,6 +26,10 @@ type RenewTokenRequest struct {
 	// AccessTokenValidTime  Duration `json:"access_token_valid_time,omitempty"`
 	// RefreshTokenValidTime Duration `json:"refresh_token_valid_time,omitempty"`
 	RefreshToken string `json:"refresh_token"`
+	// RefreshStrategy is used in RenewJWT to decide wheather to issue new refresh token
+	// with access token or not
+	// this option applies only to a specific request
+	RefreshStrategy string `json:"refresh_strategy,omitempty"` // optional, values are: 'refreshBoth', 'refreshOnExpire', 'noRefresh' (default)
 }
 
 // TokenResponse sent to client that requested tokens
@@ -77,6 +81,11 @@ type RegisterClientRequest struct {
 
 	AuthTTL    Duration `json:"auth_ttl,omitempty"`    // default auth jwt ttl, optional
 	RefreshTTL Duration `json:"refresh_ttl,omitempty"` // default refresh jwt ttl, optional
+
+	// RefreshStrategy is used in RenewJWT to decide wheather to issue new refresh token
+	// with access token or not
+	// this option applies to all renewJWT requests
+	RefreshStrategy string `json:"refresh_strategy,omitempty"` // optional, values are: 'refreshBoth', 'refreshOnExpire', 'noRefresh' (default)
 }
 
 // RegisterClientResponse sent to client after it's registration

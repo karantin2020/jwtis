@@ -27,17 +27,18 @@ var (
 
 // JWTKeysIssuerSet holds jwt info
 type JWTKeysIssuerSet struct {
-	KID        []byte          // key id
-	Expiry     jwt.NumericDate // keys expiry time
-	AuthTTL    time.Duration   // token expiry duration
-	RefreshTTL time.Duration   // token expiry duration
-	Enc        jose.JSONWebKey // enc private key
-	Sig        jose.JSONWebKey // sig private key
-	Locked     bool            // is this keyset locked for further deletion (lost or other reason)
-	pubEnc     jose.JSONWebKey // enc public key
-	pubSig     jose.JSONWebKey // sig public key
-	invalid    bool
-	expired    bool
+	KID             []byte          // key id
+	Expiry          jwt.NumericDate // keys expiry time
+	AuthTTL         time.Duration   // token expiry duration
+	RefreshTTL      time.Duration   // token expiry duration
+	RefreshStrategy string          // optional, values are: 'refreshBoth', 'refreshOnExpire', 'noRefresh' (default)
+	Enc             jose.JSONWebKey // enc private key
+	Sig             jose.JSONWebKey // sig private key
+	Locked          bool            // is this keyset locked for further deletion (lost or other reason)
+	pubEnc          jose.JSONWebKey // enc public key
+	pubSig          jose.JSONWebKey // sig public key
+	invalid         bool
+	expired         bool
 }
 
 // Expired returns true if JWTKeysIssuerSet is expired

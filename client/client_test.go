@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/karantin2020/jwtis"
+	jwtishttp "github.com/karantin2020/jwtis/http"
 	jwt "gopkg.in/square/go-jose.v2/jwt"
 )
 
@@ -215,17 +216,48 @@ func TestClient_Register(t *testing.T) {
 	}
 	tests := []struct {
 		name    string
-		cl      Client
+		cl      *Client
 		args    args
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{
+			name: "register negative",
+			cl:   New("test3", "http://127.0.0.1:4343"),
+			args: args{
+				cltReq: jwtishttp.RegisterClientRequest{
+					SigAlg:     "ES512",
+					SigBits:    512,
+					EncAlg:     "ECDH-ES+A256KW",
+					EncBits:    256,
+					AuthTTL:    jwtishttp.Duration(24 * time.Hour),
+					RefreshTTL: jwtishttp.Duration(360 * time.Hour),
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "register positive",
+			cl:   New("test5", "http://127.0.0.1:4343"),
+			args: args{
+				cltReq: jwtishttp.RegisterClientRequest{
+					SigAlg:     "ES512",
+					SigBits:    521,
+					EncAlg:     "ECDH-ES+A256KW",
+					EncBits:    256,
+					AuthTTL:    jwtishttp.Duration(24 * time.Hour),
+					RefreshTTL: jwtishttp.Duration(360 * time.Hour),
+				},
+			},
+			wantErr: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if err := tt.cl.Register(tt.args.cltReq); (err != nil) != tt.wantErr {
 				t.Errorf("Client.Register() error = %v, wantErr %v", err, tt.wantErr)
+				return
 			}
+			fmt.Printf("%#v\n", tt.cl.cfg)
 		})
 	}
 }

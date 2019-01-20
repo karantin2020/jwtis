@@ -13,7 +13,7 @@ import (
 )
 
 func TestClient_ClientJWT(t *testing.T) {
-	cl := New(Config{ID: "test2", IssuerURL: "http://127.0.0.1:4343"})
+	cl := New("test2", "http://127.0.0.1:4343")
 	tests := []struct {
 		name    string
 		claims  interface{}
@@ -56,7 +56,7 @@ func TestClient_ClientJWT(t *testing.T) {
 }
 
 func TestClient_GetPubKeys(t *testing.T) {
-	cl := New(Config{ID: "test2", IssuerURL: "http://127.0.0.1:4343"})
+	cl := New("test2", "http://127.0.0.1:4343")
 	t.Run("test positive", func(t *testing.T) {
 		err := cl.GetPubKeys()
 		if err != nil {
@@ -70,7 +70,7 @@ func TestClient_GetPubKeys(t *testing.T) {
 }
 
 func TestClient_ParsedJWT(t *testing.T) {
-	cl := New(Config{ID: "test2", IssuerURL: "http://127.0.0.1:4343"})
+	cl := New("test2", "http://127.0.0.1:4343")
 	err := cl.GetPubKeys()
 	if err != nil {
 		t.Errorf("Client.ParsedJWT() error = %v", err)
@@ -204,6 +204,27 @@ func Test_endpoints(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := endpoints(tt.args.issuerURL, tt.args.id); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("endpoints() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestClient_Register(t *testing.T) {
+	type args struct {
+		cltReq interface{}
+	}
+	tests := []struct {
+		name    string
+		cl      Client
+		args    args
+		wantErr bool
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := tt.cl.Register(tt.args.cltReq); (err != nil) != tt.wantErr {
+				t.Errorf("Client.Register() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}

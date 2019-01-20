@@ -64,29 +64,29 @@ func RuneSequence(l int, allowedRunes []rune) (seq []rune, err error) {
 type Error []error
 
 // Error implements error interface
-func (me Error) Error() string {
-	if me == nil {
+func (mr Error) Error() string {
+	if mr == nil {
 		return ""
 	}
 
-	strs := make([]string, len(me))
-	for i, err := range me {
+	strs := make([]string, len(mr))
+	for i, err := range mr {
 		strs[i] = fmt.Sprintf("%v; ", err)
 	}
 	return strings.Join(strs, "")
 }
 
 // Append appends errors to array if err != nil
-func (me *Error) Append(errs ...error) Error {
-	if me == nil {
-		*me = []error{}
+func (mr *Error) Append(errs ...error) Error {
+	if mr == nil {
+		*mr = []error{}
 	}
 	for i := range errs {
 		if errs[i] != nil {
-			*me = append(*me, errs[i])
+			*mr = append(*mr, errs[i])
 		}
 	}
-	return *me
+	return *mr
 }
 
 // SaveSealed saves marshaled value to key for bucket. Should run in update tx

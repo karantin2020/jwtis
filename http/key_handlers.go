@@ -44,7 +44,7 @@ func (g *KeyHandlersGroup) Register(c *gin.Context) {
 	var req RegisterClientRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		log.Error().Err(err).Msg("error parsing RegisterClientRequest from request body")
-		c.JSON(http.StatusBadRequest, &ErrorRequest{
+		c.JSON(http.StatusBadRequest, &ErrorResponse{
 			Status: http.StatusBadRequest,
 			Errors: []ErrorBody{
 				{
@@ -71,9 +71,9 @@ func (g *KeyHandlersGroup) Register(c *gin.Context) {
 	}
 	pubKeys, err := g.srvc.Register(kid, opts)
 	if err != nil {
-		if err == jwtis.ErrKeysExist || err == jwtis.ErrKeysExpired || err == jwtis.ErrKeysExistInvalid {
+		if err == jwtis.ErrKeysExist {
 			log.Error().Err(err).Msgf("error registering new client with kid '%s'; client with that kid exists", kid)
-			c.JSON(http.StatusForbidden, &ErrorRequest{
+			c.JSON(http.StatusForbidden, &ErrorResponse{
 				Status: http.StatusForbidden,
 				Errors: []ErrorBody{
 					{
@@ -85,8 +85,22 @@ func (g *KeyHandlersGroup) Register(c *gin.Context) {
 			})
 			return
 		}
+		if err == jwtis.ErrKeysExpired || err == jwtis.ErrKeysExistInvalid {
+			log.Error().Err(err).Msgf("error registering new client with kid '%s'; client with that kid exists", kid)
+			c.JSON(http.StatusConflict, &ErrorResponse{
+				Status: http.StatusConflict,
+				Errors: []ErrorBody{
+					{
+						Source: "/",
+						Title:  "keys exist and are expired or invalid",
+						Detail: err.Error(),
+					},
+				},
+			})
+			return
+		}
 		log.Error().Err(err).Msg("error registering new client, internal server error")
-		c.JSON(http.StatusInternalServerError, &ErrorRequest{
+		c.JSON(http.StatusInternalServerError, &ErrorResponse{
 			Status: http.StatusInternalServerError,
 			Errors: []ErrorBody{
 				{
@@ -113,7 +127,7 @@ func (g *KeyHandlersGroup) Register(c *gin.Context) {
 func (g *KeyHandlersGroup) GetPubKeys(c *gin.Context) {
 	kid := c.Param("kid")
 	if kid == "" {
-		c.JSON(http.StatusBadRequest, &ErrorRequest{
+		c.JSON(http.StatusBadRequest, &ErrorResponse{
 			Status: http.StatusBadRequest,
 			Errors: []ErrorBody{
 				{
@@ -129,7 +143,7 @@ func (g *KeyHandlersGroup) GetPubKeys(c *gin.Context) {
 	if err != nil {
 		if err == jwtis.ErrKeysNotFound {
 			log.Error().Err(err).Msg("error getting public keys, keys not found")
-			c.JSON(http.StatusNotFound, &ErrorRequest{
+			c.JSON(http.StatusNotFound, &ErrorResponse{
 				Status: http.StatusNotFound,
 				Errors: []ErrorBody{
 					{
@@ -141,14 +155,14 @@ func (g *KeyHandlersGroup) GetPubKeys(c *gin.Context) {
 			})
 			return
 		}
-		if err == jwtis.ErrKeysExpired {
-			log.Error().Err(err).Msg("error getting public keys, keys are expired")
-			c.JSON(http.StatusConflict, &ErrorRequest{
+		if err == jwtis.ErrKeysExpired || err == jwtis.ErrKeysInvalid {
+			log.Error().Err(err).Msg("error getting public keys, keys are expired or invalid")
+			c.JSON(http.StatusConflict, &ErrorResponse{
 				Status: http.StatusConflict,
 				Errors: []ErrorBody{
 					{
 						Source: "",
-						Title:  "keys are expired",
+						Title:  "keys are expired or invalid",
 						Detail: "error getting public keys: " + err.Error(),
 					},
 				},
@@ -156,7 +170,7 @@ func (g *KeyHandlersGroup) GetPubKeys(c *gin.Context) {
 			return
 		}
 		log.Error().Err(err).Msg("error getting public keys, internal server error")
-		c.JSON(http.StatusInternalServerError, &ErrorRequest{
+		c.JSON(http.StatusInternalServerError, &ErrorResponse{
 			Status: http.StatusInternalServerError,
 			Errors: []ErrorBody{
 				{

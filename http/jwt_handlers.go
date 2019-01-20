@@ -39,9 +39,12 @@ type JWTHandlersGroup struct {
 
 // NewToken handler
 func (g *JWTHandlersGroup) NewToken(c *gin.Context) {
+
+	// Add support for encrypted claims
+
 	var req = NewTokenRequest{Claims: make(map[string]interface{})}
 	if err := c.ShouldBindJSON(&req); err != nil || req.Kid == "" {
-		c.JSON(http.StatusBadRequest, &ErrorRequest{
+		c.JSON(http.StatusBadRequest, &ErrorResponse{
 			Status: http.StatusBadRequest,
 			Errors: []ErrorBody{
 				{
@@ -60,7 +63,7 @@ func (g *JWTHandlersGroup) NewToken(c *gin.Context) {
 	if err != nil {
 		if err == jwtservice.ErrKIDNotExists {
 			log.Error().Err(err).Msgf("error creating new JWT for kid '%s': keys not exist", req.Kid)
-			c.JSON(http.StatusNotFound, &ErrorRequest{
+			c.JSON(http.StatusNotFound, &ErrorResponse{
 				Status: http.StatusNotFound,
 				Errors: []ErrorBody{
 					{
@@ -73,7 +76,7 @@ func (g *JWTHandlersGroup) NewToken(c *gin.Context) {
 			return
 		}
 		log.Error().Err(err).Msgf("error creating new JWT for kid '%s'", req.Kid)
-		c.JSON(http.StatusInternalServerError, &ErrorRequest{
+		c.JSON(http.StatusInternalServerError, &ErrorResponse{
 			Status: http.StatusInternalServerError,
 			Errors: []ErrorBody{
 				{
@@ -98,7 +101,7 @@ func (g *JWTHandlersGroup) NewToken(c *gin.Context) {
 func (g *JWTHandlersGroup) RenewToken(c *gin.Context) {
 	var req = RenewTokenRequest{}
 	if err := c.ShouldBindJSON(&req); err != nil || req.Kid == "" || req.RefreshToken == "" {
-		c.JSON(http.StatusBadRequest, &ErrorRequest{
+		c.JSON(http.StatusBadRequest, &ErrorResponse{
 			Status: http.StatusBadRequest,
 			Errors: []ErrorBody{
 				{
@@ -117,7 +120,7 @@ func (g *JWTHandlersGroup) RenewToken(c *gin.Context) {
 	if err != nil {
 		if err == jwtservice.ErrKIDNotExists {
 			log.Error().Err(err).Msgf("error renew JWT for kid '%s': keys not exist", req.Kid)
-			c.JSON(http.StatusNotFound, &ErrorRequest{
+			c.JSON(http.StatusNotFound, &ErrorResponse{
 				Status: http.StatusNotFound,
 				Errors: []ErrorBody{
 					{
@@ -131,7 +134,7 @@ func (g *JWTHandlersGroup) RenewToken(c *gin.Context) {
 		}
 		if err == jwtservice.ErrDecryptRefreshToken {
 			log.Error().Err(err).Msgf("error renew JWT for kid '%s': invalid crypto primitives", req.Kid)
-			c.JSON(http.StatusForbidden, &ErrorRequest{
+			c.JSON(http.StatusForbidden, &ErrorResponse{
 				Status: http.StatusForbidden,
 				Errors: []ErrorBody{
 					{
@@ -145,7 +148,7 @@ func (g *JWTHandlersGroup) RenewToken(c *gin.Context) {
 		}
 		if err == jwtservice.ErrRefreshTokenExpired {
 			log.Error().Err(err).Msgf("error renew JWT for kid '%s': refresh token expired", req.Kid)
-			c.JSON(http.StatusConflict, &ErrorRequest{
+			c.JSON(http.StatusConflict, &ErrorResponse{
 				Status: http.StatusConflict,
 				Errors: []ErrorBody{
 					{
@@ -159,7 +162,7 @@ func (g *JWTHandlersGroup) RenewToken(c *gin.Context) {
 		}
 		if err == jwtservice.ErrInvalidRefreshClaims {
 			log.Error().Err(err).Msgf("error renew JWT for kid '%s': invalid refresh claims", req.Kid)
-			c.JSON(http.StatusUnprocessableEntity, &ErrorRequest{
+			c.JSON(http.StatusUnprocessableEntity, &ErrorResponse{
 				Status: http.StatusUnprocessableEntity,
 				Errors: []ErrorBody{
 					{
@@ -172,7 +175,7 @@ func (g *JWTHandlersGroup) RenewToken(c *gin.Context) {
 			return
 		}
 		log.Error().Err(err).Msgf("error renewing JWT for kid '%s'", req.Kid)
-		c.JSON(http.StatusInternalServerError, &ErrorRequest{
+		c.JSON(http.StatusInternalServerError, &ErrorResponse{
 			Status: http.StatusInternalServerError,
 			Errors: []ErrorBody{
 				{

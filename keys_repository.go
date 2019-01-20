@@ -318,6 +318,9 @@ func (p *KeysRepository) GetPublicKeys(kid string) (SigEncKeys, error) {
 	if key.Expired() {
 		return SigEncKeys{}, ErrKeysExpired
 	}
+	if key.invalid {
+		return SigEncKeys{}, ErrKeysInvalid
+	}
 	pubKeys := SigEncKeys{
 		Enc:    &key.pubEnc,
 		Sig:    &key.pubSig,

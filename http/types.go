@@ -103,8 +103,8 @@ type PubKeysResponse struct {
 
 // ===== Error responses ====== //
 
-// ErrorRequest describes response if service responses with error
-type ErrorRequest struct {
+// ErrorResponse describes response if service responses with error
+type ErrorResponse struct {
 	Status int         `json:"status"`
 	Errors []ErrorBody `json:"errors"`
 }

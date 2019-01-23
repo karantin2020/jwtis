@@ -1,6 +1,7 @@
 package jwtis_test
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -13,10 +14,16 @@ var sigKeys, encKeys, _ = genKeysList()
 var sigToks, sigEncToks = genJWTString()
 
 var claims = jwt.Claims{
-	Expiry:   jwt.NewNumericDate(time.Now().Add(3 * time.Hour)),
-	IssuedAt: jwt.NewNumericDate(time.Now()),
-	Subject:  "test_web_client",
-	Audience: []string{"example.com", "ya.ru"},
+	Issuer:  "test_issuer",
+	Subject: "test_web_client",
+	Audience: []string{
+		"example.com",
+		"ya.ru",
+	},
+	Expiry:    jwt.NewNumericDate(time.Now().Add(3 * time.Hour)),
+	NotBefore: jwt.NewNumericDate(time.Now()),
+	IssuedAt:  jwt.NewNumericDate(time.Now()),
+	ID:        "test_id",
 }
 var claimsS = jwt.Claims{}
 
@@ -34,14 +41,39 @@ func benchmarkSigClaims(i int, b *testing.B) {
 
 func benchmarkSigEnc(i int, b *testing.B) {
 	for n := 0; n < b.N; n++ {
-		jwtis.JWTSignedAndEncrypted(jose.A128GCM, &(encKeys[i][1]), &(sigKeys[7][0]), &claims)
+		jwtis.JWTSignedAndEncrypted(jose.A128GCM, &(encKeys[i][1]), &(sigKeys[6][0]), &claims)
 	}
 }
 
 func benchmarkSigEncClaims(i int, b *testing.B) {
 	for n := 0; n < b.N; n++ {
-		jwtis.ClaimsSignedAndEncrypted(&(encKeys[i][0]), &(sigKeys[7][1]), sigEncToks[1], &claimsS)
+		jwtis.ClaimsSignedAndEncrypted(&(encKeys[i][0]), &(sigKeys[6][1]), sigEncToks[1], &claimsS)
 	}
+}
+
+// Prebench tests
+
+func TestPrebench(t *testing.T) {
+	js, err := jwtis.JWTSigned(&(sigKeys[6][0]), &claims)
+	if err != nil {
+		t.Errorf("TestPrebench() JWTSigned error = %v", err)
+	}
+	fmt.Printf("js is: %v\n", js)
+	err = jwtis.ClaimsSigned(&(sigKeys[6][1]), js, &claimsS)
+	if err != nil {
+		t.Errorf("TestPrebench() ClaimsSigned error = %v", err)
+	}
+	fmt.Printf("js claims is: %#v\n", claims)
+	jse, err := jwtis.JWTSignedAndEncrypted(jose.A128GCM, &(encKeys[6][1]), &(sigKeys[6][0]), &claims)
+	if err != nil {
+		t.Errorf("TestPrebench() JWTSignedAndEncrypted error = %v", err)
+	}
+	fmt.Printf("jse is: %v\n", jse)
+	err = jwtis.ClaimsSignedAndEncrypted(&(encKeys[6][0]), &(sigKeys[6][1]), jse, &claimsS)
+	if err != nil {
+		t.Errorf("TestPrebench() ClaimsSignedAndEncrypted error = %v", err)
+	}
+	fmt.Printf("jse claims is: %#v\n", claims)
 }
 
 // func BenchmarkFib1(b *testing.B)  { benchmarkFib(1, b) }

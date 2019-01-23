@@ -88,10 +88,10 @@ func (p *configRepository) init(db *bolt.DB) {
 	}
 	p.defListen = "127.0.0.1:4343"
 	p.defTLS = false
-	p.defSigAlg = "RS256"
-	p.defSigBits = 2048
+	p.defSigAlg = "ES256"
+	p.defSigBits = 256
 	p.defEncAlg = "ECDH-ES+A256KW"
-	p.defEncBits = 521
+	p.defEncBits = 256
 	p.defContEnc = "A256GCM"
 	p.defExpiry = "4320h"    // 180 days
 	p.defAuthTTL = "72h"     // 3 days

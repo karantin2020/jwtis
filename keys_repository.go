@@ -81,10 +81,11 @@ func (k *JWTKeysIssuerSet) attachPublic() {
 
 // SigEncKeys represents a structure that holds public or private JWT keys
 type SigEncKeys struct {
-	Sig    *jose.JSONWebKey `json:"sig"`
-	Enc    *jose.JSONWebKey `json:"enc"`
-	Expiry jwt.NumericDate  `json:"expiry"`
-	Valid  bool             `json:"valid"`
+	Sig             *jose.JSONWebKey `json:"sig"`
+	Enc             *jose.JSONWebKey `json:"enc"`
+	Expiry          jwt.NumericDate  `json:"expiry"`
+	Valid           bool             `json:"valid"`
+	RefreshStrategy string           `json:"refresh_strategy"`
 }
 
 // KeyOptions represent the set of option to create sig or enc keys
@@ -95,13 +96,14 @@ type KeyOptions struct {
 
 // DefaultOptions represents default sig ang enc options
 type DefaultOptions struct {
-	SigAlg     string        // Default algorithn to be used for sign
-	SigBits    int           // Default key size in bits for sign
-	EncAlg     string        // Default algorithn to be used for encrypt
-	EncBits    int           // Default key size in bits for encrypt
-	Expiry     time.Duration // Default value for keys ttl
-	AuthTTL    time.Duration // Default value for auth jwt ttl
-	RefreshTTL time.Duration // Default value for refresh jwt ttl
+	SigAlg          string        // Default algorithn to be used for sign
+	SigBits         int           // Default key size in bits for sign
+	EncAlg          string        // Default algorithn to be used for encrypt
+	EncBits         int           // Default key size in bits for encrypt
+	Expiry          time.Duration // Default value for keys ttl
+	AuthTTL         time.Duration // Default value for auth jwt ttl
+	RefreshTTL      time.Duration // Default value for refresh jwt ttl
+	RefreshStrategy string        // optional, values are: 'refreshBoth', 'refreshOnExpire', 'noRefresh' (default)
 }
 
 // KeysRepository holds all jose.JSONWebKey's
@@ -132,6 +134,7 @@ func (p *KeysRepository) Init(db *bolt.DB, bucketName []byte,
 	p.bucketName = bucketName
 	p.Keys = make(map[string]JWTKeysIssuerSet)
 	p.DefaultOptions = *opts
+	p.DefaultOptions.RefreshStrategy = "noRefresh"
 	p.defSigOptions = KeyOptions{
 		Use:  "sig",
 		Alg:  opts.SigAlg,
@@ -218,8 +221,14 @@ func (p *KeysRepository) NewKey(kid string, opts *DefaultOptions) (SigEncKeys, e
 	if err != nil {
 		return SigEncKeys{}, fmt.Errorf("error generating enc keys: %s", err.Error())
 	}
-	privKeys.AuthTTL = opts.AuthTTL
-	privKeys.RefreshTTL = opts.RefreshTTL
+	if opts != nil {
+		privKeys.AuthTTL = opts.AuthTTL
+		privKeys.RefreshTTL = opts.RefreshTTL
+		privKeys.RefreshStrategy = opts.RefreshStrategy
+	} else {
+		privKeys.AuthTTL = p.DefaultOptions.AuthTTL
+		privKeys.RefreshTTL = p.DefaultOptions.RefreshTTL
+	}
 	return p.AddKey(privKeys)
 }
 
@@ -282,10 +291,11 @@ func (p *KeysRepository) AddKey(key *JWTKeysIssuerSet) (SigEncKeys, error) {
 	}
 	p.Keys[string(key.KID)] = *key
 	pubKeys := SigEncKeys{
-		Enc:    &key.pubEnc,
-		Sig:    &key.pubSig,
-		Expiry: key.Expiry,
-		Valid:  !key.invalid,
+		Enc:             &key.pubEnc,
+		Sig:             &key.pubSig,
+		Expiry:          key.Expiry,
+		Valid:           !key.invalid,
+		RefreshStrategy: key.RefreshStrategy,
 	}
 	return pubKeys, nil
 }
@@ -323,10 +333,11 @@ func (p *KeysRepository) GetPublicKeys(kid string) (SigEncKeys, error) {
 		return SigEncKeys{}, ErrKeysInvalid
 	}
 	pubKeys := SigEncKeys{
-		Enc:    &key.pubEnc,
-		Sig:    &key.pubSig,
-		Expiry: key.Expiry,
-		Valid:  !key.invalid,
+		Enc:             &key.pubEnc,
+		Sig:             &key.pubSig,
+		Expiry:          key.Expiry,
+		Valid:           !key.invalid,
+		RefreshStrategy: key.RefreshStrategy,
 	}
 	return pubKeys, nil
 }
@@ -344,10 +355,11 @@ func (p *KeysRepository) GetPrivateKeys(kid string) (SigEncKeys, error) {
 		return SigEncKeys{}, ErrKeysExpired
 	}
 	privKeys := SigEncKeys{
-		Enc:    &key.Enc,
-		Sig:    &key.Sig,
-		Expiry: key.Expiry,
-		Valid:  !key.invalid,
+		Enc:             &key.Enc,
+		Sig:             &key.Sig,
+		Expiry:          key.Expiry,
+		Valid:           !key.invalid,
+		RefreshStrategy: key.RefreshStrategy,
 	}
 	return privKeys, nil
 }

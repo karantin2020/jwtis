@@ -116,7 +116,7 @@ func (g *JWTHandlersGroup) RenewToken(c *gin.Context) {
 
 	// Must validate request data
 
-	tokens, err := g.srvc.RenewJWT(req.Kid, req.RefreshToken)
+	tokens, err := g.srvc.RenewJWT(req.Kid, req.RefreshToken, req.RefreshStrategy)
 	if err != nil {
 		if err == jwtservice.ErrKIDNotExists {
 			log.Error().Err(err).Msgf("error renew JWT for kid '%s': keys not exist", req.Kid)

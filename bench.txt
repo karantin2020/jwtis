@@ -1,39 +1,39 @@
 goos: linux
 goarch: amd64
 pkg: github.com/karantin2020/jwtis
-BenchmarkSigRS256-2                     	     200	   6647195 ns/op	   59006 B/op	     302 allocs/op
-BenchmarkSigRS384-2                     	     200	   7087828 ns/op	   59120 B/op	     302 allocs/op
-BenchmarkSigRS512-2                     	     200	   6820295 ns/op	   59136 B/op	     302 allocs/op
-BenchmarkSigPS256-2                     	     200	   6689979 ns/op	   59642 B/op	     308 allocs/op
-BenchmarkSigPS384-2                     	     200	   6713517 ns/op	   59856 B/op	     308 allocs/op
-BenchmarkSigPS512-2                     	     200	   6899816 ns/op	   59871 B/op	     308 allocs/op
-BenchmarkSigES256-2                     	   10000	    215410 ns/op	   12461 B/op	     196 allocs/op
-BenchmarkSigES384-2                     	     100	  12427374 ns/op	 2329225 B/op	   17601 allocs/op
-BenchmarkSigES512-2                     	     100	  22187944 ns/op	 4045062 B/op	   23933 allocs/op
-BenchmarkSigEdDSA-2                     	    5000	    207192 ns/op	    9843 B/op	     164 allocs/op
-BenchmarkSigClaimsRS256-2               	    5000	    302152 ns/op	   20783 B/op	     117 allocs/op
-BenchmarkSigClaimsRS384-2               	    5000	    305197 ns/op	   20895 B/op	     117 allocs/op
-BenchmarkSigClaimsRS512-2               	    5000	    309246 ns/op	   20913 B/op	     117 allocs/op
-BenchmarkSigClaimsPS256-2               	    5000	    344712 ns/op	   21248 B/op	     123 allocs/op
-BenchmarkSigClaimsPS384-2               	    5000	    315485 ns/op	   21489 B/op	     123 allocs/op
-BenchmarkSigClaimsPS512-2               	    5000	    312137 ns/op	   21535 B/op	     123 allocs/op
-BenchmarkSigClaimsES256-2               	    3000	    445763 ns/op	    7706 B/op	     111 allocs/op
-BenchmarkSigClaimsES384-2               	      50	  23072949 ns/op	 4663202 B/op	   35116 allocs/op
-BenchmarkSigClaimsES512-2               	      30	  45415784 ns/op	 8139438 B/op	   47984 allocs/op
-BenchmarkSigClaimsEdDSA-2               	    3000	    425224 ns/op	    6513 B/op	      89 allocs/op
-BenchmarkSigEncRSA1_5-2                 	    3000	    499557 ns/op	   35639 B/op	     325 allocs/op
-BenchmarkSigEncRSA_OAEP-2               	    3000	    508316 ns/op	   35850 B/op	     330 allocs/op
-BenchmarkSigEncRSA_OAEP_256-2           	    3000	    537993 ns/op	   35980 B/op	     330 allocs/op
-BenchmarkSigEncECDH_ES-2                	    2000	    689294 ns/op	   27902 B/op	     374 allocs/op
-BenchmarkSigEncECDH_ES_A128KW-2         	    2000	    685420 ns/op	   28572 B/op	     385 allocs/op
-BenchmarkSigEncECDH_ES_A192KW-2         	    2000	    653655 ns/op	   28654 B/op	     385 allocs/op
-BenchmarkSigEncECDH_ES_A256KW-2         	    2000	    640552 ns/op	   28719 B/op	     385 allocs/op
-BenchmarkSigEncClaimsRSA1_5-2           	     200	   6300580 ns/op	   46089 B/op	     224 allocs/op
-BenchmarkSigEncClaimsRSA_OAEP-2         	     200	   6559688 ns/op	   54306 B/op	     301 allocs/op
-BenchmarkSigEncClaimsRSA_OAEP_256-2     	     200	   6359694 ns/op	   46089 B/op	     224 allocs/op
-BenchmarkSigEncClaimsECDH_ES-2          	   10000	    128052 ns/op	    9462 B/op	      97 allocs/op
-BenchmarkSigEncClaimsECDH_ES_A128KW-2   	   10000	    136810 ns/op	    9462 B/op	      97 allocs/op
-BenchmarkSigEncClaimsECDH_ES_A192KW-2   	   10000	    132560 ns/op	    9462 B/op	      97 allocs/op
-BenchmarkSigEncClaimsECDH_ES_A256KW-2   	   10000	    127988 ns/op	    9462 B/op	      97 allocs/op
+BenchmarkSigRS256-2                     	     200	   6738855 ns/op	   59014 B/op	     302 allocs/op
+BenchmarkSigRS384-2                     	     200	   7167869 ns/op	   59130 B/op	     302 allocs/op
+BenchmarkSigRS512-2                     	     200	   6831510 ns/op	   59136 B/op	     302 allocs/op
+BenchmarkSigPS256-2                     	     200	   6613936 ns/op	   59647 B/op	     308 allocs/op
+BenchmarkSigPS384-2                     	     200	   6820728 ns/op	   59856 B/op	     308 allocs/op
+BenchmarkSigPS512-2                     	     200	   6799117 ns/op	   59871 B/op	     308 allocs/op
+BenchmarkSigES256-2                     	    5000	    212767 ns/op	   12461 B/op	     196 allocs/op
+BenchmarkSigES384-2                     	     100	  12358021 ns/op	 2330376 B/op	   17610 allocs/op
+BenchmarkSigES512-2                     	      50	  23417552 ns/op	 4024450 B/op	   23811 allocs/op
+BenchmarkSigEdDSA-2                     	   10000	    210824 ns/op	    9843 B/op	     164 allocs/op
+BenchmarkSigClaimsRS256-2               	    5000	    319749 ns/op	   20783 B/op	     117 allocs/op
+BenchmarkSigClaimsRS384-2               	    5000	    314724 ns/op	   20896 B/op	     117 allocs/op
+BenchmarkSigClaimsRS512-2               	    5000	    332261 ns/op	   20911 B/op	     117 allocs/op
+BenchmarkSigClaimsPS256-2               	    5000	    343958 ns/op	   21248 B/op	     123 allocs/op
+BenchmarkSigClaimsPS384-2               	    5000	    324918 ns/op	   21488 B/op	     123 allocs/op
+BenchmarkSigClaimsPS512-2               	    5000	    326994 ns/op	   21536 B/op	     123 allocs/op
+BenchmarkSigClaimsES256-2               	    3000	    430703 ns/op	    7706 B/op	     111 allocs/op
+BenchmarkSigClaimsES384-2               	     100	  24414117 ns/op	 4753908 B/op	   35784 allocs/op
+BenchmarkSigClaimsES512-2               	      30	  44294408 ns/op	 7934345 B/op	   46797 allocs/op
+BenchmarkSigClaimsEdDSA-2               	    3000	    424608 ns/op	    6513 B/op	      89 allocs/op
+BenchmarkSigEncRSA1_5-2                 	    3000	    485099 ns/op	   35640 B/op	     325 allocs/op
+BenchmarkSigEncRSA_OAEP-2               	    3000	    515465 ns/op	   35849 B/op	     330 allocs/op
+BenchmarkSigEncRSA_OAEP_256-2           	    3000	    508410 ns/op	   35982 B/op	     330 allocs/op
+BenchmarkSigEncECDH_ES-2                	    2000	    661198 ns/op	   27901 B/op	     374 allocs/op
+BenchmarkSigEncECDH_ES_A128KW-2         	    2000	    686440 ns/op	   28571 B/op	     385 allocs/op
+BenchmarkSigEncECDH_ES_A192KW-2         	    2000	    673452 ns/op	   28649 B/op	     385 allocs/op
+BenchmarkSigEncECDH_ES_A256KW-2         	    2000	    688575 ns/op	   28717 B/op	     385 allocs/op
+BenchmarkSigEncClaimsRSA1_5-2           	     200	   6628227 ns/op	   46089 B/op	     224 allocs/op
+BenchmarkSigEncClaimsRSA_OAEP-2         	     200	   6568461 ns/op	   54307 B/op	     301 allocs/op
+BenchmarkSigEncClaimsRSA_OAEP_256-2     	     200	   6912434 ns/op	   46089 B/op	     224 allocs/op
+BenchmarkSigEncClaimsECDH_ES-2          	   10000	    131298 ns/op	    9462 B/op	      97 allocs/op
+BenchmarkSigEncClaimsECDH_ES_A128KW-2   	   10000	    131736 ns/op	    9462 B/op	      97 allocs/op
+BenchmarkSigEncClaimsECDH_ES_A192KW-2   	   10000	    128264 ns/op	    9462 B/op	      97 allocs/op
+BenchmarkSigEncClaimsECDH_ES_A256KW-2   	   10000	    133025 ns/op	    9462 B/op	      97 allocs/op
 PASS
-ok  	github.com/karantin2020/jwtis	62.150s
+ok  	github.com/karantin2020/jwtis	63.619s

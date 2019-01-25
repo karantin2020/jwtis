@@ -92,5 +92,8 @@ func (k *KeyService) checkOptions(opts *jwtis.DefaultOptions) {
 		if opts.RefreshTTL == 0 {
 			opts.RefreshTTL = k.keysRepo.DefaultOptions.RefreshTTL
 		}
+		if opts.RefreshStrategy == "" {
+			opts.RefreshStrategy = k.keysRepo.DefaultOptions.RefreshStrategy
+		}
 	}
 }

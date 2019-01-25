@@ -50,7 +50,7 @@ func newConfigApp() *cli.Cli {
 	confRepo.sigBits = app.Int(cli.IntOpt{
 		Name:      "sigBits",
 		Value:     confRepo.defSigBits,
-		Desc:      "Default key size in bits for sign key",
+		Desc:      "Default key size in bits for sign key. Supported elliptic bit lengths are 256, 384, 521",
 		EnvVar:    envPrefix + "SIG_BITS",
 		SetByUser: &confRepo.sigBitsSetByUser,
 	})
@@ -64,7 +64,7 @@ func newConfigApp() *cli.Cli {
 	confRepo.encBits = app.Int(cli.IntOpt{
 		Name:      "encBits",
 		Value:     confRepo.defEncBits,
-		Desc:      "Default key size in bits for encrypt",
+		Desc:      "Default key size in bits for encrypt. Supported elliptic bit lengths are 256, 384, 521",
 		EnvVar:    envPrefix + "ENC_BITS",
 		SetByUser: &confRepo.encBitsSetByUser,
 	})

@@ -121,8 +121,6 @@ func (s *JWTService) NewJWT(kid string, claims map[string]interface{}) (*JWTPair
 			}
 		}
 	}
-	fmt.Printf("exp is: %v\n", exp)
-	// expiry := jwt.NumericDate(time.Now().Add(exp).Unix())
 	claims["exp"] = &exp
 	auth, err := jwtis.JWTSigned(privKeys.Sig, claims)
 	if err != nil {
@@ -144,7 +142,7 @@ func (s *JWTService) NewJWT(kid string, claims map[string]interface{}) (*JWTPair
 }
 
 // RenewJWT returns pair of old refresh token and new auth token
-func (s *JWTService) RenewJWT(kid string, refresh string) (*JWTPair, error) {
+func (s *JWTService) RenewJWT(kid, refresh, refreshStrategy string) (*JWTPair, error) {
 	ok, jwtset, err := s.keysRepo.KeyExists([]byte(kid))
 	if err != nil {
 		return nil, fmt.Errorf("error in RenewJWT: %s", err.Error())
@@ -209,14 +207,24 @@ func (s *JWTService) RenewJWT(kid string, refresh string) (*JWTPair, error) {
 	claimsMap["exp"] = jwt.NewNumericDate(time.Now().Add(ttl[0]))
 	auth, err := jwtis.JWTSigned(&jwtset.Sig, claimsMap)
 	if err != nil {
-		return nil, fmt.Errorf("error in JWT auth token: %s", err.Error())
+		return nil, fmt.Errorf("error in RenewJWT auth token: %s", err.Error())
 	}
 
-	if jwtset.RefreshStrategy == StrategyRefreshBoth {
-		// issue refresh token here
+	if jwtset.RefreshStrategy == StrategyRefreshBoth || refreshStrategy == StrategyRefreshBoth {
+		claimsMap["exp"] = jwt.NewNumericDate(time.Now().Add(ttl[1]))
+		refresh, err = jwtis.JWTSignedAndEncrypted(s.defContEnc, &jwtset.Enc, &jwtset.Sig, claimsMap)
+		if err != nil {
+			return nil, fmt.Errorf("error in RenewJWT refresh token: %s", err.Error())
+		}
 	}
-	if jwtset.RefreshStrategy == StrategyRefreshOnExpire {
-		// issue refresh token here
+	if jwtset.RefreshStrategy == StrategyRefreshOnExpire || refreshStrategy == StrategyRefreshOnExpire {
+		if float64(float64(time.Second*time.Duration(int64(nExp)-time.Now().Unix()))/float64(ttl[1])) < 0.3 {
+			claimsMap["exp"] = jwt.NewNumericDate(time.Now().Add(ttl[1]))
+			refresh, err = jwtis.JWTSignedAndEncrypted(s.defContEnc, &jwtset.Enc, &jwtset.Sig, claimsMap)
+			if err != nil {
+				return nil, fmt.Errorf("error in RenewJWT refresh token: %s", err.Error())
+			}
+		}
 	}
 
 	res := &JWTPair{

@@ -61,13 +61,14 @@ func (g *KeyHandlersGroup) Register(c *gin.Context) {
 
 	kid := c.Param("kid")
 	var opts = &jwtis.DefaultOptions{
-		SigAlg:     req.SigAlg,
-		SigBits:    req.SigBits,
-		EncAlg:     req.EncAlg,
-		EncBits:    req.EncBits,
-		Expiry:     time.Duration(req.Expiry),
-		AuthTTL:    time.Duration(req.AuthTTL),
-		RefreshTTL: time.Duration(req.RefreshTTL),
+		SigAlg:          req.SigAlg,
+		SigBits:         req.SigBits,
+		EncAlg:          req.EncAlg,
+		EncBits:         req.EncBits,
+		Expiry:          time.Duration(req.Expiry),
+		AuthTTL:         time.Duration(req.AuthTTL),
+		RefreshTTL:      time.Duration(req.RefreshTTL),
+		RefreshStrategy: req.RefreshStrategy,
 	}
 	pubKeys, err := g.srvc.Register(kid, opts)
 	if err != nil {

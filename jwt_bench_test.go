@@ -199,8 +199,12 @@ func genKeys(alg, use string) ([2]jose.JSONWebKey, error) {
 	switch alg {
 	case "RS256", "RS384", "RS512", "PS256", "PS384", "PS512":
 		bits = 2048
-	case "ES256", "ES384", "ES512", "EdDSA":
-		bits = 0
+	case "ES256", "EdDSA":
+		bits = 256
+	case "ES384":
+		bits = 384
+	case "ES512":
+		bits = 521
 	default:
 
 	}

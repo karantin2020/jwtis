@@ -41,10 +41,11 @@ Options:
   -V, --version      Show the version and exit
   -l, --listen       ip:port to listen to (env $JWTIS_ADDRESS) (default "127.0.0.1:4343")
       --tls          Use tls connection [not implemented yet] (env $JWTIS_TLS)
-      --sigAlg       Default algorithn to be used for sign. Possible values are: ES256 ES384 ES512 EdDSA RS256 RS384 RS512 PS256 PS384 PS512 (env $JWTIS_SIG_ALG) (default "RS256")
-      --sigBits      Default key size in bits for sign key (env $JWTIS_SIG_BITS) (default 2048)
+      --sigAlg       Default algorithn to be used for sign. Possible values are: ES256 ES384 ES512 EdDSA RS256 RS384 RS512 PS256 PS384 PS512 (env $JWTIS_SIG_ALG) (default "ES256")
+      --sigBits      Default key size in bits for sign key. Supported elliptic bit lengths are 256, 384, 521 (env $JWTIS_SIG_BITS) (default 256)
       --encAlg       Default algorithn to be used for encrypt. Possible values are RSA1_5 RSA-OAEP RSA-OAEP-256 ECDH-ES ECDH-ES+A128KW ECDH-ES+A192KW ECDH-ES+A256KW (env $JWTIS_ENC_ALG) (default "ECDH-ES+A256KW")
-      --encBits      Default key size in bits for encrypt (env $JWTIS_ENC_BITS) (default 521)
+      --encBits      Default key size in bits for encrypt. Supported elliptic bit lengths are 256, 384, 521 (env $JWTIS_ENC_BITS) (default 256)
+      --contEnc      Default content encryption. Possible values are A128GCM, A192GCM, A256GCM (env $JWTIS_CONT_ENC) (default "A256GCM")
   -e, --expiry       Default keys time to live, expiration time [Duration string] (env $JWTIS_EXPIRY) (default "4320h")
   -a, --authTTL      Default auth JWT token time to live, expiration time [Duration string] (env $JWTIS_AUTH_TTL) (default "72h")
   -r, --refreshTTL   Default refresh JWT token time to live, expiration time [Duration string] (env $JWTIS_REFRESH_TTL) (default "720h")
@@ -58,17 +59,18 @@ Options:
 
 ```sh
 ./jwtis
-Welcome. Started jwtis version v0.0.1
+Welcome. Started jwtis version v0.1.1
 Created new bbolt database to store app's data
-Generated new password: '8jf*4FrKZBwhJ&]A!W0G!3~79jP$K2Wz'
+Generated new password: '?@P$mllo2H}W&Y[EAFZiv4.LoCi3-8L?'
 Please save the password safely, it's not recoverable
 Current configuration:
   internalRepo.configs.listen:          127.0.0.1:4343
   internalRepo.configs.tls:             false
-  internalRepo.configs.sigAlg:          RS256
-  internalRepo.configs.sigBits:         2048
+  internalRepo.configs.sigAlg:          ES256
+  internalRepo.configs.sigBits:         256
   internalRepo.configs.encAlg:          ECDH-ES+A256KW
-  internalRepo.configs.encBits:         521
+  internalRepo.configs.encBits:         256
+  internalRepo.configs.contEnc:         A256GCM
   internalRepo.configs.selfName:        JWTIS
   internalRepo.configs.expiry:          4320h0m0s
   internalRepo.configs.authTTL:         72h0m0s
@@ -77,22 +79,24 @@ Current configuration:
 jwtis works well
 jwtis finished work
 
-./jwtis -p '8jf*4FrKZBwhJ&]A!W0G!3~79jP$K2Wz'
-Welcome. Started jwtis version v0.0.1
+./jwtis -p '?@P$mllo2H}W&Y[EAFZiv4.LoCi3-8L?'
+Welcome. Started jwtis version v0.1.1
 Found existing bbolt database storing app's data
 Use user inserted password to bboltDB
 Current configuration:
   internalRepo.configs.listen:          127.0.0.1:4343
   internalRepo.configs.tls:             false
-  internalRepo.configs.sigAlg:          RS256
-  internalRepo.configs.sigBits:         2048
+  internalRepo.configs.sigAlg:          ES256
+  internalRepo.configs.sigBits:         256
   internalRepo.configs.encAlg:          ECDH-ES+A256KW
-  internalRepo.configs.encBits:         521
+  internalRepo.configs.encBits:         256
+  internalRepo.configs.contEnc:         A256GCM
   internalRepo.configs.selfName:        JWTIS
   internalRepo.configs.expiry:          4320h0m0s
   internalRepo.configs.authTTL:         72h0m0s
   internalRepo.configs.refreshTTL:      720h0m0s
   confRepo.options.dbPath:              ./data/keys.db
+jwtis works well
 ```
 
 #### When started first time JWTIS will:
@@ -163,27 +167,36 @@ These refresh tokens can be revoked by an authorized client
   - payload
 
   ```go
+    // RegisterClientRequest sent to jwtis to register new client
     type RegisterClientRequest struct {
-        Expiry Duration `json:"expiry,omitempty"` // keys ttl, optional
+      Expiry Duration `json:"expiry,omitempty"` // keys ttl, optional
 
-        SigAlg  string `json:"sig_alg,omitempty"`  // default algorithn to be used for sign, optional
-        SigBits int    `json:"sig_bits,omitempty"` // default key size in bits for sign, optional
-        EncAlg  string `json:"enc_alg,omitempty"`  // default algorithn to be used for encrypt, optional
-        EncBits int    `json:"enc_bits,omitempty"` // default key size in bits for encrypt, optional
+      SigAlg  string `json:"sig_alg,omitempty"`  // default algorithn to be used for sign, optional
+      SigBits int    `json:"sig_bits,omitempty"` // default key size in bits for sign, optional
+      EncAlg  string `json:"enc_alg,omitempty"`  // default algorithn to be used for encrypt, optional
+      EncBits int    `json:"enc_bits,omitempty"` // default key size in bits for encrypt, optional
 
-        AuthTTL    Duration `json:"auth_ttl,omitempty"`    // default auth jwt ttl, optional
-        RefreshTTL Duration `json:"refresh_ttl,omitempty"` // default refresh jwt ttl, optional
+      AuthTTL    Duration `json:"auth_ttl,omitempty"`    // default auth jwt ttl, optional
+      RefreshTTL Duration `json:"refresh_ttl,omitempty"` // default refresh jwt ttl, optional
+
+      // RefreshStrategy is used in RenewJWT to decide wheather to issue new refresh token
+      // with access token or not
+      // this option applies to all renewJWT requests
+      RefreshStrategy string `json:"refresh_strategy,omitempty"` // optional, values are: 'refreshBoth', 'refreshOnExpire', 'noRefresh' (default)
     }
   ```
 
   - response
 
   ```go
+    // RegisterClientResponse sent to client after it's registration
     type RegisterClientResponse struct {
-        Kid         string          `json:"kid"`          // Keys id to use
-        ClientToken string          `json:"client_token"` // Client token given after registration
-        PubSigKey   jose.JSONWebKey `json:"pub_sig_key"`  // Public sign key to verify AuthTokens
-        PubEncKey   jose.JSONWebKey `json:"pub_enc_key"`  // Public enc key to decrypt RefreshTokens
+      Kid         string          `json:"kid,omitempty"`          // Keys id to use
+      ClientToken string          `json:"client_token,omitempty"` // Client token given after registration [reserved]
+      PubSigKey   jose.JSONWebKey `json:"pub_sig_key,omitempty"`  // Public sign key to verify AccessTokens
+      PubEncKey   jose.JSONWebKey `json:"pub_enc_key,omitempty"`  // Public enc key to decrypt RefreshTokens
+      Expiry      jwt.NumericDate `json:"expiry,omitempty"`
+      Valid       bool            `json:"valid,omitempty"`
     }
   ```
 
@@ -247,24 +260,30 @@ These refresh tokens can be revoked by an authorized client
   - payload
 
   ```go
-  // RenewTokenRequest sent to jwtis to fetch new jwt
-  // ClientToken {string} - must be in header
-  type RenewTokenRequest struct {
-    Kid          string `json:"kid"` // Keys id to use
-    RefreshToken string `json:"refresh_token"`
-  }
+    // RenewTokenRequest sent to jwtis to fetch new jwt
+    // ClientToken {string} - must be in header
+    type RenewTokenRequest struct {
+      Kid string `json:"kid"` // Keys id to use
+      // AccessTokenValidTime  Duration `json:"access_token_valid_time,omitempty"`
+      // RefreshTokenValidTime Duration `json:"refresh_token_valid_time,omitempty"`
+      RefreshToken string `json:"refresh_token"`
+      // RefreshStrategy is used in RenewJWT to decide wheather to issue new refresh token
+      // with access token or not
+      // this option applies only to a specific request
+      RefreshStrategy string `json:"refresh_strategy,omitempty"` // optional, values are: 'refreshBoth', 'refreshOnExpire', 'noRefresh' (default)
+    }
   ```
 
   - response
 
   ```go
-  // TokenResponse sent to client that requested tokens
-  type TokenResponse struct {
-    ID           string          `json:"id"`
-    AuthToken    string          `json:"auth_token"`    // Short lived auth token
-    RefreshToken string          `json:"refresh_token"` // Long lived refresh token
-    Expiry       jwt.NumericDate `json:"expiry"`
-  }
+    // TokenResponse sent to client that requested tokens
+    type TokenResponse struct {
+      ID           string          `json:"id"`
+      AccessToken  string          `json:"access_token"`  // Short lived auth token
+      RefreshToken string          `json:"refresh_token"` // Long lived refresh token
+      Expiry       jwt.NumericDate `json:"expiry"`
+    }
   ```
 
 Contributions are welcome

@@ -19,12 +19,10 @@ func LoadRouter(mode string, keySrvc *keyservice.KeyService,
 	gin.SetMode(mode)
 	r := gin.New()
 	r.RedirectFixedPath = true
-	r.Use(gin.Recovery())
-	r.Use(gin.Logger())
+	r.Use(gin.Logger(), gin.Recovery())
 	r.Use(middleware...)
 	r.GET("/", func(c *gin.Context) {
-		// time.Sleep(10 * time.Second)
-		c.String(http.StatusOK, "Welcome to Gin Server")
+		c.String(http.StatusOK, "Welcome to JWTIS Server")
 	})
 	r.POST("/register/:kid", khg.Register)
 	r.GET("/keys/:kid", khg.GetPubKeys)
@@ -36,7 +34,7 @@ func LoadRouter(mode string, keySrvc *keyservice.KeyService,
 
 func pingGroup(r *gin.RouterGroup) *gin.RouterGroup {
 	r.GET("", func(c *gin.Context) {
-		c.String(http.StatusOK, "Welcome to ping route")
+		c.String(http.StatusOK, "Status O.K.")
 	})
 	return r
 }

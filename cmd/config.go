@@ -6,15 +6,16 @@ import (
 )
 
 var (
-	confListen   = []byte("jwtis.conf.listen")
-	confTLS      = []byte("jwtis.conf.tls")
-	confSigAlg   = []byte("jwtis.conf.sigAlg")
-	confSigBits  = []byte("jwtis.conf.sigBits")
-	confEncAlg   = []byte("jwtis.conf.encAlg")
-	confEncBits  = []byte("jwtis.conf.encBits")
-	confSelfName = []byte("jwtis.conf.selfName")
-	confPassword = []byte("jwtis.conf.password")
-	confDbPath   = []byte("jwtis.conf.dbPath")
+	confListen     = []byte("jwtis.conf.listen")
+	confListenGrpc = []byte("jwtis.conf.listenGrpc")
+	confTLS        = []byte("jwtis.conf.tls")
+	confSigAlg     = []byte("jwtis.conf.sigAlg")
+	confSigBits    = []byte("jwtis.conf.sigBits")
+	confEncAlg     = []byte("jwtis.conf.encAlg")
+	confEncBits    = []byte("jwtis.conf.encBits")
+	confSelfName   = []byte("jwtis.conf.selfName")
+	confPassword   = []byte("jwtis.conf.password")
+	confDbPath     = []byte("jwtis.conf.dbPath")
 )
 
 const (
@@ -29,9 +30,16 @@ func newConfigApp() *cli.Cli {
 	confRepo.listen = app.String(cli.StringOpt{
 		Name:      "l listen",
 		Value:     confRepo.defListen,
-		Desc:      "ip:port to listen to",
-		EnvVar:    envPrefix + "ADDRESS",
+		Desc:      "http ip:port to listen to",
+		EnvVar:    envPrefix + "HTTP_ADDRESS",
 		SetByUser: &confRepo.listenSetByUser,
+	})
+	confRepo.listenGrpc = app.String(cli.StringOpt{
+		Name:      "g grpcAddr",
+		Value:     confRepo.defListenGrpc,
+		Desc:      "grpc ip:port to listen to",
+		EnvVar:    envPrefix + "GRPC_ADDRESS",
+		SetByUser: &confRepo.listenGrpcSetByUser,
 	})
 	confRepo.tls = app.Bool(cli.BoolOpt{
 		Name:      "tls",

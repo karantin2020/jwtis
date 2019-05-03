@@ -11,7 +11,7 @@ import (
 )
 
 // NewTokenRequest sent to jwtis to fetch new jwt
-// ClientToken {string} - must be in header
+// ClientToken {string} - must be in header // Not implemented yet
 type NewTokenRequest struct {
 	Kid string `json:"kid"` // Keys id to use
 	// AccessTokenValidTime  Duration               `json:"access_token_valid_time,omitempty"`

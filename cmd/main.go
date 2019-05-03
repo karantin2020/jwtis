@@ -7,14 +7,16 @@ import (
 	bolt "github.com/coreos/bbolt"
 	cli "github.com/jawher/mow.cli"
 	"github.com/karantin2020/jwtis/http"
+	grpcs "github.com/karantin2020/jwtis/http/grpc"
 	"github.com/rs/zerolog"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/karantin2020/jwtis"
 )
 
 const (
 	appName        = "jwtis"
-	appVersion     = "v0.1.1"
+	appVersion     = "v0.2.1"
 	appDescription = "JWT issuer server. Provides trusted JWT tokens\n" +
 		"\nSource https://github.com/karantin2020/jwtis"
 	envPrefix      = "JWTIS_"
@@ -82,12 +84,28 @@ func main() {
 		srv, err := http.SetupServer(internalsRepo.Listen, "release",
 			&keysRepo, &log, internalsRepo.ContEnc)
 		if err != nil {
-			FatalF("error in setup server")
+			FatalF("error in setup http server")
 		}
-		err = http.StartServer(srv)
+		grpcsrv, err := grpcs.SetupServer(&keysRepo, &log, internalsRepo.ContEnc)
 		if err != nil {
-			fmt.Println("server error:", err.Error())
+			FatalF("error in setup grpc server")
 		}
+		var g errgroup.Group
+		g.Go(func() error {
+			err = http.StartServer(srv)
+			if err != nil {
+				fmt.Println("http server error:", err.Error())
+			}
+			return err
+		})
+		g.Go(func() error {
+			err := grpcs.StartServer(grpcsrv, internalsRepo.ListenGrpc)
+			if err != nil {
+				fmt.Println("grpc server error:", err.Error())
+			}
+			return err
+		})
+		g.Wait()
 		fmt.Println("jwtis finished work")
 	}
 	app.Run(os.Args)

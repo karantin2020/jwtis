@@ -10,6 +10,11 @@ type httpConf struct {
 	tls    *bool   // Future feature
 }
 
+// grpc config
+type grpcConf struct {
+	listenGrpc *string
+}
+
 // Default keys generation options
 type sign struct {
 	sigAlg  *string // Default algorithn to be used for sign
@@ -33,6 +38,7 @@ type keyGeneration struct {
 }
 type setByUser struct {
 	listenSetByUser     bool
+	listenGrpcSetByUser bool
 	tlsSetByUser        bool
 	sigAlgSetByUser     bool
 	sigBitsSetByUser    bool
@@ -49,6 +55,7 @@ type setByUser struct {
 }
 type defaults struct {
 	defListen     string
+	defListenGrpc string
 	defTLS        bool
 	defSigAlg     string
 	defSigBits    int
@@ -65,6 +72,7 @@ type defaults struct {
 }
 type options struct {
 	httpConf
+	grpcConf
 	keyGeneration
 	selfName *string // Name of this service
 
@@ -87,6 +95,7 @@ func (p *configRepository) init(db *bolt.DB) {
 		panic("configRepository pointer is nil")
 	}
 	p.defListen = "127.0.0.1:4343"
+	p.defListenGrpc = "127.0.0.1:40430"
 	p.defTLS = false
 	p.defSigAlg = "ES256"
 	p.defSigBits = 256
@@ -105,6 +114,7 @@ func (p *configRepository) init(db *bolt.DB) {
 
 func (p *configRepository) setDefaults() *configRepository {
 	p.listen = &p.defListen
+	p.listenGrpc = &p.defListenGrpc
 	p.tls = &p.defTLS
 	p.sigAlg = &p.defSigAlg
 	p.sigBits = &p.defSigBits

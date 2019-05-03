@@ -25,8 +25,9 @@ type DefaultValues struct {
 
 // http config
 type configs struct {
-	Listen string // ip:port to listen to
-	TLS    bool   // Future feature
+	Listen     string // ip:port to listen to
+	ListenGrpc string // grpc ip:port to listen to
+	TLS        bool   // Future feature
 	DefaultValues
 	SelfName []byte
 }
@@ -98,6 +99,9 @@ func (p *internalRepository) init(db *bolt.DB, confRepo *configRepository) {
 	if !dbExists || confRepo.listenSetByUser {
 		p.Listen = *confRepo.listen
 	}
+	if !dbExists || confRepo.listenGrpcSetByUser {
+		p.ListenGrpc = *confRepo.listenGrpc
+	}
 	if !dbExists || confRepo.tlsSetByUser {
 		p.TLS = *confRepo.tls
 	}
@@ -150,6 +154,7 @@ func (p *internalRepository) init(db *bolt.DB, confRepo *configRepository) {
 func (p internalRepository) printConfigs() {
 	fmt.Printf("Current configuration:\n")
 	fmt.Printf("  internalRepo.configs.listen:\t\t%s\n", p.Listen)
+	fmt.Printf("  internalRepo.configs.listenGrpc:\t%s\n", p.ListenGrpc)
 	fmt.Printf("  internalRepo.configs.tls:\t\t%t\n", p.TLS)
 	fmt.Printf("  internalRepo.configs.sigAlg:\t\t%s\n", p.SigAlg)
 	fmt.Printf("  internalRepo.configs.sigBits:\t\t%d\n", p.SigBits)

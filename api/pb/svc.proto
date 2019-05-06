@@ -1,0 +1,220 @@
+syntax = "proto3";
+
+// import "google/protobuf/timestamp.proto";
+import "google/api/annotations.proto";
+// import "google/protobuf/any.proto";
+import "protoc-gen-swagger/options/annotations.proto";
+import "github.com/gogo/protobuf/gogoproto/gogo.proto";
+
+package jwtispb;
+
+option (grpc.gateway.protoc_gen_swagger.options.openapiv2_swagger) = {
+  info: {
+    title: "JWTIS service";
+    version: "0.1.1";
+    contact: {
+      name: "JWTIS";
+      url: "https://github.com/karantin2020/jwtis";
+        };
+    };
+    schemes: [HTTP,HTTPS];
+    consumes: "application/json";
+    produces: "application/json";
+};
+
+// NewTokenRequest contains new token info
+message NewTokenRequest {
+  string kid    = 1 [(gogoproto.jsontag) = "kid"];
+  bytes  claims = 2 [(gogoproto.jsontag) = "claims"];
+};
+
+// RenewTokenRequest contains renew token info
+message RenewTokenRequest {
+  string kid             = 1 [(gogoproto.jsontag) = "kid"];
+  string refreshToken    = 2 [(gogoproto.jsontag) = "refreshToken"];
+  string refreshStrategy = 3 [(gogoproto.jsontag) = "refreshStrategy"];
+};
+
+// TokenResponse is sent for any token request
+message TokenResponse {
+  string id           = 1 [(gogoproto.jsontag) = "id",(gogoproto.customname)="ID"];
+  string accessToken  = 2 [(gogoproto.jsontag) = "accessToken"];
+  string refreshToken = 3 [(gogoproto.jsontag) = "refreshToken"];
+  int64  expiry       = 4 [(gogoproto.jsontag) = "expiry"];
+};
+
+// Token represents the credentials used to authenticate
+// the requests
+// This is a copy of https://github.com/golang/oauth2 Token
+message Token {
+	// AccessToken is the token that authenticates
+	// the requests
+	string accessToken = 1 [(gogoproto.jsontag) = "access_token"];
+
+	// TokenType is the type of token.
+	// The Type method returns either this or "Bearer".
+	// By default this field is empty for jwtis purposes
+	string tokenType = 2 [(gogoproto.jsontag) = "token_type"];
+
+	// RefreshToken is a token that's used by the application
+	// (as opposed to the user) to refresh the access token
+	// if it expires.
+	string refreshToken = 3 [(gogoproto.jsontag) = "refresh_token"];
+
+	// Expiry is the optional expiration time of the access token.
+	//
+	// If zero, TokenSource implementations will reuse the same
+	// token forever and RefreshToken or equivalent
+	// mechanisms for that TokenSource will not be used.
+	int64 expiry = 4 [(gogoproto.jsontag) = "expiry"];
+
+	// raw optionally contains extra metadata from the server
+	// when updating a token.
+	bytes raw = 5 [(gogoproto.customname) = "raw", (gogoproto.jsontag) = ""];
+}
+
+// RegisterClientRequest sent to jwtis to register new client
+message RegisterClientRequest {
+  string kid     = 1 [(gogoproto.jsontag) = "kid"];
+	int64  expiry  = 2 [(gogoproto.jsontag) = "expiry"];
+
+	string sigAlg  = 3 [(gogoproto.jsontag) = "sig_alg"];
+	int32  sigBits = 4    [(gogoproto.jsontag) = "sig_bits"];
+	string encAlg  = 5 [(gogoproto.jsontag) = "enc_alg"];
+	int32  encBits = 6    [(gogoproto.jsontag) = "enc_bits"];
+
+	int64 authTTL    = 7 [(gogoproto.jsontag) = "auth_ttl"];
+	int64 refreshTTL = 8 [(gogoproto.jsontag) = "refresh_ttl"];
+
+	// RefreshStrategy is used in RenewJWT to decide wheather to issue new refresh token
+	// with access token or not
+	// this option applies to all renewJWT requests
+	string refreshStrategy = 9 [(gogoproto.jsontag) = "refresh_strategy"];
+}
+
+// RegisterClientResponse sent to client after it's registration
+message RegisterClientResponse {
+	string kid         = 1 [(gogoproto.jsontag) = "kid"];
+	string clientToken = 2 [(gogoproto.jsontag) = "client_token"];
+	bytes  pubSigKey   = 3 [(gogoproto.jsontag) = "pub_sig_key"];
+	bytes  pubEncKey   = 4 [(gogoproto.jsontag) = "pub_enc_key"];
+	int64  expiry      = 5 [(gogoproto.jsontag) = "expiry"];
+	bool   valid       = 6 [(gogoproto.jsontag) = "valid"];
+}
+
+// PubKeysRequest fetch public keys
+message PubKeysRequest {
+	string kid = 1 [(gogoproto.jsontag) = "kid"];
+}
+
+// PubKeysResponse holds public keys
+message PubKeysResponse {
+	string kid = 1 [(gogoproto.jsontag) = "kid"];
+	bytes  pubSigKey = 2 [(gogoproto.jsontag) = "pub_sig_key"];
+	bytes  pubEncKey = 3 [(gogoproto.jsontag) = "pub_enc_key"];
+}
+
+// DelKeysRequest with kid field
+message DelKeysRequest {
+  string kid = 1 [(gogoproto.jsontag) = "kid"];
+}
+
+// DelKeysResponse as empty struct
+message DelKeysResponse {}
+
+service JWTIS {
+    // NewJWT is called to issue new jwt token
+    rpc NewJWT (NewTokenRequest) returns (TokenResponse) {
+      option (google.api.http) = {
+          post: "/api/v1/newjwt"
+          body: "*"
+      };
+      option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+        description: "Issue new JWT token"
+        summary: "Summary: New JWT token"
+        responses: {
+          key: "400"
+          value: {
+            description: "Returned when invalid request data sent"
+          }
+        };
+        responses: {
+          key: "404"
+          value: {
+            description: "Returned when crypto keys not found"
+          }
+        };
+        responses: {
+          key: "500"
+          value: {
+            description: "Returned when internal server error have got"
+          }
+        };
+      };
+    };
+    // RenewJWT is called to refresh jwt token according 
+    // to refresh strategy
+    rpc RenewJWT (RenewTokenRequest) returns (TokenResponse) {
+      option (google.api.http) = {
+          post: "/api/v1/renewjwt"
+          body: "*"
+      };
+      option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+        description: "Renew JWT token";
+        summary: "Summary: Renew JWT token";
+        responses: {
+          key: "404"
+          value: {
+            description: "Returned when crypto keys not found"
+          }
+        };
+        responses: {
+          key: "403"
+          value: {
+            description: "Returned when invalid crypto primitives exist"
+          }
+        };
+        responses: {
+          key: "409"
+          value: {
+            description: "Returned when refresh token expired"
+          }
+        };
+        responses: {
+          key: "422"
+          value: {
+            description: "Returned when invalid refresh claims sent"
+          }
+        };
+        responses: {
+          key: "500"
+          value: {
+            description: "Returned when internal server error have got"
+          }
+        };
+      };
+    };
+    rpc Register(RegisterClientRequest) returns (RegisterClientResponse) {
+      option (google.api.http) = {
+        post: "/api/v1/register/{kid}"
+        body: "*"
+      };
+    };
+    rpc UpdateKeys(RegisterClientRequest) returns (RegisterClientResponse) {
+      option (google.api.http) = {
+        put: "/api/v1/keys/{kid}"
+        body: "*"
+      };
+    }
+    rpc DelKeys(DelKeysRequest) returns (DelKeysResponse) {
+      option (google.api.http) = {
+        delete: "/api/v1/keys/{kid}"
+      };
+    };
+    rpc PublicKeys(PubKeysRequest) returns (PubKeysResponse) {
+      option (google.api.http) = {
+        post: "/api/v1/keys/{kid}"
+        body: "*"
+      };
+    }
+};

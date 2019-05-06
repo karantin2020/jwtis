@@ -23,7 +23,7 @@ goclay:
 		-I${GOPATH}/src/github.com/grpc-ecosystem/grpc-gateway \
 		-I${GOPATH}/src/github.com/envoyproxy/protoc-gen-validate \
 		--gogofaster_out=plugins=grpc,import_path=jwtispb:. \
-		--goclay_out=. http/pb/*.proto
+		--goclay_out=force=true:. api/pb/*.proto
 
 openapi:
 	@ if ! which protoc > /dev/null; then \

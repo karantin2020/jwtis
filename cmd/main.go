@@ -1,13 +1,17 @@
 package main
 
 import (
+	"context"
 	"fmt"
+	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	bolt "github.com/coreos/bbolt"
 	cli "github.com/jawher/mow.cli"
-	"github.com/karantin2020/jwtis/http"
-	grpcs "github.com/karantin2020/jwtis/http/grpc"
+	server "github.com/karantin2020/jwtis/api/server"
 	"github.com/rs/zerolog"
 	"golang.org/x/sync/errgroup"
 
@@ -16,7 +20,7 @@ import (
 
 const (
 	appName        = "jwtis"
-	appVersion     = "v0.2.1"
+	appVersion     = "v0.3.1"
 	appDescription = "JWT issuer server. Provides trusted JWT tokens\n" +
 		"\nSource https://github.com/karantin2020/jwtis"
 	envPrefix      = "JWTIS_"
@@ -81,29 +85,41 @@ func main() {
 	app.After = exit
 	app.Action = func() {
 		fmt.Println("jwtis works well")
-		srv, err := http.SetupServer(internalsRepo.Listen, "release",
-			&keysRepo, &log, internalsRepo.ContEnc)
+		srv, err := server.NewJWTISServer(internalsRepo.Listen,
+			internalsRepo.ListenGrpc, &keysRepo,
+			&log, internalsRepo.ContEnc)
 		if err != nil {
 			FatalF("error in setup http server")
 		}
-		grpcsrv, err := grpcs.SetupServer(&keysRepo, &log, internalsRepo.ContEnc)
-		if err != nil {
-			FatalF("error in setup grpc server")
-		}
 		var g errgroup.Group
 		g.Go(func() error {
-			err = http.StartServer(srv)
-			if err != nil {
-				fmt.Println("http server error:", err.Error())
+			err = srv.Run()
+			if err != nil && err != http.ErrServerClosed {
+				log.Error().Err(err).Msg("run server error")
+				return err
 			}
-			return err
+			return nil
 		})
 		g.Go(func() error {
-			err := grpcs.StartServer(grpcsrv, internalsRepo.ListenGrpc)
+			// Wait for interrupt signal to gracefully shutdown the server with
+			// a timeout of 5 seconds.
+			quit := make(chan os.Signal, 1)
+			// kill (no param) default send syscanll.SIGTERM
+			// kill -2 is syscall.SIGINT
+			// kill -9 is syscall. SIGKILL but can"t be catch, so don't need add it
+			signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+			<-quit
+			fmt.Print("\r")
+			log.Info().Msg("shutdown server on signal")
+			// TODO: add shutdown timeout app option
+			ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
+			defer cancel()
+			err := srv.Shutdown(ctx)
 			if err != nil {
-				fmt.Println("grpc server error:", err.Error())
+				log.Error().Err(err).Msg("server shutdown error")
 			}
-			return err
+			log.Info().Msg("http server gracefuly shutdown")
+			return nil
 		})
 		g.Wait()
 		fmt.Println("jwtis finished work")

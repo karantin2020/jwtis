@@ -1,4 +1,4 @@
-package serverpb
+package server
 
 import (
 	// errpb "github.com/karantin2020/errorpb"
@@ -45,8 +45,8 @@ func (j *JWTISServer) GetDescription() transport.ServiceDesc {
 }
 
 // NewJWTISServer returns new pb.JWTISServer instance
-func NewJWTISServer(listen string, keysRepo *jwtis.KeysRepository,
-	zlog *zerolog.Logger, contEnc jose.ContentEncryption) (pb.JWTISServer, error) {
+func NewJWTISServer(listen, listenGrpc string, keysRepo *jwtis.KeysRepository,
+	zlog *zerolog.Logger, contEnc jose.ContentEncryption) (*JWTISServer, error) {
 	log = zlog.With().Str("c", "server").Logger()
 	keySrvc, err := keyservice.New(keysRepo, zlog)
 	if err != nil {
@@ -59,19 +59,34 @@ func NewJWTISServer(listen string, keysRepo *jwtis.KeysRepository,
 		return nil, fmt.Errorf("error creating key service: %s", err.Error())
 	}
 	j := &JWTISServer{khg: keySrvc, jhg: jwtSrvc}
-	j.Prepare(listen)
+	j.Prepare(listen, listenGrpc)
 	return j, nil
 }
 
-// Prepare preconfigures server
-func (j *JWTISServer) Prepare(listen string) error {
-	host, portstr, err := net.SplitHostPort(listen)
+func parseAddr(addr string) (string, int, error) {
+	host, portstr, err := net.SplitHostPort(addr)
 	if err != nil {
-		return fmt.Errorf("error prepare server: %s", err.Error())
+		return "", 0, fmt.Errorf("error parse http addr: %s", err.Error())
 	}
 	port, err := strconv.Atoi(portstr)
 	if err != nil {
+		return "", 0, fmt.Errorf("error parse grpc addr: %s", err.Error())
+	}
+	return host, port, nil
+}
+
+// Prepare preconfigures server
+func (j *JWTISServer) Prepare(listen, listenGrpc string) error {
+	httpHost, httpPort, err := parseAddr(listen)
+	if err != nil {
 		return fmt.Errorf("error prepare server: %s", err.Error())
+	}
+	grpcHost, grpcPort, err := parseAddr(listenGrpc)
+	if err != nil {
+		return fmt.Errorf("error prepare server: %s", err.Error())
+	}
+	if httpHost != grpcHost {
+		return fmt.Errorf("error prepare server, bad server addrs")
 	}
 	hmux := chi.NewRouter()
 	j.httpSrv = &http.Server{
@@ -86,9 +101,9 @@ func (j *JWTISServer) Prepare(listen string) error {
 	j.grpcSrv = grpc.NewServer(grpc.UnaryInterceptor(mw))
 
 	j.claySrv = server.NewServer(
-		40345,
-		server.WithHost(host),
-		server.WithHTTPPort(port),
+		grpcPort,
+		server.WithHost(httpHost),
+		server.WithHTTPPort(httpPort),
 		server.WithHTTPMux(hmux),
 		server.WithHTTPServer(j.httpSrv),
 		server.WithGRPCServer(j.grpcSrv),

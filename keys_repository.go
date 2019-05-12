@@ -204,11 +204,19 @@ func (p *KeysRepository) NewKey(kid string, opts *DefaultOptions) (SigEncKeys, e
 	s := p.defSigOptions
 	e := p.defEncOptions
 	now := time.Now()
-	if opts != nil {
+	if opts.SigAlg != "" {
 		s.Alg = opts.SigAlg
+	}
+	if opts.SigBits != 0 {
 		s.Bits = opts.SigBits
+	}
+	if opts.EncAlg != "" {
 		e.Alg = opts.EncAlg
+	}
+	if opts.EncBits != 0 {
 		e.Bits = opts.EncBits
+	}
+	if int64(opts.Expiry) != 0 {
 		privKeys.Expiry = jwt.NumericDate(now.Add(opts.Expiry).Unix())
 	} else {
 		privKeys.Expiry = jwt.NumericDate(now.Add(p.DefaultOptions.Expiry).Unix())
@@ -221,13 +229,18 @@ func (p *KeysRepository) NewKey(kid string, opts *DefaultOptions) (SigEncKeys, e
 	if err != nil {
 		return SigEncKeys{}, fmt.Errorf("error generating enc keys: %s", err.Error())
 	}
-	if opts != nil {
+	if int64(opts.AuthTTL) != 0 {
 		privKeys.AuthTTL = opts.AuthTTL
-		privKeys.RefreshTTL = opts.RefreshTTL
-		privKeys.RefreshStrategy = opts.RefreshStrategy
 	} else {
 		privKeys.AuthTTL = p.DefaultOptions.AuthTTL
+	}
+	if int64(opts.RefreshTTL) != 0 {
+		privKeys.RefreshTTL = opts.RefreshTTL
+	} else {
 		privKeys.RefreshTTL = p.DefaultOptions.RefreshTTL
+	}
+	if opts.RefreshStrategy != "" {
+		privKeys.RefreshStrategy = opts.RefreshStrategy
 	}
 	return p.AddKey(privKeys)
 }

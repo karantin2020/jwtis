@@ -1,4 +1,4 @@
-package serverpb
+package server
 
 import (
 	"context"
@@ -15,11 +15,13 @@ import (
 func (j *JWTISServer) NewJWT(ctx context.Context,
 	req *pb.NewTokenRequest) (*pb.TokenResponse, error) {
 	claims := make(map[string]interface{})
-	if err := json.Unmarshal(req.Claims, &claims); err != nil {
-		return nil, errpb.New(codes.InvalidArgument,
-			"invalid request data",
-			"request body must be valid json and correspond to "+
-				"NewTokenRequest{} structure, atleast kid must be provided")
+	if req.Claims != "" && req.Claims != "{}" {
+		if err := json.Unmarshal([]byte(req.Claims), &claims); err != nil {
+			return nil, errpb.New(codes.InvalidArgument,
+				"invalid request data",
+				"request body must be valid json and correspond to "+
+					"NewTokenRequest{} structure, atleast kid must be provided")
+		}
 	}
 
 	// Must validate request data

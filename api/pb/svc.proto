@@ -25,14 +25,14 @@ option (grpc.gateway.protoc_gen_swagger.options.openapiv2_swagger) = {
 // NewTokenRequest contains new token info
 message NewTokenRequest {
   string kid    = 1 [(gogoproto.jsontag) = "kid"];
-  bytes  claims = 2 [(gogoproto.jsontag) = "claims"];
+  string  claims = 2 [(gogoproto.jsontag) = "claims,omitempty"];
 };
 
 // RenewTokenRequest contains renew token info
 message RenewTokenRequest {
   string kid             = 1 [(gogoproto.jsontag) = "kid"];
   string refreshToken    = 2 [(gogoproto.jsontag) = "refreshToken"];
-  string refreshStrategy = 3 [(gogoproto.jsontag) = "refreshStrategy"];
+  string refreshStrategy = 3 [(gogoproto.jsontag) = "refreshStrategy,omitempty"];
 };
 
 // TokenResponse is sent for any token request
@@ -76,20 +76,20 @@ message Token {
 // RegisterClientRequest sent to jwtis to register new client
 message RegisterClientRequest {
   string kid     = 1 [(gogoproto.jsontag) = "kid"];
-	int64  expiry  = 2 [(gogoproto.jsontag) = "expiry"];
+	int64  expiry  = 2 [(gogoproto.jsontag) = "expiry,omitempty"];
 
-	string sigAlg  = 3 [(gogoproto.jsontag) = "sig_alg"];
-	int32  sigBits = 4    [(gogoproto.jsontag) = "sig_bits"];
-	string encAlg  = 5 [(gogoproto.jsontag) = "enc_alg"];
-	int32  encBits = 6    [(gogoproto.jsontag) = "enc_bits"];
+	string sigAlg  = 3 [(gogoproto.jsontag) = "sig_alg,omitempty"];
+	int32  sigBits = 4    [(gogoproto.jsontag) = "sig_bits,omitempty"];
+	string encAlg  = 5 [(gogoproto.jsontag) = "enc_alg,omitempty"];
+	int32  encBits = 6    [(gogoproto.jsontag) = "enc_bits,omitempty"];
 
-	int64 authTTL    = 7 [(gogoproto.jsontag) = "auth_ttl"];
-	int64 refreshTTL = 8 [(gogoproto.jsontag) = "refresh_ttl"];
+	int64 authTTL    = 7 [(gogoproto.jsontag) = "auth_ttl,omitempty"];
+	int64 refreshTTL = 8 [(gogoproto.jsontag) = "refresh_ttl,omitempty"];
 
 	// RefreshStrategy is used in RenewJWT to decide wheather to issue new refresh token
 	// with access token or not
 	// this option applies to all renewJWT requests
-	string refreshStrategy = 9 [(gogoproto.jsontag) = "refresh_strategy"];
+	string refreshStrategy = 9 [(gogoproto.jsontag) = "refresh_strategy,omitempty"];
 }
 
 // RegisterClientResponse sent to client after it's registration
@@ -196,7 +196,7 @@ service JWTIS {
     };
     rpc Register(RegisterClientRequest) returns (RegisterClientResponse) {
       option (google.api.http) = {
-        post: "/api/v1/register/{kid}"
+        post: "/api/v1/register"
         body: "*"
       };
     };

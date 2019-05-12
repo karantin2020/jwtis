@@ -19,9 +19,11 @@ import (
 	"strings"
 
 	"github.com/go-chi/chi"
+	"github.com/go-chi/render"
 	"github.com/go-openapi/spec"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"github.com/grpc-ecosystem/grpc-gateway/utilities"
+	"github.com/karantin2020/errorpb"
 	"github.com/pkg/errors"
 	"github.com/utrack/clay/transport"
 	"github.com/utrack/clay/transport/httpclient"
@@ -115,10 +117,10 @@ func (d *JWTISDesc) RegisterHTTP(mux transport.Router) {
 
 			if err != nil {
 				if err, ok := err.(httptransport.MarshalerError); ok {
-					httpruntime.SetError(r.Context(), r, w, errors.Wrap(err.Err, "couldn't parse request"))
+					errorpb.WriteError(r, w, errors.Wrap(err.Err, "couldn't parse request"))
 					return
 				}
-				httpruntime.SetError(r.Context(), r, w, err)
+				errorpb.WriteError(r, w, err)
 				return
 			}
 
@@ -127,13 +129,7 @@ func (d *JWTISDesc) RegisterHTTP(mux transport.Router) {
 				return
 			}
 
-			_, outbound := httpruntime.MarshalerForRequest(r)
-			w.Header().Set("Content-Type", outbound.ContentType())
-			err = outbound.Marshal(w, rsp)
-			if err != nil {
-				httpruntime.SetError(r.Context(), r, w, errors.Wrap(err, "couldn't write response"))
-				return
-			}
+			render.JSON(w, r, rsp)
 		})
 
 		h = httpmw.DefaultChain(h)
@@ -162,10 +158,10 @@ func (d *JWTISDesc) RegisterHTTP(mux transport.Router) {
 
 			if err != nil {
 				if err, ok := err.(httptransport.MarshalerError); ok {
-					httpruntime.SetError(r.Context(), r, w, errors.Wrap(err.Err, "couldn't parse request"))
+					errorpb.WriteError(r, w, errors.Wrap(err.Err, "couldn't parse request"))
 					return
 				}
-				httpruntime.SetError(r.Context(), r, w, err)
+				errorpb.WriteError(r, w, err)
 				return
 			}
 
@@ -174,13 +170,7 @@ func (d *JWTISDesc) RegisterHTTP(mux transport.Router) {
 				return
 			}
 
-			_, outbound := httpruntime.MarshalerForRequest(r)
-			w.Header().Set("Content-Type", outbound.ContentType())
-			err = outbound.Marshal(w, rsp)
-			if err != nil {
-				httpruntime.SetError(r.Context(), r, w, errors.Wrap(err, "couldn't write response"))
-				return
-			}
+			render.JSON(w, r, rsp)
 		})
 
 		h = httpmw.DefaultChain(h)
@@ -199,7 +189,7 @@ func (d *JWTISDesc) RegisterHTTP(mux transport.Router) {
 	}
 
 	{
-		// Handler for Register, binding: POST /api/v1/register/{kid}
+		// Handler for Register, binding: POST /api/v1/register
 		var h http.HandlerFunc
 		h = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			defer r.Body.Close()
@@ -209,10 +199,10 @@ func (d *JWTISDesc) RegisterHTTP(mux transport.Router) {
 
 			if err != nil {
 				if err, ok := err.(httptransport.MarshalerError); ok {
-					httpruntime.SetError(r.Context(), r, w, errors.Wrap(err.Err, "couldn't parse request"))
+					errorpb.WriteError(r, w, errors.Wrap(err.Err, "couldn't parse request"))
 					return
 				}
-				httpruntime.SetError(r.Context(), r, w, err)
+				errorpb.WriteError(r, w, err)
 				return
 			}
 
@@ -221,13 +211,7 @@ func (d *JWTISDesc) RegisterHTTP(mux transport.Router) {
 				return
 			}
 
-			_, outbound := httpruntime.MarshalerForRequest(r)
-			w.Header().Set("Content-Type", outbound.ContentType())
-			err = outbound.Marshal(w, rsp)
-			if err != nil {
-				httpruntime.SetError(r.Context(), r, w, errors.Wrap(err, "couldn't write response"))
-				return
-			}
+			render.JSON(w, r, rsp)
 		})
 
 		h = httpmw.DefaultChain(h)
@@ -235,7 +219,13 @@ func (d *JWTISDesc) RegisterHTTP(mux transport.Router) {
 		if isChi {
 			chiMux.Method("POST", pattern_goclay_JWTIS_Register_0, h)
 		} else {
-			panic("query URI params supported only for chi.Router")
+			mux.Handle(pattern_goclay_JWTIS_Register_0, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.Method != "POST" {
+					w.WriteHeader(http.StatusMethodNotAllowed)
+					return
+				}
+				h(w, r)
+			}))
 		}
 	}
 
@@ -250,10 +240,10 @@ func (d *JWTISDesc) RegisterHTTP(mux transport.Router) {
 
 			if err != nil {
 				if err, ok := err.(httptransport.MarshalerError); ok {
-					httpruntime.SetError(r.Context(), r, w, errors.Wrap(err.Err, "couldn't parse request"))
+					errorpb.WriteError(r, w, errors.Wrap(err.Err, "couldn't parse request"))
 					return
 				}
-				httpruntime.SetError(r.Context(), r, w, err)
+				errorpb.WriteError(r, w, err)
 				return
 			}
 
@@ -262,13 +252,7 @@ func (d *JWTISDesc) RegisterHTTP(mux transport.Router) {
 				return
 			}
 
-			_, outbound := httpruntime.MarshalerForRequest(r)
-			w.Header().Set("Content-Type", outbound.ContentType())
-			err = outbound.Marshal(w, rsp)
-			if err != nil {
-				httpruntime.SetError(r.Context(), r, w, errors.Wrap(err, "couldn't write response"))
-				return
-			}
+			render.JSON(w, r, rsp)
 		})
 
 		h = httpmw.DefaultChain(h)
@@ -291,10 +275,10 @@ func (d *JWTISDesc) RegisterHTTP(mux transport.Router) {
 
 			if err != nil {
 				if err, ok := err.(httptransport.MarshalerError); ok {
-					httpruntime.SetError(r.Context(), r, w, errors.Wrap(err.Err, "couldn't parse request"))
+					errorpb.WriteError(r, w, errors.Wrap(err.Err, "couldn't parse request"))
 					return
 				}
-				httpruntime.SetError(r.Context(), r, w, err)
+				errorpb.WriteError(r, w, err)
 				return
 			}
 
@@ -303,13 +287,7 @@ func (d *JWTISDesc) RegisterHTTP(mux transport.Router) {
 				return
 			}
 
-			_, outbound := httpruntime.MarshalerForRequest(r)
-			w.Header().Set("Content-Type", outbound.ContentType())
-			err = outbound.Marshal(w, rsp)
-			if err != nil {
-				httpruntime.SetError(r.Context(), r, w, errors.Wrap(err, "couldn't write response"))
-				return
-			}
+			render.JSON(w, r, rsp)
 		})
 
 		h = httpmw.DefaultChain(h)
@@ -332,10 +310,10 @@ func (d *JWTISDesc) RegisterHTTP(mux transport.Router) {
 
 			if err != nil {
 				if err, ok := err.(httptransport.MarshalerError); ok {
-					httpruntime.SetError(r.Context(), r, w, errors.Wrap(err.Err, "couldn't parse request"))
+					errorpb.WriteError(r, w, errors.Wrap(err.Err, "couldn't parse request"))
 					return
 				}
-				httpruntime.SetError(r.Context(), r, w, err)
+				errorpb.WriteError(r, w, err)
 				return
 			}
 
@@ -344,13 +322,7 @@ func (d *JWTISDesc) RegisterHTTP(mux transport.Router) {
 				return
 			}
 
-			_, outbound := httpruntime.MarshalerForRequest(r)
-			w.Header().Set("Content-Type", outbound.ContentType())
-			err = outbound.Marshal(w, rsp)
-			if err != nil {
-				httpruntime.SetError(r.Context(), r, w, errors.Wrap(err, "couldn't write response"))
-				return
-			}
+			render.JSON(w, r, rsp)
 		})
 
 		h = httpmw.DefaultChain(h)
@@ -698,19 +670,19 @@ var (
 
 	unmarshaler_goclay_JWTIS_RenewJWT_0_boundParams = &utilities.DoubleArray{Encoding: map[string]int{"": 0}, Base: []int{1, 1, 0}, Check: []int{0, 1, 2}}
 
-	pattern_goclay_JWTIS_Register_0 = "/api/v1/register/{kid}"
+	pattern_goclay_JWTIS_Register_0 = "/api/v1/register"
 
 	pattern_goclay_JWTIS_Register_0_builder = func(in *RegisterClientRequest) string {
 		values := url.Values{}
 
 		u := url.URL{
-			Path:     fmt.Sprintf("/api/v1/register/%v", in.Kid),
+			Path:     fmt.Sprintf("/api/v1/register"),
 			RawQuery: values.Encode(),
 		}
 		return u.String()
 	}
 
-	unmarshaler_goclay_JWTIS_Register_0_boundParams = &utilities.DoubleArray{Encoding: map[string]int{"": 0, "kid": 1}, Base: []int{1, 1, 2, 0, 0}, Check: []int{0, 1, 1, 2, 3}}
+	unmarshaler_goclay_JWTIS_Register_0_boundParams = &utilities.DoubleArray{Encoding: map[string]int{"": 0}, Base: []int{1, 1, 0}, Check: []int{0, 1, 2}}
 
 	pattern_goclay_JWTIS_UpdateKeys_0 = "/api/v1/keys/{kid}"
 
@@ -765,8 +737,7 @@ var (
 				return httpruntime.TransformUnmarshalerError(err)
 			}
 
-			inbound, _ := httpruntime.MarshalerForRequest(r)
-			if err := errors.Wrap(inbound.Unmarshal(r.Body, &req), "couldn't read request JSON"); err != nil {
+			if err := errors.Wrap(render.Decode(r, req), "couldn't read request JSON"); err != nil {
 				return httptransport.NewMarshalerError(httpruntime.TransformUnmarshalerError(err))
 			}
 
@@ -782,8 +753,7 @@ var (
 				return httpruntime.TransformUnmarshalerError(err)
 			}
 
-			inbound, _ := httpruntime.MarshalerForRequest(r)
-			if err := errors.Wrap(inbound.Unmarshal(r.Body, &req), "couldn't read request JSON"); err != nil {
+			if err := errors.Wrap(render.Decode(r, req), "couldn't read request JSON"); err != nil {
 				return httptransport.NewMarshalerError(httpruntime.TransformUnmarshalerError(err))
 			}
 
@@ -799,19 +769,8 @@ var (
 				return httpruntime.TransformUnmarshalerError(err)
 			}
 
-			inbound, _ := httpruntime.MarshalerForRequest(r)
-			if err := errors.Wrap(inbound.Unmarshal(r.Body, &req), "couldn't read request JSON"); err != nil {
+			if err := errors.Wrap(render.Decode(r, req), "couldn't read request JSON"); err != nil {
 				return httptransport.NewMarshalerError(httpruntime.TransformUnmarshalerError(err))
-			}
-
-			rctx := chi.RouteContext(r.Context())
-			if rctx == nil {
-				panic("Only chi router is supported for GETs atm")
-			}
-			for pos, k := range rctx.URLParams.Keys {
-				if err := errors.Wrapf(runtime.PopulateFieldFromPath(req, k, rctx.URLParams.Values[pos]), "can't read '%v' from path", k); err != nil {
-					return httptransport.NewMarshalerError(httpruntime.TransformUnmarshalerError(err))
-				}
 			}
 
 			return nil
@@ -826,8 +785,7 @@ var (
 				return httpruntime.TransformUnmarshalerError(err)
 			}
 
-			inbound, _ := httpruntime.MarshalerForRequest(r)
-			if err := errors.Wrap(inbound.Unmarshal(r.Body, &req), "couldn't read request JSON"); err != nil {
+			if err := errors.Wrap(render.Decode(r, req), "couldn't read request JSON"); err != nil {
 				return httptransport.NewMarshalerError(httpruntime.TransformUnmarshalerError(err))
 			}
 
@@ -875,8 +833,7 @@ var (
 				return httpruntime.TransformUnmarshalerError(err)
 			}
 
-			inbound, _ := httpruntime.MarshalerForRequest(r)
-			if err := errors.Wrap(inbound.Unmarshal(r.Body, &req), "couldn't read request JSON"); err != nil {
+			if err := errors.Wrap(render.Decode(r, req), "couldn't read request JSON"); err != nil {
 				return httptransport.NewMarshalerError(httpruntime.TransformUnmarshalerError(err))
 			}
 
@@ -1040,7 +997,7 @@ var _swaggerDef_api_pb_svc_proto = []byte(`{
         ]
       }
     },
-    "/api/v1/register/{kid}": {
+    "/api/v1/register": {
       "post": {
         "operationId": "Register",
         "responses": {
@@ -1052,12 +1009,6 @@ var _swaggerDef_api_pb_svc_proto = []byte(`{
           }
         },
         "parameters": [
-          {
-            "name": "kid",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
           {
             "name": "body",
             "in": "body",
@@ -1133,8 +1084,7 @@ var _swaggerDef_api_pb_svc_proto = []byte(`{
           "type": "string"
         },
         "claims": {
-          "type": "string",
-          "format": "byte"
+          "type": "string"
         }
       },
       "title": "NewTokenRequest contains new token info"

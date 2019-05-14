@@ -13,6 +13,7 @@ import (
 // useable for authentication
 func (j *JWTISServer) Auth(ctx context.Context,
 	req *pb.AuthRequest) (*pb.AuthReply, error) {
+	log.Info().Msgf("Auth handler: start for kid: '%s'", req.Kid)
 	authJWT, err := j.jhg.AuthJWT(req.Kid)
 	if err != nil {
 		if err == jwtservice.ErrKIDNotExists {

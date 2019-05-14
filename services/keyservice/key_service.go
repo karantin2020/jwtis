@@ -2,6 +2,7 @@ package keyservice
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/karantin2020/jwtis"
 	"github.com/rs/zerolog"
@@ -43,11 +44,14 @@ func (k *KeyService) UpdateKeys(kid string, opts *jwtis.DefaultOptions) (jwtis.S
 	if k == nil {
 		return jwtis.SigEncKeys{}, fmt.Errorf("error in Update: keyservice pointer is nil")
 	}
+	if opts == nil {
+		return jwtis.SigEncKeys{}, fmt.Errorf("error in UpdateKeys; nil opts, nothing to update")
+	}
+	k.mergeUpdateOptions(kid, opts)
 	err := k.keysRepo.DelKey(kid)
 	if err != nil {
 		return jwtis.SigEncKeys{}, fmt.Errorf("error in Update: couldn't delete kid %s: %s", kid, err.Error())
 	}
-	k.checkOptions(opts)
 	return k.keysRepo.NewKey(kid, opts)
 }
 
@@ -96,4 +100,44 @@ func (k *KeyService) checkOptions(opts *jwtis.DefaultOptions) {
 			opts.RefreshStrategy = k.keysRepo.DefaultOptions.RefreshStrategy
 		}
 	}
+}
+
+func (k *KeyService) mergeUpdateOptions(kid string, opts *jwtis.DefaultOptions) error {
+	if opts == nil {
+		return fmt.Errorf("error in mergeUpdateOptions; nil opts, nothing to update")
+	}
+	ok, keysSet, err := k.keysRepo.KeyExists([]byte(kid))
+	if err != nil {
+		return fmt.Errorf("error in mergeUpdateOptions checking key existance: %s", err.Error())
+	}
+
+	if ok {
+		if opts.SigAlg == "" {
+			opts.SigAlg = keysSet.SigOpts.Alg
+		}
+		if opts.SigBits == 0 {
+			opts.SigBits = keysSet.SigOpts.Bits
+		}
+		if opts.EncAlg == "" {
+			opts.EncAlg = keysSet.EncOpts.Alg
+		}
+		if opts.EncBits == 0 {
+			opts.EncBits = keysSet.EncOpts.Bits
+		}
+		if opts.Expiry == 0 {
+			opts.Expiry = time.Until(keysSet.Expiry.Time())
+		}
+		if opts.AuthTTL == 0 {
+			opts.AuthTTL = keysSet.AuthTTL
+		}
+		if opts.RefreshTTL == 0 {
+			opts.RefreshTTL = keysSet.RefreshTTL
+		}
+		if opts.RefreshStrategy == "" {
+			opts.RefreshStrategy = keysSet.RefreshStrategy
+		}
+		return nil
+	}
+	k.checkOptions(opts)
+	return nil
 }

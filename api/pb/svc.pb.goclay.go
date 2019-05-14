@@ -128,7 +128,7 @@ func (d *JWTISDesc) RegisterHTTP(mux transport.Router) {
 				w.WriteHeader(499) // Client Closed Request
 				return
 			}
-
+			w.WriteHeader(http.StatusCreated)
 			render.JSON(w, r, rsp)
 		})
 
@@ -210,7 +210,7 @@ func (d *JWTISDesc) RegisterHTTP(mux transport.Router) {
 				w.WriteHeader(499) // Client Closed Request
 				return
 			}
-
+			w.WriteHeader(http.StatusCreated)
 			render.JSON(w, r, rsp)
 		})
 
@@ -286,7 +286,7 @@ func (d *JWTISDesc) RegisterHTTP(mux transport.Router) {
 				w.WriteHeader(499) // Client Closed Request
 				return
 			}
-
+			w.WriteHeader(http.StatusNoContent)
 			render.JSON(w, r, rsp)
 		})
 
@@ -331,6 +331,47 @@ func (d *JWTISDesc) RegisterHTTP(mux transport.Router) {
 			chiMux.Method("POST", pattern_goclay_JWTIS_PublicKeys_0, h)
 		} else {
 			panic("query URI params supported only for chi.Router")
+		}
+	}
+
+	{
+		// Handler for Auth, binding: POST /api/v1/auth
+		var h http.HandlerFunc
+		h = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			defer r.Body.Close()
+
+			unmFunc := unmarshaler_goclay_JWTIS_Auth_0(r)
+			rsp, err := _JWTIS_Auth_Handler(d.svc, r.Context(), unmFunc, d.opts.UnaryInterceptor)
+
+			if err != nil {
+				if err, ok := err.(httptransport.MarshalerError); ok {
+					errorpb.WriteError(r, w, errors.Wrap(err.Err, "couldn't parse request"))
+					return
+				}
+				errorpb.WriteError(r, w, err)
+				return
+			}
+
+			if ctxErr := r.Context().Err(); ctxErr != nil && ctxErr == context.Canceled {
+				w.WriteHeader(499) // Client Closed Request
+				return
+			}
+
+			render.JSON(w, r, rsp)
+		})
+
+		h = httpmw.DefaultChain(h)
+
+		if isChi {
+			chiMux.Method("POST", pattern_goclay_JWTIS_Auth_0, h)
+		} else {
+			mux.Handle(pattern_goclay_JWTIS_Auth_0, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.Method != "POST" {
+					w.WriteHeader(http.StatusMethodNotAllowed)
+					return
+				}
+				h(w, r)
+			}))
 		}
 	}
 
@@ -640,6 +681,55 @@ func (c *JWTIS_httpClient) PublicKeys(ctx context.Context, in *PubKeysRequest, o
 	return ret, errors.Wrap(err, "can't unmarshal response")
 }
 
+func (c *JWTIS_httpClient) Auth(ctx context.Context, in *AuthRequest, opts ...grpc.CallOption) (*AuthReply, error) {
+	mw, err := httpclient.NewMiddlewareGRPC(opts)
+	if err != nil {
+		return nil, err
+	}
+
+	path := pattern_goclay_JWTIS_Auth_0_builder(in)
+
+	buf := bytes.NewBuffer(nil)
+
+	m := httpruntime.DefaultMarshaler(nil)
+
+	if err = m.Marshal(buf, in); err != nil {
+		return nil, errors.Wrap(err, "can't marshal request")
+	}
+
+	req, err := http.NewRequest("POST", c.host+path, buf)
+	if err != nil {
+		return nil, errors.Wrap(err, "can't initiate HTTP request")
+	}
+	req = req.WithContext(ctx)
+
+	req.Header.Add("Accept", m.ContentType())
+
+	req, err = mw.ProcessRequest(req)
+	if err != nil {
+		return nil, err
+	}
+	rsp, err := c.c.Do(req)
+	if err != nil {
+		return nil, errors.Wrap(err, "error from client")
+	}
+	defer rsp.Body.Close()
+
+	rsp, err = mw.ProcessResponse(rsp)
+	if err != nil {
+		return nil, err
+	}
+
+	if rsp.StatusCode >= 400 {
+		b, _ := ioutil.ReadAll(rsp.Body)
+		return nil, errors.Errorf("%v %v: server returned HTTP %v: '%v'", req.Method, req.URL.String(), rsp.StatusCode, string(b))
+	}
+
+	ret := &AuthReply{}
+	err = m.Unmarshal(rsp.Body, ret)
+	return ret, errors.Wrap(err, "can't unmarshal response")
+}
+
 // patterns for JWTIS
 var (
 	pattern_goclay_JWTIS_NewJWT_0 = "/api/v1/newjwt"
@@ -725,6 +815,20 @@ var (
 	}
 
 	unmarshaler_goclay_JWTIS_PublicKeys_0_boundParams = &utilities.DoubleArray{Encoding: map[string]int{"": 0, "kid": 1}, Base: []int{1, 1, 2, 0, 0}, Check: []int{0, 1, 1, 2, 3}}
+
+	pattern_goclay_JWTIS_Auth_0 = "/api/v1/auth"
+
+	pattern_goclay_JWTIS_Auth_0_builder = func(in *AuthRequest) string {
+		values := url.Values{}
+
+		u := url.URL{
+			Path:     fmt.Sprintf("/api/v1/auth"),
+			RawQuery: values.Encode(),
+		}
+		return u.String()
+	}
+
+	unmarshaler_goclay_JWTIS_Auth_0_boundParams = &utilities.DoubleArray{Encoding: map[string]int{"": 0}, Base: []int{1, 1, 0}, Check: []int{0, 1, 2}}
 )
 
 // marshalers for JWTIS
@@ -850,6 +954,22 @@ var (
 			return nil
 		}
 	}
+
+	unmarshaler_goclay_JWTIS_Auth_0 = func(r *http.Request) func(interface{}) error {
+		return func(rif interface{}) error {
+			req := rif.(*AuthRequest)
+
+			if err := errors.Wrap(runtime.PopulateQueryParameters(req, r.URL.Query(), unmarshaler_goclay_JWTIS_Auth_0_boundParams), "couldn't populate query parameters"); err != nil {
+				return httpruntime.TransformUnmarshalerError(err)
+			}
+
+			if err := errors.Wrap(render.Decode(r, req), "couldn't read request JSON"); err != nil {
+				return httptransport.NewMarshalerError(httpruntime.TransformUnmarshalerError(err))
+			}
+
+			return nil
+		}
+	}
 )
 
 var _swaggerDef_api_pb_svc_proto = []byte(`{
@@ -873,6 +993,33 @@ var _swaggerDef_api_pb_svc_proto = []byte(`{
     "application/json"
   ],
   "paths": {
+    "/api/v1/auth": {
+      "post": {
+        "summary": "Auth takes in AppToken jwt (bundled into the binary) and returns a AuthToken jwt,\nuseable for authentication",
+        "operationId": "Auth",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/jwtispbAuthReply"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/jwtispbAuthRequest"
+            }
+          }
+        ],
+        "tags": [
+          "JWTIS"
+        ]
+      }
+    },
     "/api/v1/keys/{kid}": {
       "delete": {
         "operationId": "DelKeys",
@@ -1073,6 +1220,25 @@ var _swaggerDef_api_pb_svc_proto = []byte(`{
     }
   },
   "definitions": {
+    "jwtispbAuthReply": {
+      "type": "object",
+      "properties": {
+        "authJWT": {
+          "type": "string",
+          "title": "JWT that can be used for authz"
+        }
+      },
+      "title": "AuthReply contains auth jwt"
+    },
+    "jwtispbAuthRequest": {
+      "type": "object",
+      "properties": {
+        "kid": {
+          "type": "string"
+        }
+      },
+      "title": "AuthRequest is sent by Auth method"
+    },
     "jwtispbDelKeysResponse": {
       "type": "object",
       "title": "DelKeysResponse as empty struct"
@@ -1111,6 +1277,14 @@ var _swaggerDef_api_pb_svc_proto = []byte(`{
         "pubEncKey": {
           "type": "string",
           "format": "byte"
+        },
+        "expiry": {
+          "type": "string",
+          "format": "int64"
+        },
+        "valid": {
+          "type": "boolean",
+          "format": "boolean"
         }
       },
       "title": "PubKeysResponse holds public keys"

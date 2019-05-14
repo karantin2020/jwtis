@@ -15,7 +15,7 @@ var testaddr = "127.0.0.1:40430"
 func TestNew(t *testing.T) {
 	type args struct {
 		id     string
-		clOpts ClientOpts
+		clOpts Opts
 		conn   *grpc.ClientConn
 		opts   []grpc.CallOption
 	}
@@ -42,7 +42,7 @@ func TestClient_Register(t *testing.T) {
 	}
 	c := &Client{
 		cfg: Config{
-			ID: "test6",
+			ID: "test13",
 		},
 		grpcOpts:     []grpc.CallOption{},
 		client:       pb.NewJWTISClient(conn),

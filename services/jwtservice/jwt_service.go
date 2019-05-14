@@ -71,7 +71,7 @@ func (s *JWTService) NewJWT(kid string, claims map[string]interface{}) (*JWTPair
 		return nil, fmt.Errorf("error in NewJWT: %s", err.Error())
 	}
 	if !ok {
-		log.Info().Err(err).Bool("ok", ok).Msgf("key exists response: '%#v'", *jwtset)
+		log.Error().Err(err).Bool("ok", ok).Msgf("error in NewJWT: keys with kid '%s' don't exist", kid)
 		return nil, ErrKIDNotExists
 	}
 
@@ -184,11 +184,11 @@ func (s *JWTService) RenewJWT(kid, refresh, refreshStrategy string) (*JWTPair, e
 		case jwt.NumericDate:
 			nExp = tExp
 		default:
-			mErr.Append(fmt.Errorf("error in JWT token exp type assertion"))
+			mErr.Append(fmt.Errorf("error in renewJWT: token exp type assertion"))
 		}
 	}
 	if nExp == 0 {
-		mErr.Append(fmt.Errorf("zero value of exp claim"))
+		mErr.Append(fmt.Errorf("error in renewJWT: zero value of exp claim"))
 	}
 	if time.Now().After(time.Unix(int64(nExp), 0)) {
 		return nil, ErrRefreshTokenExpired
@@ -207,14 +207,14 @@ func (s *JWTService) RenewJWT(kid, refresh, refreshStrategy string) (*JWTPair, e
 	claimsMap["exp"] = jwt.NewNumericDate(time.Now().Add(ttl[0]))
 	auth, err := jwtis.JWTSigned(&jwtset.Sig, claimsMap)
 	if err != nil {
-		return nil, fmt.Errorf("error in RenewJWT auth token: %s", err.Error())
+		return nil, fmt.Errorf("error in RenewJWT: auth token: %s", err.Error())
 	}
 
 	if jwtset.RefreshStrategy == StrategyRefreshBoth || refreshStrategy == StrategyRefreshBoth {
 		claimsMap["exp"] = jwt.NewNumericDate(time.Now().Add(ttl[1]))
 		refresh, err = jwtis.JWTSignedAndEncrypted(s.defContEnc, &jwtset.Enc, &jwtset.Sig, claimsMap)
 		if err != nil {
-			return nil, fmt.Errorf("error in RenewJWT refresh token: %s", err.Error())
+			return nil, fmt.Errorf("error in RenewJWT: refresh token: %s", err.Error())
 		}
 	}
 	if jwtset.RefreshStrategy == StrategyRefreshOnExpire || refreshStrategy == StrategyRefreshOnExpire {
@@ -222,7 +222,7 @@ func (s *JWTService) RenewJWT(kid, refresh, refreshStrategy string) (*JWTPair, e
 			claimsMap["exp"] = jwt.NewNumericDate(time.Now().Add(ttl[1]))
 			refresh, err = jwtis.JWTSignedAndEncrypted(s.defContEnc, &jwtset.Enc, &jwtset.Sig, claimsMap)
 			if err != nil {
-				return nil, fmt.Errorf("error in RenewJWT refresh token: %s", err.Error())
+				return nil, fmt.Errorf("error in RenewJWT: refresh token: %s", err.Error())
 			}
 		}
 	}
@@ -237,48 +237,78 @@ func (s *JWTService) RenewJWT(kid, refresh, refreshStrategy string) (*JWTPair, e
 	return res, nil
 }
 
-func (s *JWTService) newTokenPair(privKeys *jwtis.SigEncKeys, claims map[string]interface{},
-	ttl ...time.Duration) (*JWTPair, error) {
-	if len(ttl) < 2 {
-		return nil, fmt.Errorf("jwtservice internal error: invalid ttl array in create token pair")
-	}
-	id := claims["jti"]
-	// define jwt issued at field
-	claims["iat"] = jwt.NewNumericDate(time.Now())
-	// define jwt not before; equal to issued at field
-	claims["nbf"] = claims["iat"]
-	var exp jwt.NumericDate
-	if vexp, ok := claims["exp"]; !ok {
-		exp = jwt.NumericDate(time.Now().Add(ttl[0] * time.Second).Unix())
-	} else {
-		switch tExp := vexp.(type) {
-		case float64:
-			exp = jwt.NumericDate(tExp)
-		case int64:
-			exp = jwt.NumericDate(tExp)
-		case int:
-			exp = jwt.NumericDate(tExp)
-		case jwt.NumericDate:
-			exp = tExp
-		default:
-			return nil, fmt.Errorf("error in JWT token exp type assertion")
-		}
-	}
-	claims["exp"] = exp
-	auth, err := jwtis.JWTSigned(privKeys.Sig, claims)
+// TODO: Delete old code
+// func (s *JWTService) newTokenPair(privKeys *jwtis.SigEncKeys, claims map[string]interface{},
+// 	ttl ...time.Duration) (*JWTPair, error) {
+// 	if len(ttl) < 2 {
+// 		return nil, fmt.Errorf("jwtservice internal error: invalid ttl array in create token pair")
+// 	}
+// 	id := claims["jti"]
+// 	// define jwt issued at field
+// 	claims["iat"] = jwt.NewNumericDate(time.Now())
+// 	// define jwt not before; equal to issued at field
+// 	claims["nbf"] = claims["iat"]
+// 	var exp jwt.NumericDate
+// 	if vexp, ok := claims["exp"]; !ok {
+// 		exp = jwt.NumericDate(time.Now().Add(ttl[0] * time.Second).Unix())
+// 	} else {
+// 		switch tExp := vexp.(type) {
+// 		case float64:
+// 			exp = jwt.NumericDate(tExp)
+// 		case int64:
+// 			exp = jwt.NumericDate(tExp)
+// 		case int:
+// 			exp = jwt.NumericDate(tExp)
+// 		case jwt.NumericDate:
+// 			exp = tExp
+// 		default:
+// 			return nil, fmt.Errorf("error in JWT token exp type assertion")
+// 		}
+// 	}
+// 	claims["exp"] = exp
+// 	auth, err := jwtis.JWTSigned(privKeys.Sig, claims)
+// 	if err != nil {
+// 		return nil, fmt.Errorf("error in JWT auth token: %s", err.Error())
+// 	}
+// 	claims["exp"] = jwt.NumericDate(time.Now().Add(ttl[1] * time.Second).Unix())
+// 	refresh, err := jwtis.JWTSignedAndEncrypted(s.defContEnc, privKeys.Enc, privKeys.Sig, claims)
+// 	if err != nil {
+// 		return nil, fmt.Errorf("error in JWT refresh token: %s", err.Error())
+// 	}
+// 	res := &JWTPair{
+// 		ID:           id.(string),
+// 		AccessToken:  auth,
+// 		RefreshToken: refresh,
+// 		Expiry:       exp,
+// 	}
+// 	return res, nil
+// }
+
+// AuthJWT returns auth jwt
+func (s *JWTService) AuthJWT(kid string) (string, error) {
+	log.Info().Msgf("jwt service creating auth JWT for kid '%s'", kid)
+	ok, _, err := s.keysRepo.KeyExists([]byte(kid))
 	if err != nil {
-		return nil, fmt.Errorf("error in JWT auth token: %s", err.Error())
+		return "", fmt.Errorf("error in AuthJWT: %s", err.Error())
 	}
-	claims["exp"] = jwt.NumericDate(time.Now().Add(ttl[1] * time.Second).Unix())
-	refresh, err := jwtis.JWTSignedAndEncrypted(s.defContEnc, privKeys.Enc, privKeys.Sig, claims)
+	if !ok {
+		log.Error().Err(err).Bool("ok", ok).Msgf("error in AuthJWT: keys with kid '%s' don't exist", kid)
+		return "", ErrKIDNotExists
+	}
+
+	privKeys, err := s.keysRepo.GetPrivateKeys(kid)
 	if err != nil {
-		return nil, fmt.Errorf("error in JWT refresh token: %s", err.Error())
+		return "", fmt.Errorf("error in AuthJWT get private keys: %s", err.Error())
 	}
-	res := &JWTPair{
-		ID:           id.(string),
-		AccessToken:  auth,
-		RefreshToken: refresh,
-		Expiry:       exp,
+
+	claims := make(map[string]interface{})
+	claims["kid"] = kid
+	claims["iss"] = "JWTIS"
+	authJWT, err := jwtis.JWTSigned(privKeys.Sig, claims)
+	if err != nil {
+		log.Error().Err(err).Msg("error in AuthJWT: sign error")
+		return "", fmt.Errorf("error in AuthJWT: %s", err.Error())
 	}
-	return res, nil
+
+	return authJWT, nil
 }

@@ -50,7 +50,7 @@ func main() {
 		var err error
 		log = logger("")
 		if err = confRepo.validate(); err != nil {
-			fmt.Printf("error validating flags:\n%s\n", err)
+			log.Error().Err(err).Msg("error validating flags")
 			app.PrintLongHelp()
 			cli.Exit(1)
 		}

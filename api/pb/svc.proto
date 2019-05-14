@@ -25,7 +25,7 @@ option (grpc.gateway.protoc_gen_swagger.options.openapiv2_swagger) = {
 // NewTokenRequest contains new token info
 message NewTokenRequest {
   string kid    = 1 [(gogoproto.jsontag) = "kid"];
-  string  claims = 2 [(gogoproto.jsontag) = "claims,omitempty"];
+  string claims = 2 [(gogoproto.jsontag) = "claims,omitempty"];
 };
 
 // RenewTokenRequest contains renew token info
@@ -75,13 +75,13 @@ message Token {
 
 // RegisterClientRequest sent to jwtis to register new client
 message RegisterClientRequest {
-  string kid     = 1 [(gogoproto.jsontag) = "kid"];
-	int64  expiry  = 2 [(gogoproto.jsontag) = "expiry,omitempty"];
+  string kid       = 1 [(gogoproto.jsontag) = "kid"];
+	int64  expiry    = 2 [(gogoproto.jsontag) = "expiry,omitempty"];
 
-	string sigAlg  = 3 [(gogoproto.jsontag) = "sig_alg,omitempty"];
-	int32  sigBits = 4    [(gogoproto.jsontag) = "sig_bits,omitempty"];
-	string encAlg  = 5 [(gogoproto.jsontag) = "enc_alg,omitempty"];
-	int32  encBits = 6    [(gogoproto.jsontag) = "enc_bits,omitempty"];
+	string sigAlg    = 3 [(gogoproto.jsontag) = "sig_alg,omitempty"];
+	int32  sigBits   = 4    [(gogoproto.jsontag) = "sig_bits,omitempty"];
+	string encAlg    = 5 [(gogoproto.jsontag) = "enc_alg,omitempty"];
+	int32  encBits   = 6    [(gogoproto.jsontag) = "enc_bits,omitempty"];
 
 	int64 authTTL    = 7 [(gogoproto.jsontag) = "auth_ttl,omitempty"];
 	int64 refreshTTL = 8 [(gogoproto.jsontag) = "refresh_ttl,omitempty"];
@@ -109,9 +109,11 @@ message PubKeysRequest {
 
 // PubKeysResponse holds public keys
 message PubKeysResponse {
-	string kid = 1 [(gogoproto.jsontag) = "kid"];
+	string kid       = 1 [(gogoproto.jsontag) = "kid"];
 	bytes  pubSigKey = 2 [(gogoproto.jsontag) = "pub_sig_key"];
-	bytes  pubEncKey = 3 [(gogoproto.jsontag) = "pub_enc_key"];
+  bytes  pubEncKey = 3 [(gogoproto.jsontag) = "pub_enc_key"];
+  int64  expiry    = 4 [(gogoproto.jsontag) = "expiry"];
+	bool   valid     = 5 [(gogoproto.jsontag) = "valid"];
 }
 
 // DelKeysRequest with kid field
@@ -121,6 +123,29 @@ message DelKeysRequest {
 
 // DelKeysResponse as empty struct
 message DelKeysResponse {}
+
+// AuthRequest is sent by Auth method
+message AuthRequest {
+  string kid = 1 [(gogoproto.jsontag) = "kid"];
+}
+
+// AuthReply contains auth jwt 
+message AuthReply {
+  // JWT that can be used for authz
+  string authJWT = 1 [(gogoproto.jsontag) = "auth_jwt"];
+}
+
+// AppToken is JWT app token for JWTIS
+message AppToken {
+  string kid  = 1 [(gogoproto.jsontag) = "kid"];
+  string kind = 2 [(gogoproto.jsontag) = "kind"];
+}
+
+// AuthToken is JWT session token for JWTIS
+message AuthToken {
+  string kid  = 1 [(gogoproto.jsontag) = "kid"];
+  string kind = 2 [(gogoproto.jsontag) = "kind"];
+}
 
 service JWTIS {
     // NewJWT is called to issue new jwt token
@@ -215,6 +240,14 @@ service JWTIS {
       option (google.api.http) = {
         post: "/api/v1/keys/{kid}"
         body: "*"
+      };
+    }
+    // Auth takes in AppToken jwt (bundled into the binary) and returns a AuthToken jwt,
+    // useable for authentication
+    rpc Auth(AuthRequest) returns (AuthReply) {
+      option (google.api.http) = {
+          post: "/api/v1/auth"
+          body: "*"
       };
     }
 };

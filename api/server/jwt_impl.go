@@ -29,18 +29,18 @@ func (j *JWTISServer) NewJWT(ctx context.Context,
 	tokens, err := j.jhg.NewJWT(req.Kid, claims)
 	if err != nil {
 		if err == jwtservice.ErrKIDNotExists {
-			// log.Error().Err(err).Msgf("error creating new JWT for kid '%s': keys not exist", req.Kid)
+			log.Error().Err(err).Msgf("error creating new JWT for kid '%s': keys not exist", req.Kid)
 			return nil, errpb.New(codes.NotFound,
 				"keys not found",
 				"jwt service error, couldn't create new tokens, not found keys; err: "+
 					err.Error())
 		}
-		// log.Error().Err(err).Msgf("error creating new JWT for kid '%s'", req.Kid)
+		log.Error().Err(err).Msgf("error creating new JWT for kid '%s'", req.Kid)
 		return nil, errpb.New(codes.Internal,
 			"internal server error",
 			"jwt service error, couldn't create new tokens; err: "+err.Error())
 	}
-	// log.Info().Msgf("new JWT for kid '%s' with id '%s' was created", req.Kid, tokens.ID)
+	log.Info().Msgf("new JWT for kid '%s' with id '%s' was created", req.Kid, tokens.ID)
 	return &pb.TokenResponse{
 		ID:           tokens.ID,
 		AccessToken:  tokens.AccessToken,
@@ -84,7 +84,7 @@ func (j *JWTISServer) RenewJWT(ctx context.Context,
 					err.Error())
 		}
 	}
-	// log.Info().Msgf("new JWT for kid '%s' with id '%s' was created", req.Kid, tokens.ID)
+	log.Info().Msgf("new JWT for kid '%s' with id '%s' was created", req.Kid, tokens.ID)
 	return &pb.TokenResponse{
 		ID:           tokens.ID,
 		AccessToken:  tokens.AccessToken,

@@ -96,7 +96,10 @@ func JWTSigned(sigkey *jose.JSONWebKey, claims ...interface{}) (string, error) {
 	if sigkey == nil {
 		return "", fmt.Errorf("error in JWTSigned: nil pointer sigkey")
 	}
-	sig, err := jose.NewSigner(jose.SigningKey{Algorithm: jose.SignatureAlgorithm(sigkey.Algorithm), Key: sigkey.Key}, nil)
+	sig, err := jose.NewSigner(jose.SigningKey{
+		Algorithm: jose.SignatureAlgorithm(sigkey.Algorithm),
+		Key:       sigkey.Key,
+	}, (&jose.SignerOptions{}).WithType("JWT"))
 	if err != nil {
 		return "", fmt.Errorf("error make new signer to sign jwt: %s", err.Error())
 	}

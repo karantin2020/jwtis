@@ -35,6 +35,8 @@ type JWTKeysIssuerSet struct {
 	Enc             jose.JSONWebKey // enc private key
 	Sig             jose.JSONWebKey // sig private key
 	Locked          bool            // is this keyset locked for further deletion (lost or other reason)
+	SigOpts         KeyOptions
+	EncOpts         KeyOptions
 	pubEnc          jose.JSONWebKey // enc public key
 	pubSig          jose.JSONWebKey // sig public key
 	invalid         bool
@@ -201,31 +203,31 @@ func (p *KeysRepository) NewKey(kid string, opts *DefaultOptions) (SigEncKeys, e
 	privKeys.KID = []byte(kid)
 	privKeys.Locked = false
 
-	s := p.defSigOptions
-	e := p.defEncOptions
+	privKeys.SigOpts = p.defSigOptions
+	privKeys.EncOpts = p.defEncOptions
 	now := time.Now()
 	if opts.SigAlg != "" {
-		s.Alg = opts.SigAlg
+		privKeys.SigOpts.Alg = opts.SigAlg
 	}
 	if opts.SigBits != 0 {
-		s.Bits = opts.SigBits
+		privKeys.SigOpts.Bits = opts.SigBits
 	}
 	if opts.EncAlg != "" {
-		e.Alg = opts.EncAlg
+		privKeys.EncOpts.Alg = opts.EncAlg
 	}
 	if opts.EncBits != 0 {
-		e.Bits = opts.EncBits
+		privKeys.EncOpts.Bits = opts.EncBits
 	}
 	if int64(opts.Expiry) != 0 {
 		privKeys.Expiry = jwt.NumericDate(now.Add(opts.Expiry).Unix())
 	} else {
 		privKeys.Expiry = jwt.NumericDate(now.Add(p.DefaultOptions.Expiry).Unix())
 	}
-	privKeys.Sig, _, err = GenerateKeys(kid, s)
+	privKeys.Sig, _, err = GenerateKeys(kid, privKeys.SigOpts)
 	if err != nil {
 		return SigEncKeys{}, fmt.Errorf("error generating sig keys: %s", err.Error())
 	}
-	privKeys.Enc, _, err = GenerateKeys(kid, e)
+	privKeys.Enc, _, err = GenerateKeys(kid, privKeys.EncOpts)
 	if err != nil {
 		return SigEncKeys{}, fmt.Errorf("error generating enc keys: %s", err.Error())
 	}
@@ -319,11 +321,20 @@ func (p *KeysRepository) DelKey(kid string) error {
 	defer p.ml.Unlock()
 	if err := p.boltDB.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket(p.bucketName)
+
+		val := b.Get([]byte(kid))
+		if val == nil {
+			return ErrKeyNotFound
+		}
+
 		if err := b.Delete([]byte(kid)); err != nil {
 			return fmt.Errorf("error delete key with kid %s: %s", kid, err.Error())
 		}
 		return nil
 	}); err != nil {
+		if err == ErrKeyNotFound {
+			return err
+		}
 		return fmt.Errorf("error delete keys from repository: %s", err.Error())
 	}
 	delete(p.Keys, kid)
@@ -342,7 +353,7 @@ func (p *KeysRepository) GetPublicKeys(kid string) (SigEncKeys, error) {
 	if key.Expired() {
 		return SigEncKeys{}, ErrKeysExpired
 	}
-	if key.invalid {
+	if !key.Valid() {
 		return SigEncKeys{}, ErrKeysInvalid
 	}
 	pubKeys := SigEncKeys{

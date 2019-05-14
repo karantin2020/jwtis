@@ -2,6 +2,8 @@ package client
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"time"
 
 	// "google.golang.org/grpc/codes"
@@ -25,8 +27,8 @@ type Client struct {
 	PublicEncKey jose.JSONWebKey
 }
 
-// ClientOpts represents struct with default client opts
-type ClientOpts struct {
+// Opts represents struct with default client opts
+type Opts struct {
 	Expiry          time.Duration
 	SigAlg          string
 	SigBits         int32
@@ -42,11 +44,11 @@ type Config struct {
 	// ID is public id of the client used to identify it's key id on JWTIS
 	ID string
 
-	ClientOpts
+	Opts
 }
 
 // New returns new instance of Client
-func New(id string, clOpts ClientOpts,
+func New(id string, clOpts Opts,
 	conn *grpc.ClientConn, opts ...grpc.CallOption) *Client {
 	client := &Client{
 		client:   pb.NewJWTISClient(conn),
@@ -55,13 +57,13 @@ func New(id string, clOpts ClientOpts,
 			ID: id,
 		},
 	}
-	client.cfg.ClientOpts = clOpts
+	client.cfg.Opts = clOpts
 	return client
 }
 
 // Register registers new client  on JWTIS server if it wasn't registered yet
 func (c *Client) Register() (*pb.RegisterClientResponse, error) {
-	return c.client.Register(context.Background(), &pb.RegisterClientRequest{
+	rsp, err := c.client.Register(context.Background(), &pb.RegisterClientRequest{
 		Kid:             c.cfg.ID,
 		Expiry:          int64(c.cfg.Expiry),
 		SigAlg:          c.cfg.SigAlg,
@@ -72,6 +74,20 @@ func (c *Client) Register() (*pb.RegisterClientResponse, error) {
 		RefreshTTL:      int64(c.cfg.RefreshTTL),
 		RefreshStrategy: c.cfg.RefreshStrategy,
 	}, c.grpcOpts...)
+	if err != nil {
+		return nil, fmt.Errorf("error register client %s: %s", c.cfg.ID, err.Error())
+	}
+	err = json.Unmarshal(rsp.PubSigKey, &c.PublicSigKey)
+	if err != nil {
+		return rsp, fmt.Errorf("error register client %s, error unmarshal publicSigKey: %s", c.cfg.ID, err.Error())
+	}
+	err = json.Unmarshal(rsp.PubEncKey, &c.PublicEncKey)
+	if err != nil {
+		return rsp, fmt.Errorf("error register client %s, error unmarshal publicEncKey: %s", c.cfg.ID, err.Error())
+	}
+	c.cfg.Expiry = time.Duration(rsp.Expiry)
+	fmt.Printf("%#v\n", *c)
+	return rsp, err
 }
 
 // PublicKeys returns client public keys
@@ -79,6 +95,15 @@ func (c *Client) PublicKeys() (*pb.PubKeysResponse, error) {
 	return c.client.PublicKeys(context.Background(), &pb.PubKeysRequest{
 		Kid: c.cfg.ID,
 	}, c.grpcOpts...)
+}
+
+// DelKeys deletes JWTIS client with it's kid
+func (c *Client) DelKeys() (*pb.DelKeysResponse, error) {
+	rsp, err := c.client.DelKeys(context.Background(),
+		&pb.DelKeysRequest{
+			Kid: c.cfg.ID,
+		}, c.grpcOpts...)
+	return rsp, err
 }
 
 // NewJWT(ctx context.Context, in *pb.NewTokenRequest, opts ...grpc.CallOption) (*pb.TokenResponse, error)

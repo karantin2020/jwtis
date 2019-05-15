@@ -76,12 +76,12 @@ func (j *JWTISServer) Register(ctx context.Context, req *pb.RegisterClientReques
 	}
 	log.Info().Msgf("registered new client with kid '%s', not expired and valid", req.Kid)
 	return &pb.RegisterClientResponse{
-		Kid:         req.Kid,
-		ClientToken: authJWT,
-		PubSigKey:   pubSig,
-		PubEncKey:   pubEnc,
-		Expiry:      int64(pubKeys.Expiry),
-		Valid:       pubKeys.Valid,
+		Kid:       req.Kid,
+		AuthJWT:   authJWT,
+		PubSigKey: pubSig,
+		PubEncKey: pubEnc,
+		Expiry:    int64(pubKeys.Expiry),
+		Valid:     pubKeys.Valid,
 	}, nil
 }
 
@@ -128,12 +128,12 @@ func (j *JWTISServer) UpdateKeys(ctx context.Context, req *pb.RegisterClientRequ
 	}
 	log.Info().Msgf("updated client with kid '%s', not expired and valid", req.Kid)
 	return &pb.RegisterClientResponse{
-		Kid:         req.Kid,
-		ClientToken: "",
-		PubSigKey:   pubSig,
-		PubEncKey:   pubEnc,
-		Expiry:      int64(pubKeys.Expiry),
-		Valid:       pubKeys.Valid,
+		Kid:       req.Kid,
+		AuthJWT:   "",
+		PubSigKey: pubSig,
+		PubEncKey: pubEnc,
+		Expiry:    int64(pubKeys.Expiry),
+		Valid:     pubKeys.Valid,
 	}, nil
 }
 

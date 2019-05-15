@@ -1334,7 +1334,7 @@ var _swaggerDef_api_pb_svc_proto = []byte(`{
         "kid": {
           "type": "string"
         },
-        "clientToken": {
+        "authJWT": {
           "type": "string"
         },
         "pubSigKey": {

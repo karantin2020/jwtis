@@ -95,7 +95,7 @@ message RegisterClientRequest {
 // RegisterClientResponse sent to client after it's registration
 message RegisterClientResponse {
 	string kid         = 1 [(gogoproto.jsontag) = "kid"];
-	string clientToken = 2 [(gogoproto.jsontag) = "client_token"];
+	string authJWT     = 2 [(gogoproto.jsontag) = "auth_jwt"];
 	bytes  pubSigKey   = 3 [(gogoproto.jsontag) = "pub_sig_key"];
 	bytes  pubEncKey   = 4 [(gogoproto.jsontag) = "pub_enc_key"];
 	int64  expiry      = 5 [(gogoproto.jsontag) = "expiry"];

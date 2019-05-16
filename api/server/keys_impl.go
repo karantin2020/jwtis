@@ -140,8 +140,31 @@ func (j *JWTISServer) UpdateKeys(ctx context.Context, req *pb.RegisterClientRequ
 // ListKeys returns all registered keys
 func (j *JWTISServer) ListKeys(ctx context.Context,
 	req *pb.ListKeysRequest) (*pb.ListKeysResponse, error) {
-
-	return nil, nil
+	keys, err := j.khg.ListKeys()
+	if err != nil {
+		return nil, errpb.New(codes.Internal,
+			"error list keys",
+			"key service error, couldn't marshal keys: "+
+				err.Error())
+	}
+	res := &pb.ListKeysResponse{
+		Keys: make([]*pb.KeysInfo, 0, len(keys)),
+	}
+	for i := range keys {
+		res.Keys = append(res.Keys, &pb.KeysInfo{
+			Kid:             keys[i].KID,
+			Expiry:          keys[i].Expiry,
+			AuthTTL:         keys[i].AuthTTL,
+			RefreshTTL:      keys[i].RefreshTTL,
+			RefreshStrategy: keys[i].RefreshStrategy,
+			PubSigKey:       keys[i].Sig,
+			PubEncKey:       keys[i].Enc,
+			Locked:          keys[i].Locked,
+			Valid:           keys[i].Valid,
+			Expired:         keys[i].Expired,
+		})
+	}
+	return res, nil
 }
 
 // DelKeys method

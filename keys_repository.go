@@ -431,7 +431,10 @@ func (p *KeysRepository) ListKeys() ([]KeysInfoSet, error) {
 		keySet.Sig = b
 		keysList = append(keysList, keySet)
 	}
-	return keysList, resErr
+	if len(resErr) > 0 {
+		return keysList, resErr
+	}
+	return keysList, nil
 }
 
 // SaveAll puts all keys from memory to boltDB

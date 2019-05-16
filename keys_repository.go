@@ -25,7 +25,7 @@ var (
 	ErrKeysInvalid = errors.New("keys with kid exist in repository and are not valid")
 )
 
-// JWTKeysIssuerSet holds jwt info
+// JWTKeysIssuerSet holds keys info
 type JWTKeysIssuerSet struct {
 	KID             []byte          // key id
 	Expiry          jwt.NumericDate // keys expiry time
@@ -41,6 +41,20 @@ type JWTKeysIssuerSet struct {
 	pubSig          jose.JSONWebKey // sig public key
 	invalid         bool
 	expired         bool
+}
+
+// KeysInfoSet holds keys info for list request
+type KeysInfoSet struct {
+	KID             string
+	Expiry          int64
+	AuthTTL         int64
+	RefreshTTL      int64
+	RefreshStrategy string
+	Enc             []byte
+	Sig             []byte
+	Locked          bool
+	Valid           bool
+	Expired         bool
 }
 
 // Expired returns true if JWTKeysIssuerSet is expired
@@ -386,6 +400,38 @@ func (p *KeysRepository) GetPrivateKeys(kid string) (SigEncKeys, error) {
 		RefreshStrategy: key.RefreshStrategy,
 	}
 	return privKeys, nil
+}
+
+// ListKeys returns info about keys for all registered kids
+func (p *KeysRepository) ListKeys() ([]KeysInfoSet, error) {
+	var resErr Error
+	keysList := make([]KeysInfoSet, 0, len(p.Keys))
+	p.ml.RLock()
+	defer p.ml.RUnlock()
+	for k, v := range p.Keys {
+		keySet := KeysInfoSet{
+			KID:             k,
+			Expiry:          int64(v.Expiry),
+			AuthTTL:         int64(v.AuthTTL),
+			RefreshTTL:      int64(v.RefreshTTL),
+			RefreshStrategy: v.RefreshStrategy,
+			Locked:          v.Locked,
+		}
+		keySet.Valid = v.Valid()
+		keySet.Expired = v.Expired()
+		b, err := json.Marshal(v.Enc.Public())
+		if err != nil {
+			resErr.Append(fmt.Errorf("error marshal public enc key for kid: '%s': %s", k, err.Error()))
+		}
+		keySet.Enc = b
+		b, err = json.Marshal(v.Sig.Public())
+		if err != nil {
+			resErr.Append(fmt.Errorf("error marshal public sig key for kid: '%s': %s", k, err.Error()))
+		}
+		keySet.Sig = b
+		keysList = append(keysList, keySet)
+	}
+	return keysList, resErr
 }
 
 // SaveAll puts all keys from memory to boltDB

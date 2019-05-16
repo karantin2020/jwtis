@@ -116,6 +116,28 @@ message PubKeysResponse {
 	bool   valid     = 5 [(gogoproto.jsontag) = "valid"];
 }
 
+message ListKeysRequest {
+  string query = 1 [(gogoproto.jsontag) = "query"];
+}
+
+// KeysInfo holds all keys info
+message KeysInfo {
+	string kid             = 1  [(gogoproto.jsontag) = "kid"];
+	int64  expiry          = 2  [(gogoproto.jsontag) = "expiry"];
+	int64  authTTL         = 3  [(gogoproto.jsontag) = "auth_ttl"];
+	int64  refreshTTL      = 4  [(gogoproto.jsontag) = "refresh_ttl"];
+	string refreshStrategy = 5  [(gogoproto.jsontag) = "refresh_strategy"];
+	bytes  pubSigKey       = 6  [(gogoproto.jsontag) = "pub_sig_key"];
+	bytes  pubEncKey       = 7  [(gogoproto.jsontag) = "pub_enc_key"];
+  bool   locked          = 8  [(gogoproto.jsontag) = "locked"];
+  bool   valid           = 9  [(gogoproto.jsontag) = "valid"];
+  bool   expired         = 10 [(gogoproto.jsontag) = "expired"];
+}
+
+message ListKeysResponse {
+  repeated KeysInfo keys = 1 [(gogoproto.jsontag) = "keys"];
+}
+
 // DelKeysRequest with kid field
 message DelKeysRequest {
   string kid = 1 [(gogoproto.jsontag) = "kid"];
@@ -239,6 +261,12 @@ service JWTIS {
     rpc PublicKeys(PubKeysRequest) returns (PubKeysResponse) {
       option (google.api.http) = {
         post: "/api/v1/keys/{kid}"
+        body: "*"
+      };
+    }
+    rpc ListKeys(ListKeysRequest) returns (ListKeysResponse) {
+      option (google.api.http) = {
+        post: "/api/v1/keys"
         body: "*"
       };
     }

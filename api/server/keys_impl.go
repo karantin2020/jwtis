@@ -137,8 +137,16 @@ func (j *JWTISServer) UpdateKeys(ctx context.Context, req *pb.RegisterClientRequ
 	}, nil
 }
 
+// ListKeys returns all registered keys
+func (j *JWTISServer) ListKeys(ctx context.Context,
+	req *pb.ListKeysRequest) (*pb.ListKeysResponse, error) {
+
+	return nil, nil
+}
+
 // DelKeys method
-func (j *JWTISServer) DelKeys(ctx context.Context, req *pb.DelKeysRequest) (*pb.DelKeysResponse, error) {
+func (j *JWTISServer) DelKeys(ctx context.Context,
+	req *pb.DelKeysRequest) (*pb.DelKeysResponse, error) {
 	err := j.khg.DelKeys(req.Kid)
 	if err != nil {
 		if err == jwtis.ErrKeyNotFound {

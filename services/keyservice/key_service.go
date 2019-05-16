@@ -55,10 +55,18 @@ func (k *KeyService) UpdateKeys(kid string, opts *jwtis.DefaultOptions) (jwtis.S
 	return k.keysRepo.NewKey(kid, opts)
 }
 
+// ListKeys returns all registered keys
+func (k *KeyService) ListKeys() ([]jwtis.KeysInfoSet, error) {
+	if k == nil {
+		return nil, fmt.Errorf("error in ListKeys: keyservice pointer is nil")
+	}
+	return k.keysRepo.ListKeys()
+}
+
 // DelKeys deletes keys for kid
 func (k *KeyService) DelKeys(kid string) error {
 	if k == nil {
-		return fmt.Errorf("error in Register: keyservice pointer is nil")
+		return fmt.Errorf("error in DelKeys: keyservice pointer is nil")
 	}
 	return k.keysRepo.DelKey(kid)
 }

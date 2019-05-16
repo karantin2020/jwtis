@@ -335,6 +335,47 @@ func (d *JWTISDesc) RegisterHTTP(mux transport.Router) {
 	}
 
 	{
+		// Handler for ListKeys, binding: POST /api/v1/keys
+		var h http.HandlerFunc
+		h = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			defer r.Body.Close()
+
+			unmFunc := unmarshaler_goclay_JWTIS_ListKeys_0(r)
+			rsp, err := _JWTIS_ListKeys_Handler(d.svc, r.Context(), unmFunc, d.opts.UnaryInterceptor)
+
+			if err != nil {
+				if err, ok := err.(httptransport.MarshalerError); ok {
+					errorpb.WriteError(r, w, errors.Wrap(err.Err, "couldn't parse request"))
+					return
+				}
+				errorpb.WriteError(r, w, err)
+				return
+			}
+
+			if ctxErr := r.Context().Err(); ctxErr != nil && ctxErr == context.Canceled {
+				w.WriteHeader(499) // Client Closed Request
+				return
+			}
+
+			render.JSON(w, r, rsp)
+		})
+
+		h = httpmw.DefaultChain(h)
+
+		if isChi {
+			chiMux.Method("POST", pattern_goclay_JWTIS_ListKeys_0, h)
+		} else {
+			mux.Handle(pattern_goclay_JWTIS_ListKeys_0, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.Method != "POST" {
+					w.WriteHeader(http.StatusMethodNotAllowed)
+					return
+				}
+				h(w, r)
+			}))
+		}
+	}
+
+	{
 		// Handler for Auth, binding: POST /api/v1/auth
 		var h http.HandlerFunc
 		h = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -681,6 +722,55 @@ func (c *JWTIS_httpClient) PublicKeys(ctx context.Context, in *PubKeysRequest, o
 	return ret, errors.Wrap(err, "can't unmarshal response")
 }
 
+func (c *JWTIS_httpClient) ListKeys(ctx context.Context, in *ListKeysRequest, opts ...grpc.CallOption) (*ListKeysResponse, error) {
+	mw, err := httpclient.NewMiddlewareGRPC(opts)
+	if err != nil {
+		return nil, err
+	}
+
+	path := pattern_goclay_JWTIS_ListKeys_0_builder(in)
+
+	buf := bytes.NewBuffer(nil)
+
+	m := httpruntime.DefaultMarshaler(nil)
+
+	if err = m.Marshal(buf, in); err != nil {
+		return nil, errors.Wrap(err, "can't marshal request")
+	}
+
+	req, err := http.NewRequest("POST", c.host+path, buf)
+	if err != nil {
+		return nil, errors.Wrap(err, "can't initiate HTTP request")
+	}
+	req = req.WithContext(ctx)
+
+	req.Header.Add("Accept", m.ContentType())
+
+	req, err = mw.ProcessRequest(req)
+	if err != nil {
+		return nil, err
+	}
+	rsp, err := c.c.Do(req)
+	if err != nil {
+		return nil, errors.Wrap(err, "error from client")
+	}
+	defer rsp.Body.Close()
+
+	rsp, err = mw.ProcessResponse(rsp)
+	if err != nil {
+		return nil, err
+	}
+
+	if rsp.StatusCode >= 400 {
+		b, _ := ioutil.ReadAll(rsp.Body)
+		return nil, errors.Errorf("%v %v: server returned HTTP %v: '%v'", req.Method, req.URL.String(), rsp.StatusCode, string(b))
+	}
+
+	ret := &ListKeysResponse{}
+	err = m.Unmarshal(rsp.Body, ret)
+	return ret, errors.Wrap(err, "can't unmarshal response")
+}
+
 func (c *JWTIS_httpClient) Auth(ctx context.Context, in *AuthRequest, opts ...grpc.CallOption) (*AuthReply, error) {
 	mw, err := httpclient.NewMiddlewareGRPC(opts)
 	if err != nil {
@@ -815,6 +905,20 @@ var (
 	}
 
 	unmarshaler_goclay_JWTIS_PublicKeys_0_boundParams = &utilities.DoubleArray{Encoding: map[string]int{"": 0, "kid": 1}, Base: []int{1, 1, 2, 0, 0}, Check: []int{0, 1, 1, 2, 3}}
+
+	pattern_goclay_JWTIS_ListKeys_0 = "/api/v1/keys"
+
+	pattern_goclay_JWTIS_ListKeys_0_builder = func(in *ListKeysRequest) string {
+		values := url.Values{}
+
+		u := url.URL{
+			Path:     fmt.Sprintf("/api/v1/keys"),
+			RawQuery: values.Encode(),
+		}
+		return u.String()
+	}
+
+	unmarshaler_goclay_JWTIS_ListKeys_0_boundParams = &utilities.DoubleArray{Encoding: map[string]int{"": 0}, Base: []int{1, 1, 0}, Check: []int{0, 1, 2}}
 
 	pattern_goclay_JWTIS_Auth_0 = "/api/v1/auth"
 
@@ -955,6 +1059,22 @@ var (
 		}
 	}
 
+	unmarshaler_goclay_JWTIS_ListKeys_0 = func(r *http.Request) func(interface{}) error {
+		return func(rif interface{}) error {
+			req := rif.(*ListKeysRequest)
+
+			if err := errors.Wrap(runtime.PopulateQueryParameters(req, r.URL.Query(), unmarshaler_goclay_JWTIS_ListKeys_0_boundParams), "couldn't populate query parameters"); err != nil {
+				return httpruntime.TransformUnmarshalerError(err)
+			}
+
+			if err := errors.Wrap(render.Decode(r, req), "couldn't read request JSON"); err != nil {
+				return httptransport.NewMarshalerError(httpruntime.TransformUnmarshalerError(err))
+			}
+
+			return nil
+		}
+	}
+
 	unmarshaler_goclay_JWTIS_Auth_0 = func(r *http.Request) func(interface{}) error {
 		return func(rif interface{}) error {
 			req := rif.(*AuthRequest)
@@ -1012,6 +1132,32 @@ var _swaggerDef_api_pb_svc_proto = []byte(`{
             "required": true,
             "schema": {
               "$ref": "#/definitions/jwtispbAuthRequest"
+            }
+          }
+        ],
+        "tags": [
+          "JWTIS"
+        ]
+      }
+    },
+    "/api/v1/keys": {
+      "post": {
+        "operationId": "ListKeys",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/jwtispbListKeysResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/jwtispbListKeysRequest"
             }
           }
         ],
@@ -1242,6 +1388,69 @@ var _swaggerDef_api_pb_svc_proto = []byte(`{
     "jwtispbDelKeysResponse": {
       "type": "object",
       "title": "DelKeysResponse as empty struct"
+    },
+    "jwtispbKeysInfo": {
+      "type": "object",
+      "properties": {
+        "kid": {
+          "type": "string"
+        },
+        "expiry": {
+          "type": "string",
+          "format": "int64"
+        },
+        "authTTL": {
+          "type": "string",
+          "format": "int64"
+        },
+        "refreshTTL": {
+          "type": "string",
+          "format": "int64"
+        },
+        "refreshStrategy": {
+          "type": "string"
+        },
+        "pubSigKey": {
+          "type": "string",
+          "format": "byte"
+        },
+        "pubEncKey": {
+          "type": "string",
+          "format": "byte"
+        },
+        "locked": {
+          "type": "boolean",
+          "format": "boolean"
+        },
+        "valid": {
+          "type": "boolean",
+          "format": "boolean"
+        },
+        "expired": {
+          "type": "boolean",
+          "format": "boolean"
+        }
+      },
+      "title": "KeysInfo holds all keys info"
+    },
+    "jwtispbListKeysRequest": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "type": "string"
+        }
+      }
+    },
+    "jwtispbListKeysResponse": {
+      "type": "object",
+      "properties": {
+        "keys": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/jwtispbKeysInfo"
+          }
+        }
+      }
     },
     "jwtispbNewTokenRequest": {
       "type": "object",

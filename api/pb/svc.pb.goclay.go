@@ -230,7 +230,7 @@ func (d *JWTISDesc) RegisterHTTP(mux transport.Router) {
 	}
 
 	{
-		// Handler for UpdateKeys, binding: PUT /api/v1/keys/{kid}
+		// Handler for UpdateKeys, binding: PUT /api/v1/keys
 		var h http.HandlerFunc
 		h = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			defer r.Body.Close()
@@ -260,7 +260,13 @@ func (d *JWTISDesc) RegisterHTTP(mux transport.Router) {
 		if isChi {
 			chiMux.Method("PUT", pattern_goclay_JWTIS_UpdateKeys_0, h)
 		} else {
-			panic("query URI params supported only for chi.Router")
+			mux.Handle(pattern_goclay_JWTIS_UpdateKeys_0, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.Method != "PUT" {
+					w.WriteHeader(http.StatusMethodNotAllowed)
+					return
+				}
+				h(w, r)
+			}))
 		}
 	}
 
@@ -300,7 +306,7 @@ func (d *JWTISDesc) RegisterHTTP(mux transport.Router) {
 	}
 
 	{
-		// Handler for PublicKeys, binding: POST /api/v1/keys/{kid}
+		// Handler for PublicKeys, binding: POST /api/v1/keys/public
 		var h http.HandlerFunc
 		h = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			defer r.Body.Close()
@@ -330,7 +336,13 @@ func (d *JWTISDesc) RegisterHTTP(mux transport.Router) {
 		if isChi {
 			chiMux.Method("POST", pattern_goclay_JWTIS_PublicKeys_0, h)
 		} else {
-			panic("query URI params supported only for chi.Router")
+			mux.Handle(pattern_goclay_JWTIS_PublicKeys_0, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.Method != "POST" {
+					w.WriteHeader(http.StatusMethodNotAllowed)
+					return
+				}
+				h(w, r)
+			}))
 		}
 	}
 
@@ -864,19 +876,19 @@ var (
 
 	unmarshaler_goclay_JWTIS_Register_0_boundParams = &utilities.DoubleArray{Encoding: map[string]int{"": 0}, Base: []int{1, 1, 0}, Check: []int{0, 1, 2}}
 
-	pattern_goclay_JWTIS_UpdateKeys_0 = "/api/v1/keys/{kid}"
+	pattern_goclay_JWTIS_UpdateKeys_0 = "/api/v1/keys"
 
 	pattern_goclay_JWTIS_UpdateKeys_0_builder = func(in *RegisterClientRequest) string {
 		values := url.Values{}
 
 		u := url.URL{
-			Path:     fmt.Sprintf("/api/v1/keys/%v", in.Kid),
+			Path:     fmt.Sprintf("/api/v1/keys"),
 			RawQuery: values.Encode(),
 		}
 		return u.String()
 	}
 
-	unmarshaler_goclay_JWTIS_UpdateKeys_0_boundParams = &utilities.DoubleArray{Encoding: map[string]int{"": 0, "kid": 1}, Base: []int{1, 1, 2, 0, 0}, Check: []int{0, 1, 1, 2, 3}}
+	unmarshaler_goclay_JWTIS_UpdateKeys_0_boundParams = &utilities.DoubleArray{Encoding: map[string]int{"": 0}, Base: []int{1, 1, 0}, Check: []int{0, 1, 2}}
 
 	pattern_goclay_JWTIS_DelKeys_0 = "/api/v1/keys/{kid}"
 
@@ -892,19 +904,19 @@ var (
 
 	unmarshaler_goclay_JWTIS_DelKeys_0_boundParams = &utilities.DoubleArray{Encoding: map[string]int{"kid": 0}, Base: []int{1, 1, 0}, Check: []int{0, 1, 2}}
 
-	pattern_goclay_JWTIS_PublicKeys_0 = "/api/v1/keys/{kid}"
+	pattern_goclay_JWTIS_PublicKeys_0 = "/api/v1/keys/public"
 
 	pattern_goclay_JWTIS_PublicKeys_0_builder = func(in *PubKeysRequest) string {
 		values := url.Values{}
 
 		u := url.URL{
-			Path:     fmt.Sprintf("/api/v1/keys/%v", in.Kid),
+			Path:     fmt.Sprintf("/api/v1/keys/public"),
 			RawQuery: values.Encode(),
 		}
 		return u.String()
 	}
 
-	unmarshaler_goclay_JWTIS_PublicKeys_0_boundParams = &utilities.DoubleArray{Encoding: map[string]int{"": 0, "kid": 1}, Base: []int{1, 1, 2, 0, 0}, Check: []int{0, 1, 1, 2, 3}}
+	unmarshaler_goclay_JWTIS_PublicKeys_0_boundParams = &utilities.DoubleArray{Encoding: map[string]int{"": 0}, Base: []int{1, 1, 0}, Check: []int{0, 1, 2}}
 
 	pattern_goclay_JWTIS_ListKeys_0 = "/api/v1/keys"
 
@@ -997,16 +1009,6 @@ var (
 				return httptransport.NewMarshalerError(httpruntime.TransformUnmarshalerError(err))
 			}
 
-			rctx := chi.RouteContext(r.Context())
-			if rctx == nil {
-				panic("Only chi router is supported for GETs atm")
-			}
-			for pos, k := range rctx.URLParams.Keys {
-				if err := errors.Wrapf(runtime.PopulateFieldFromPath(req, k, rctx.URLParams.Values[pos]), "can't read '%v' from path", k); err != nil {
-					return httptransport.NewMarshalerError(httpruntime.TransformUnmarshalerError(err))
-				}
-			}
-
 			return nil
 		}
 	}
@@ -1043,16 +1045,6 @@ var (
 
 			if err := errors.Wrap(render.Decode(r, req), "couldn't read request JSON"); err != nil {
 				return httptransport.NewMarshalerError(httpruntime.TransformUnmarshalerError(err))
-			}
-
-			rctx := chi.RouteContext(r.Context())
-			if rctx == nil {
-				panic("Only chi router is supported for GETs atm")
-			}
-			for pos, k := range rctx.URLParams.Keys {
-				if err := errors.Wrapf(runtime.PopulateFieldFromPath(req, k, rctx.URLParams.Values[pos]), "can't read '%v' from path", k); err != nil {
-					return httptransport.NewMarshalerError(httpruntime.TransformUnmarshalerError(err))
-				}
 			}
 
 			return nil
@@ -1164,6 +1156,56 @@ var _swaggerDef_api_pb_svc_proto = []byte(`{
         "tags": [
           "JWTIS"
         ]
+      },
+      "put": {
+        "operationId": "UpdateKeys",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/jwtispbRegisterClientResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/jwtispbRegisterClientRequest"
+            }
+          }
+        ],
+        "tags": [
+          "JWTIS"
+        ]
+      }
+    },
+    "/api/v1/keys/public": {
+      "post": {
+        "operationId": "PublicKeys",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/jwtispbPubKeysResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/jwtispbPubKeysRequest"
+            }
+          }
+        ],
+        "tags": [
+          "JWTIS"
+        ]
       }
     },
     "/api/v1/keys/{kid}": {
@@ -1183,66 +1225,6 @@ var _swaggerDef_api_pb_svc_proto = []byte(`{
             "in": "path",
             "required": true,
             "type": "string"
-          }
-        ],
-        "tags": [
-          "JWTIS"
-        ]
-      },
-      "post": {
-        "operationId": "PublicKeys",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/jwtispbPubKeysResponse"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "kid",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/jwtispbPubKeysRequest"
-            }
-          }
-        ],
-        "tags": [
-          "JWTIS"
-        ]
-      },
-      "put": {
-        "operationId": "UpdateKeys",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/jwtispbRegisterClientResponse"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "kid",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/jwtispbRegisterClientRequest"
-            }
           }
         ],
         "tags": [

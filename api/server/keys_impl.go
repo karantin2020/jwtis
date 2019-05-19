@@ -35,7 +35,7 @@ func (j *JWTISServer) Register(ctx context.Context,
 				" client with that kid exists", req.Kid)
 			return nil, errpb.New(codes.AlreadyExists,
 				"key exists",
-				"keys service error, couldn't register, key exists; err: "+
+				"keys service error, couldn't register, key '"+req.Kid+"' exists; err: "+
 					err.Error())
 		}
 		if err == jwtis.ErrKeysExpired || err == jwtis.ErrKeysExistInvalid {

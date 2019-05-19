@@ -189,6 +189,7 @@ func (p *KeysRepository) CheckKeys() error {
 // NewKey creates new key with key_id and adds it to repository
 // returns public jose.JSONWebKey
 func (p *KeysRepository) NewKey(kid string, opts *DefaultOptions) (SigEncKeys, error) {
+	fmt.Printf("keyrepo: newkey for kid '%s'\n", kid)
 	if p == nil {
 		return SigEncKeys{},
 			fmt.Errorf("error in NewKey: pointer to KeysRepository is nil")
@@ -406,6 +407,7 @@ func (p *KeysRepository) GetPrivateKeys(kid string) (SigEncKeys, error) {
 func (p *KeysRepository) ListKeys() ([]KeysInfoSet, error) {
 	var resErr Error
 	keysList := make([]KeysInfoSet, 0, len(p.Keys))
+	p.LoadAll()
 	p.ml.RLock()
 	defer p.ml.RUnlock()
 	for k, v := range p.Keys {

@@ -249,7 +249,7 @@ service JWTIS {
     };
     rpc UpdateKeys(RegisterClientRequest) returns (RegisterClientResponse) {
       option (google.api.http) = {
-        put: "/api/v1/keys/{kid}"
+        put: "/api/v1/keys"
         body: "*"
       };
     }
@@ -260,7 +260,7 @@ service JWTIS {
     };
     rpc PublicKeys(PubKeysRequest) returns (PubKeysResponse) {
       option (google.api.http) = {
-        post: "/api/v1/keys/{kid}"
+        post: "/api/v1/keys/public"
         body: "*"
       };
     }

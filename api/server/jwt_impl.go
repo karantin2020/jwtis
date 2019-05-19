@@ -14,6 +14,7 @@ import (
 // NewJWT is called to issue new jwt token
 func (j *JWTISServer) NewJWT(ctx context.Context,
 	req *pb.NewTokenRequest) (*pb.TokenResponse, error) {
+	log.Info().Msgf("jwtis server: requested newJWT func for kid: '%s'", req.Kid)
 	claims := make(map[string]interface{})
 	if req.Claims != "" && req.Claims != "{}" {
 		if err := json.Unmarshal([]byte(req.Claims), &claims); err != nil {
@@ -29,7 +30,8 @@ func (j *JWTISServer) NewJWT(ctx context.Context,
 	tokens, err := j.jhg.NewJWT(req.Kid, claims)
 	if err != nil {
 		if err == jwtservice.ErrKIDNotExists {
-			log.Error().Err(err).Msgf("error creating new JWT for kid '%s': keys not exist", req.Kid)
+			log.Error().Err(err).Msgf("error creating new JWT for kid '%s':"+
+				" keys not exist", req.Kid)
 			return nil, errpb.New(codes.NotFound,
 				"keys not found",
 				"jwt service error, couldn't create new tokens, not found keys; err: "+
@@ -40,7 +42,8 @@ func (j *JWTISServer) NewJWT(ctx context.Context,
 			"internal server error",
 			"jwt service error, couldn't create new tokens; err: "+err.Error())
 	}
-	log.Info().Msgf("new JWT for kid '%s' with id '%s' was created", req.Kid, tokens.ID)
+	log.Info().Msgf("jwtis server: new JWT for kid '%s' with id '%s' was created",
+		req.Kid, tokens.ID)
 	return &pb.TokenResponse{
 		ID:           tokens.ID,
 		AccessToken:  tokens.AccessToken,
@@ -53,6 +56,7 @@ func (j *JWTISServer) NewJWT(ctx context.Context,
 // to refresh strategy
 func (j *JWTISServer) RenewJWT(ctx context.Context,
 	req *pb.RenewTokenRequest) (*pb.TokenResponse, error) {
+	log.Info().Msgf("jwtis server: requested renewJWT func for kid: '%s'", req.Kid)
 	tokens, err := j.jhg.RenewJWT(req.Kid, req.RefreshToken,
 		req.RefreshStrategy)
 	if err != nil {
@@ -84,7 +88,7 @@ func (j *JWTISServer) RenewJWT(ctx context.Context,
 					err.Error())
 		}
 	}
-	log.Info().Msgf("new JWT for kid '%s' with id '%s' was created", req.Kid, tokens.ID)
+	log.Info().Msgf("jwtis server: new JWT for kid '%s' with id '%s' was created", req.Kid, tokens.ID)
 	return &pb.TokenResponse{
 		ID:           tokens.ID,
 		AccessToken:  tokens.AccessToken,

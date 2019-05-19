@@ -15,7 +15,9 @@ import (
 )
 
 // Register method
-func (j *JWTISServer) Register(ctx context.Context, req *pb.RegisterClientRequest) (*pb.RegisterClientResponse, error) {
+func (j *JWTISServer) Register(ctx context.Context,
+	req *pb.RegisterClientRequest) (*pb.RegisterClientResponse, error) {
+	log.Info().Msgf("jwtis server: requested register func for kid: '%s'", req.Kid)
 	var opts = &jwtis.DefaultOptions{
 		SigAlg:          req.SigAlg,
 		SigBits:         int(req.SigBits),
@@ -29,14 +31,16 @@ func (j *JWTISServer) Register(ctx context.Context, req *pb.RegisterClientReques
 	pubKeys, err := j.khg.Register(req.Kid, opts)
 	if err != nil {
 		if err == jwtis.ErrKeysExist {
-			log.Error().Err(err).Msgf("error registering new client with kid '%s'; client with that kid exists", req.Kid)
+			log.Error().Err(err).Msgf("error registering new client with kid '%s';"+
+				" client with that kid exists", req.Kid)
 			return nil, errpb.New(codes.AlreadyExists,
 				"key exists",
 				"keys service error, couldn't register, key exists; err: "+
 					err.Error())
 		}
 		if err == jwtis.ErrKeysExpired || err == jwtis.ErrKeysExistInvalid {
-			log.Error().Err(err).Msgf("error registering new client with kid '%s'; client with that kid exists", req.Kid)
+			log.Error().Err(err).Msgf("error registering new client with kid '%s';"+
+				" client with that kid exists", req.Kid)
 			return nil, errpb.New(codes.ResourceExhausted,
 				"keys exist and are expired or invalid",
 				"keys service error, couldn't register, exist invalid keys; err: "+
@@ -74,7 +78,8 @@ func (j *JWTISServer) Register(ctx context.Context, req *pb.RegisterClientReques
 			"internal server error",
 			"jwt service error, couldn't create client token; err: "+err.Error())
 	}
-	log.Info().Msgf("registered new client with kid '%s', not expired and valid", req.Kid)
+	log.Info().Msgf("jwtis server: registered new client with kid '%s',"+
+		" not expired and valid", req.Kid)
 	return &pb.RegisterClientResponse{
 		Kid:       req.Kid,
 		AuthJWT:   authJWT,
@@ -86,7 +91,9 @@ func (j *JWTISServer) Register(ctx context.Context, req *pb.RegisterClientReques
 }
 
 // UpdateKeys method
-func (j *JWTISServer) UpdateKeys(ctx context.Context, req *pb.RegisterClientRequest) (*pb.RegisterClientResponse, error) {
+func (j *JWTISServer) UpdateKeys(ctx context.Context,
+	req *pb.RegisterClientRequest) (*pb.RegisterClientResponse, error) {
+	log.Info().Msgf("jwtis server: requested update keys func for kid: '%s'", req.Kid)
 	var opts = &jwtis.DefaultOptions{
 		SigAlg:          req.SigAlg,
 		SigBits:         int(req.SigBits),
@@ -100,7 +107,8 @@ func (j *JWTISServer) UpdateKeys(ctx context.Context, req *pb.RegisterClientRequ
 	pubKeys, err := j.khg.UpdateKeys(req.Kid, opts)
 	if err != nil {
 		if err == jwtis.ErrKeysExpired || err == jwtis.ErrKeysExistInvalid {
-			log.Error().Err(err).Msgf("error registering new client with kid '%s'; client with that kid exists", req.Kid)
+			log.Error().Err(err).Msgf("error registering new client with kid '%s';"+
+				" client with that kid exists", req.Kid)
 			return nil, errpb.New(codes.ResourceExhausted,
 				"keys exist and are expired or invalid",
 				"keys service error, couldn't update, exist invalid keys; err: "+
@@ -126,7 +134,8 @@ func (j *JWTISServer) UpdateKeys(ctx context.Context, req *pb.RegisterClientRequ
 			"key service error, couldn't update key; request key status: "+
 				err.Error())
 	}
-	log.Info().Msgf("updated client with kid '%s', not expired and valid", req.Kid)
+	log.Info().Msgf("jwtis server: updated client with kid '%s',"+
+		" not expired and valid", req.Kid)
 	return &pb.RegisterClientResponse{
 		Kid:       req.Kid,
 		AuthJWT:   "",
@@ -140,6 +149,7 @@ func (j *JWTISServer) UpdateKeys(ctx context.Context, req *pb.RegisterClientRequ
 // ListKeys returns all registered keys
 func (j *JWTISServer) ListKeys(ctx context.Context,
 	req *pb.ListKeysRequest) (*pb.ListKeysResponse, error) {
+	log.Info().Msg("jwtis server: requested listKeys func, admin role")
 	keys, err := j.khg.ListKeys()
 	if err != nil {
 		return nil, errpb.New(codes.Internal,
@@ -164,12 +174,14 @@ func (j *JWTISServer) ListKeys(ctx context.Context,
 			Expired:         keys[i].Expired,
 		})
 	}
+	log.Info().Msg("jwtis server: returned list of all keys")
 	return res, nil
 }
 
 // DelKeys method
 func (j *JWTISServer) DelKeys(ctx context.Context,
 	req *pb.DelKeysRequest) (*pb.DelKeysResponse, error) {
+	log.Info().Msgf("jwtis server: requested delKeys func for kid: '%s'", req.Kid)
 	err := j.khg.DelKeys(req.Kid)
 	if err != nil {
 		if err == jwtis.ErrKeyNotFound {
@@ -182,11 +194,14 @@ func (j *JWTISServer) DelKeys(ctx context.Context,
 			"key service error, couldn't delete key: "+req.Kid+"; "+
 				err.Error())
 	}
+	log.Info().Msgf("jwtis server: deleted keys for kid: '%s'", req.Kid)
 	return &pb.DelKeysResponse{}, nil
 }
 
 // PublicKeys method
-func (j *JWTISServer) PublicKeys(ctx context.Context, req *pb.PubKeysRequest) (*pb.PubKeysResponse, error) {
+func (j *JWTISServer) PublicKeys(ctx context.Context,
+	req *pb.PubKeysRequest) (*pb.PubKeysResponse, error) {
+	log.Info().Msgf("jwtis server: requested publicKeys func for kid: '%s'", req.Kid)
 	pubKeys, err := j.khg.PublicKeys(req.Kid)
 	if err != nil {
 		if err == jwtis.ErrKeysNotFound {
@@ -225,7 +240,7 @@ func (j *JWTISServer) PublicKeys(ctx context.Context, req *pb.PubKeysRequest) (*
 			"key service error, couldn't create new key; request key status: "+
 				err.Error())
 	}
-	log.Info().Msgf("get public keys for kid '%s'", req.Kid)
+	log.Info().Msgf("jwtis server: sent public keys for kid '%s'", req.Kid)
 	return &pb.PubKeysResponse{
 		Kid:       req.Kid,
 		PubSigKey: pubSig,

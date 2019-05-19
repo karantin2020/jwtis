@@ -13,7 +13,7 @@ import (
 // useable for authentication
 func (j *JWTISServer) Auth(ctx context.Context,
 	req *pb.AuthRequest) (*pb.AuthReply, error) {
-	log.Info().Msgf("Auth handler: start for kid: '%s'", req.Kid)
+	log.Info().Msgf("jwtis server: requested auth func for kid: '%s'", req.Kid)
 	authJWT, err := j.jhg.AuthJWT(req.Kid)
 	if err != nil {
 		if err == jwtservice.ErrKIDNotExists {
@@ -28,7 +28,7 @@ func (j *JWTISServer) Auth(ctx context.Context,
 			"internal server error",
 			"jwt service error, couldn't create auth tokens; err: "+err.Error())
 	}
-	log.Info().Msgf("Auth handler: auth JWT generated for kid: '%s'", req.Kid)
+	log.Info().Msgf("jwtis server: in auth handler auth JWT generated for kid: '%s'", req.Kid)
 	return &pb.AuthReply{
 		AuthJWT: authJWT,
 	}, nil

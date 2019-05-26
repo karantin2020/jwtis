@@ -1,0 +1,35 @@
+before:
+  hooks:
+    # - go mod download
+    # - go generate ./...
+builds:
+  -
+    id: "jwtis-build"
+    main: ./cmd/main.go
+    env:
+      - CGO_ENABLED=0
+    ldflags:
+      - -s -w -X main.appVersion={{.Version}}
+    goos:
+      - linux
+    goarch:
+      - amd64
+      - i386
+archives:
+  -
+    id: jwtis-arch
+    replacements:
+      linux: Linux
+      386: i386
+      amd64: x86_64
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+checksum:
+  name_template: '{{ .ProjectName }}_checksums.txt'
+snapshot:
+  name_template: "{{ .Tag }}-next"
+changelog:
+  sort: asc
+  filters:
+    exclude:
+    - '^docs:'
+    - '^test:'

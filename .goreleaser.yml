@@ -1,5 +1,5 @@
 release:
-  name_template: "{{.ProjectName}} v{{.Version}}"
+  name_template: "{{.ProjectName}} v{{.Version}}  \n${NOTES}"
 before:
   hooks:
     # - go mod download

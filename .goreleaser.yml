@@ -1,3 +1,5 @@
+release:
+  name_template: "{{.ProjectName}} v{{.Version}}"
 before:
   hooks:
     # - go mod download

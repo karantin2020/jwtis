@@ -20,7 +20,6 @@ import (
 
 const (
 	appName        = "jwtis"
-	appVersion     = "v0.3.1"
 	appDescription = "JWT issuer server. Provides trusted JWT tokens\n" +
 		"\nSource https://github.com/karantin2020/jwtis"
 	envPrefix      = "JWTIS_"
@@ -28,8 +27,9 @@ const (
 )
 
 var (
-	boltDB  *bolt.DB
-	buckets = map[string][]byte{
+	appVersion = "v0.3.1"
+	boltDB     *bolt.DB
+	buckets    = map[string][]byte{
 		"internalBucketName": []byte("internalBucket"),
 		"keysBucketName":     []byte("keysBucket"),
 	}

@@ -2,7 +2,6 @@ release:
   name_template: "v{{.Version}} {{.Env.NOTES}}"
 before:
   hooks:
-    - rm -rf ./dist/*
     # - go mod download
     # - go generate ./...
 builds:

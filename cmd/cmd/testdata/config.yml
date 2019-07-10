@@ -1,0 +1,39 @@
+options:
+    httpConf:
+        listen: '127.0.0.1:3435'
+        tls: false
+        tlsConfig:
+            certFile: ''
+            keyFile: ''
+            caCertFile: ''
+    grpcConf:
+        listenGrpc: '127.0.0.1:3436'
+    keyGeneration:
+        sign:
+            sigAlg: alg
+            sigBits: 123
+        encryption:
+            encAlg: alg
+            encBits: 123
+            contEnc: alg
+        expiry: '72h'
+        jwtTTL:
+            authTTL: '72h'
+            refreshTTL: '720h'
+    selfName: testName
+    logPath: test.log
+    dbConfig: 'boltdb:./testdata/test.db'
+    verbose: false
+storeConfig:
+    clientTLS:
+        certFile: asd
+        keyFile: dsa
+        caCertFile: fds
+    tls: {}
+    connectionTimeout: 0
+    syncPeriod: 0
+    bucket: 'confTestBucket'
+    persistConnection: false
+    username: ''
+    password: ''
+    token: ''

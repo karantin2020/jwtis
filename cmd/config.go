@@ -51,7 +51,7 @@ func newConfigApp() *cli.Cli {
 	confRepo.sigAlg = app.String(cli.StringOpt{
 		Name:      "sigAlg",
 		Value:     confRepo.defSigAlg,
-		Desc:      "Default algorithn to be used for sign. Possible values are: ES256 ES384 ES512 EdDSA RS256 RS384 RS512 PS256 PS384 PS512",
+		Desc:      "Default algorithm to be used for sign. Possible values are: ES256 ES384 ES512 EdDSA RS256 RS384 RS512 PS256 PS384 PS512",
 		EnvVar:    envPrefix + "SIG_ALG",
 		SetByUser: &confRepo.sigAlgSetByUser,
 	})
@@ -65,7 +65,7 @@ func newConfigApp() *cli.Cli {
 	confRepo.encAlg = app.String(cli.StringOpt{
 		Name:      "encAlg",
 		Value:     confRepo.defEncAlg,
-		Desc:      "Default algorithn to be used for encrypt. Possible values are RSA1_5 RSA-OAEP RSA-OAEP-256 ECDH-ES ECDH-ES+A128KW ECDH-ES+A192KW ECDH-ES+A256KW",
+		Desc:      "Default algorithm to be used for encrypt. Possible values are RSA1_5 RSA-OAEP RSA-OAEP-256 ECDH-ES ECDH-ES+A128KW ECDH-ES+A192KW ECDH-ES+A256KW",
 		EnvVar:    envPrefix + "ENC_ALG",
 		SetByUser: &confRepo.encAlgSetByUser,
 	})
@@ -149,7 +149,8 @@ func getPassword(length int) []byte {
 	)
 	for secret, err = jwtis.GenerateSecret(length); err != nil; numtries-- {
 		if numtries == 0 {
-			FatalF("Couldn't generate secret key because of internal problem\n")
+			FatalF("Couldn't generate secret key because of internal problem; %s\n",
+				err.Error())
 		}
 	}
 	return secret

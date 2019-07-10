@@ -17,15 +17,15 @@ type grpcConf struct {
 
 // Default keys generation options
 type sign struct {
-	sigAlg  *string // Default algorithn to be used for sign
+	sigAlg  *string // Default algorithm to be used for sign
 	sigBits *int    // Default key size in bits for sign
 }
 type encryption struct {
-	encAlg  *string // Default algorithn to be used for encrypt
+	encAlg  *string // Default algorithm to be used for encrypt
 	encBits *int    // Default key size in bits for encrypt
 	contEnc *string // Default Content Encryption
 }
-type jwtttl struct {
+type jwtTTL struct {
 	authTTL    *string // Default value for auth jwt ttl
 	refreshTTL *string // Default value for refresh jwt ttl
 }
@@ -34,7 +34,7 @@ type keyGeneration struct {
 	sign
 	encryption
 	expiry *string
-	jwtttl
+	jwtTTL
 }
 type setByUser struct {
 	listenSetByUser     bool

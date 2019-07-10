@@ -1,0 +1,51 @@
+{
+    "Options": {
+        "HTTPConf": {
+            "Listen": "127.0.0.1:3435",
+            "TLS": false,
+            "TLSConfig": {
+                "CertFile": "",
+                "KeyFile": "",
+                "CACertFile": ""
+            }
+        },
+        "GrpcConf": {
+            "ListenGrpc": "127.0.0.1:3436"
+        },
+        "KeyGeneration": {
+            "Sign": {
+                "SigAlg": "alg",
+                "SigBits": 123
+            },
+            "Encryption": {
+                "EncAlg": "alg",
+                "EncBits": 123,
+                "ContEnc": "alg"
+            },
+            "Expiry": "72h",
+            "JwtTTL": {
+                "AuthTTL": "72h",
+                "RefreshTTL": "720h"
+            }
+        },
+        "SelfName": "testName",
+        "LogPath": "test.log",
+        "DBConfig": "boltdb:./testdata/test.db",
+        "Verbose": false
+    },
+    "StoreConfig": {
+        "ClientTLS": {
+            "CertFile": "asd",
+            "KeyFile": "dsa",
+            "CACertFile": "fds"
+        },
+        "TLS": {},
+        "ConnectionTimeout": 0,
+        "SyncPeriod": 0,
+        "Bucket": "confTestBucket",
+        "PersistConnection": false,
+        "Username": "",
+        "Password": "",
+        "Token": ""
+    }
+}

@@ -41,6 +41,9 @@ var (
 )
 
 func main() {
+	// app = cli.App(appName, appDescription)
+	// app.Version("V version", appVersion)
+
 	app = newConfigApp()
 	app.Before = func() {
 		zerolog.SetGlobalLevel(zerolog.WarnLevel)

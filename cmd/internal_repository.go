@@ -15,7 +15,7 @@ import (
 type DefaultValues struct {
 	SigAlg     string                 // Default algorithm to be used for sign
 	SigBits    int                    // Default key size in bits for sign
-	EncAlg     string                 // Default algorithn to be used for encrypt
+	EncAlg     string                 // Default algorithm to be used for encrypt
 	EncBits    int                    // Default key size in bits for encrypt
 	ContEnc    jose.ContentEncryption // Default Content Encryption
 	Expiry     time.Duration          // Default value for keys ttl
@@ -192,9 +192,10 @@ func (p *internalRepository) save() error {
 		if err := save(b, internalEncKey, key); err != nil {
 			return err
 		}
-		buf := make([]byte, 0, len(dbCheckValue)+jwtis.Extension+len(p.nonce))
-		ciphertext := p.encKey.Seal(buf[:0], p.nonce, dbCheckValue, nil)
-		nk := append(append([]byte{}, p.nonce...), ciphertext...)
+		// buf := make([]byte, 0, len(dbCheckValue)+jwtis.Extension+len(p.nonce))
+		// ciphertext := p.encKey.Seal(buf[:0], p.nonce, dbCheckValue, nil)
+		// nk := append(append([]byte{}, p.nonce...), ciphertext...)
+		nk := p.sealWithNonce(dbCheckValue)
 		if err := saveByte(b, dbCheckKey, nk); err != nil {
 			return err
 		}
@@ -207,6 +208,13 @@ func (p *internalRepository) save() error {
 		return fmt.Errorf("%s: %s", errSaveDBInternal.Error(), err.Error())
 	}
 	return nil
+}
+
+func (p *internalRepository) sealWithNonce(in []byte) []byte {
+	buf := make([]byte, 0, len(in)+jwtis.Extension+len(p.nonce))
+	ciphertext := p.encKey.Seal(buf[:0], p.nonce, in, nil)
+	nk := append(append([]byte{}, p.nonce...), ciphertext...)
+	return nk
 }
 
 func (p *internalRepository) load() error {
@@ -232,13 +240,14 @@ func (p *internalRepository) load() error {
 			}
 			return fmt.Errorf("error loading dbCheckValue: %s", err.Error())
 		}
-		nonce, ciphertext := nk[:p.encKey.NonceSize()], nk[p.encKey.NonceSize():]
-		plaintext, err := p.encKey.Open(ciphertext[:0], nonce, ciphertext, nil)
+		// nonce, ciphertext := nk[:p.encKey.NonceSize()], nk[p.encKey.NonceSize():]
+		// plaintext, err := p.encKey.Open(ciphertext[:0], nonce, ciphertext, nil)
+		var err error
+		p.dbCheckValue, p.nonce, err = p.openWithNonce(nk)
 		if err != nil {
 			return err
 		}
-		p.dbCheckValue = append([]byte{}, plaintext...)
-		p.nonce = append([]byte{}, nonce...)
+		// p.nonce = append([]byte{}, nonce...)
 		if err := jwtis.LoadSealed(&p.encKey, p.nonce, b, internalConfigs, &p.configs); err != nil {
 			return fmt.Errorf("error loading internalConfigs: %s", err.Error())
 		}
@@ -260,6 +269,15 @@ func (p *internalRepository) load() error {
 		FatalF(errIncorrectPassword.Error())
 	}
 	return nil
+}
+
+func (p *internalRepository) openWithNonce(in []byte) ([]byte, []byte, error) {
+	nonce, ciphertext := in[:p.encKey.NonceSize()], in[p.encKey.NonceSize():]
+	plaintext, err := p.encKey.Open(ciphertext[:0], nonce, ciphertext, nil)
+	if err != nil {
+		return nil, nil, err
+	}
+	return append([]byte{}, plaintext...), append([]byte{}, nonce...), nil
 }
 
 func newDBPassword() {

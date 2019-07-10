@@ -40,12 +40,12 @@
             "CACertFile": "fds"
         },
         "TLS": {},
-        "ConnectionTimeout": 0,
-        "SyncPeriod": 0,
+        "ConnectionTimeout": 30,
+        "SyncPeriod": 60,
         "Bucket": "confTestBucket",
-        "PersistConnection": false,
-        "Username": "",
-        "Password": "",
-        "Token": ""
+        "PersistConnection": true,
+        "Username": "testUser",
+        "Password": "testPswd",
+        "Token": "testToken"
     }
 }

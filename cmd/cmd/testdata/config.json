@@ -37,12 +37,11 @@
         "ClientTLS": {
             "CertFile": "asd",
             "KeyFile": "dsa",
-            "CACertFile": "fds"
+            "CACertFile": "fds",
+            "InsecureSkipVerify": false
         },
-        "TLS": {},
-        "ConnectionTimeout": 30,
-        "SyncPeriod": 60,
-        "Bucket": "confTestBucket",
+        "ConnectionTimeout": "30s",
+        "SyncPeriod": "60s",
         "PersistConnection": true,
         "Username": "testUser",
         "Password": "testPswd",

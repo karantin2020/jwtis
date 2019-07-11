@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"crypto/tls"
 	"fmt"
 	"time"
 
@@ -13,49 +14,49 @@ const (
 
 // TLSConfig config
 type TLSConfig struct {
-	CertFile   *string `json:"CertFile,omitempty"`
-	KeyFile    *string `json:"KeyFile,omitempty"`
-	CACertFile *string `json:"CACertFile,omitempty"`
+	CertFile   *string `json:"CertFile,omitempty" yaml:"CertFile,omitempty"`
+	KeyFile    *string `json:"KeyFile,omitempty" yaml:"KeyFile,omitempty"`
+	CACertFile *string `json:"CACertFile,omitempty" yaml:"CACertFile,omitempty"`
 }
 
 // HTTPConf config
 type HTTPConf struct {
-	Listen    *string `json:"Listen,omitempty"` // ip:port to listen to
-	TLS       *bool   `json:"TLS,omitempty"`    // Future feature
-	TLSConfig `json:"TLSConfig,omitempty"`
+	Listen    *string `json:"Listen,omitempty" yaml:"Listen,omitempty"` // ip:port to listen to
+	TLS       *bool   `json:"TLS,omitempty" yaml:"TLS,omitempty"`       // Future feature
+	TLSConfig `json:"TLSConfig,omitempty" yaml:"TLSConfig,omitempty"`
 }
 
 // GrpcConf config
 type GrpcConf struct {
-	ListenGrpc *string `json:"ListenGrpc,omitempty"`
+	ListenGrpc *string `json:"ListenGrpc,omitempty" yaml:"ListenGrpc,omitempty"`
 }
 
 // Sign holds default keys generation options
 type Sign struct {
-	SigAlg  *string `json:"SigAlg,omitempty"`  // Default algorithm to be used for sign
-	SigBits *int    `json:"SigBits,omitempty"` // Default key size in bits for sign
+	SigAlg  *string `json:"SigAlg,omitempty" yaml:"SigAlg,omitempty"`   // Default algorithm to be used for sign
+	SigBits *int    `json:"SigBits,omitempty" yaml:"SigBits,omitempty"` // Default key size in bits for sign
 }
 
 // Encryption config
 type Encryption struct {
-	EncAlg  *string `json:"EncAlg,omitempty"`  // Default algorithm to be used for encrypt
-	EncBits *int    `json:"EncBits,omitempty"` // Default key size in bits for encrypt
-	ContEnc *string `json:"ContEnc,omitempty"` // Default Content Encryption
+	EncAlg  *string `json:"EncAlg,omitempty" yaml:"EncAlg,omitempty"`   // Default algorithm to be used for encrypt
+	EncBits *int    `json:"EncBits,omitempty" yaml:"EncBits,omitempty"` // Default key size in bits for encrypt
+	ContEnc *string `json:"ContEnc,omitempty" yaml:"ContEnc,omitempty"` // Default Content Encryption
 }
 
 // JwtTTL config
 type JwtTTL struct {
-	AuthTTL    *string `json:"AuthTTL,omitempty"`    // Default value for auth jwt ttl
-	RefreshTTL *string `json:"RefreshTTL,omitempty"` // Default value for refresh jwt ttl
+	AuthTTL    *string `json:"AuthTTL,omitempty" yaml:"AuthTTL,omitempty"`       // Default value for auth jwt ttl
+	RefreshTTL *string `json:"RefreshTTL,omitempty" yaml:"RefreshTTL,omitempty"` // Default value for refresh jwt ttl
 }
 
 // KeyGeneration config
 type KeyGeneration struct {
 	// keys generation options
-	Sign       `json:"Sign,omitempty"`
-	Encryption `json:"Encryption,omitempty"`
-	Expiry     *string `json:"Expiry,omitempty"`
-	JwtTTL     `json:"JwtTTL,omitempty"`
+	Sign       `json:"Sign,omitempty" yaml:"Sign,omitempty"`
+	Encryption `json:"Encryption,omitempty" yaml:"Encryption,omitempty"`
+	Expiry     *string `json:"Expiry,omitempty" yaml:"Expiry,omitempty"`
+	JwtTTL     `json:"JwtTTL,omitempty" yaml:"JwtTTL,omitempty"`
 }
 
 type setByUser struct {
@@ -106,28 +107,50 @@ type defaults struct {
 
 // Options config
 type Options struct {
-	HTTPConf      `json:"HTTPConf,omitempty"`
-	GrpcConf      `json:"GrpcConf,omitempty"`
-	KeyGeneration `json:"KeyGeneration,omitempty"`
-	SelfName      *string `json:"SelfName,omitempty"` // Name of this service
+	HTTPConf      `json:"HTTPConf,omitempty" yaml:"HTTPConf,omitempty"`
+	GrpcConf      `json:"GrpcConf,omitempty" yaml:"GrpcConf,omitempty"`
+	KeyGeneration `json:"KeyGeneration,omitempty" yaml:"KeyGeneration,omitempty"`
+	SelfName      *string `json:"SelfName,omitempty" yaml:"SelfName,omitempty"` // Name of this service
 
 	// internal options
-	password *string // Storage password. App generates password with db creation.
+	password *string `yaml:"-"` // Storage password. App generates password with db creation.
 	// Later user must provide a password to access the database
-	LogPath    *string `json:"LogPath,omitempty"`
-	DBConfig   *string `json:"DBConfig,omitempty"`
-	ConfigFile *string `json:"ConfigFile,omitempty"`
-	Verbose    *bool   `json:"Verbose,omitempty"`
-	setByUser
+	LogPath    *string `json:"LogPath,omitempty" yaml:"LogPath,omitempty"`
+	DBConfig   *string `json:"DBConfig,omitempty" yaml:"DBConfig,omitempty"`
+	ConfigFile *string `json:"ConfigFile,omitempty" yaml:"ConfigFile,omitempty"`
+	Verbose    *bool   `json:"Verbose,omitempty" yaml:"Verbose,omitempty"`
+	setByUser  `yaml:"-"`
+}
+
+// StoreClientTLSConfig config
+type StoreClientTLSConfig struct {
+	CertFile           string `json:"CertFile,omitempty" yaml:"CertFile,omitempty"`
+	KeyFile            string `json:"KeyFile,omitempty" yaml:"KeyFile,omitempty"`
+	CACertFile         string `json:"CACertFile,omitempty" yaml:"CACertFile,omitempty"`
+	InsecureSkipVerify bool   `json:"InsecureSkipVerify,omitempty" yaml:"InsecureSkipVerify,omitempty"`
+}
+
+// StoreConfig config
+type StoreConfig struct {
+	ClientTLS *StoreClientTLSConfig `json:"ClientTLS,omitempty" yaml:"ClientTLS,omitempty"`
+	// ConnectionTimeout is time.Duration in string format
+	ConnectionTimeout string `json:"ConnectionTimeout,omitempty" yaml:"ConnectionTimeout,omitempty"`
+	// SyncPeriod is time.Duration in string format
+	SyncPeriod string `json:"SyncPeriod,omitempty" yaml:"SyncPeriod,omitempty"`
+	// Bucket            string `json:"Bucket,omitempty" yaml:"Bucket,omitempty"`
+	PersistConnection bool   `json:"PersistConnection,omitempty" yaml:"PersistConnection,omitempty"`
+	Username          string `json:"Username,omitempty" yaml:"Username,omitempty"`
+	Password          string `json:"Password,omitempty" yaml:"Password,omitempty"`
+	Token             string `json:"Token,omitempty" yaml:"Token,omitempty"`
 }
 
 // Config contains app option values
 type Config struct {
-	defaults
-	Options     `json:"Options,omitempty"`
-	StoreConfig *store.Config `json:"StoreConfig,omitempty"`
+	defaults    `yaml:"-"`
+	Options     `json:"Options,omitempty" yaml:"Options,omitempty"`
+	StoreConfig *StoreConfig `json:"StoreConfig,omitempty" yaml:"StoreConfig,omitempty"`
 	// BucketName holds configuration bucket name
-	bucketName string
+	bucketName string `yaml:"-"`
 }
 
 // NewConfig returns initiated config instance
@@ -156,14 +179,52 @@ func NewConfig(bucketName string) *Config {
 			defVerbose:    false,
 		},
 		bucketName: bucketName,
-		StoreConfig: &store.Config{
-			ConnectionTimeout: 30 * time.Second,
-			// this is not config bucket but keys's repo bucket
-			Bucket:            "",
+		StoreConfig: &StoreConfig{
+			ConnectionTimeout: "30s",
+			SyncPeriod:        "0s",
+			// Bucket:            bucketName,
 			PersistConnection: true,
 		},
 	}
 	return p
+}
+
+// GetStoreConfig converts internal config to *store.Config
+func (c *Config) GetStoreConfig() (*store.Config, error) {
+	cs := c.StoreConfig
+	if cs == nil {
+		return nil, fmt.Errorf("error convert to *store.Config: internal StoreConfig is nil pointer")
+	}
+	conf := &store.Config{
+		ClientTLS:         &store.ClientTLSConfig{},
+		Bucket:            c.bucketName,
+		PersistConnection: cs.PersistConnection,
+		Username:          cs.Username,
+		Password:          cs.Password,
+		Token:             cs.Token,
+	}
+	if cs.ClientTLS != nil {
+		conf.ClientTLS = &store.ClientTLSConfig{
+			CertFile:   cs.ClientTLS.CertFile,
+			KeyFile:    cs.ClientTLS.KeyFile,
+			CACertFile: cs.ClientTLS.CACertFile,
+		}
+		conf.TLS = &tls.Config{
+			InsecureSkipVerify: cs.ClientTLS.InsecureSkipVerify,
+		}
+	}
+	var err error
+	conf.ConnectionTimeout, err = time.ParseDuration(cs.ConnectionTimeout)
+	if err != nil {
+		return nil, fmt.Errorf("error convert to *store.Config, wrong ConnectionTimeout format: %s",
+			err.Error())
+	}
+	conf.SyncPeriod, err = time.ParseDuration(cs.SyncPeriod)
+	if err != nil {
+		return nil, fmt.Errorf("error convert to *store.Config, wrong SyncPeriod format: %s",
+			err.Error())
+	}
+	return conf, nil
 }
 
 func (c *Config) defToNil() {
@@ -301,22 +362,22 @@ func mergeConfig(dst, src *Config) error {
 		return nil
 	}
 	if dst.StoreConfig == nil {
-		dst.StoreConfig = &store.Config{}
+		dst.StoreConfig = &StoreConfig{}
 	}
 
 	// merge StoreConfig
-	if src.StoreConfig.ConnectionTimeout != 0 {
+	if src.StoreConfig.ConnectionTimeout != "" {
 		dst.StoreConfig.ConnectionTimeout = src.StoreConfig.ConnectionTimeout
 	}
-	if src.StoreConfig.Bucket != "" {
-		dst.StoreConfig.Bucket = src.StoreConfig.Bucket
-	}
+	// if src.StoreConfig.Bucket != "" {
+	// 	dst.StoreConfig.Bucket = src.StoreConfig.Bucket
+	// }
 	if src.StoreConfig.PersistConnection != false {
 		dst.StoreConfig.PersistConnection = src.StoreConfig.PersistConnection
 	}
 	if src.StoreConfig.ClientTLS != nil {
 		if dst.StoreConfig.ClientTLS == nil {
-			dst.StoreConfig.ClientTLS = &store.ClientTLSConfig{}
+			dst.StoreConfig.ClientTLS = &StoreClientTLSConfig{}
 		}
 		if src.StoreConfig.ClientTLS.CertFile != "" {
 			dst.StoreConfig.ClientTLS.CertFile = src.StoreConfig.ClientTLS.CertFile
@@ -328,10 +389,7 @@ func mergeConfig(dst, src *Config) error {
 			dst.StoreConfig.ClientTLS.CACertFile = src.StoreConfig.ClientTLS.CACertFile
 		}
 	}
-	if src.StoreConfig.TLS != nil {
-		dst.StoreConfig.TLS = src.StoreConfig.TLS
-	}
-	if src.StoreConfig.SyncPeriod != 0 {
+	if src.StoreConfig.SyncPeriod != "" {
 		dst.StoreConfig.SyncPeriod = src.StoreConfig.SyncPeriod
 	}
 	if src.StoreConfig.Username != "" {

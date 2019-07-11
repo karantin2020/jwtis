@@ -33,7 +33,7 @@ func TestRegister(t *testing.T) {
 				configBucket: "bucket",
 				envPrefix:    "prefix",
 			},
-			osArgs: []string{"asd", "--tls", "-n", "sara", "-f./testdata/config.json"},
+			osArgs: []string{"asd", "--tls", "-n", "sara", "-f./testdata/config.yml"},
 		},
 		// {
 		// 	name: "Help test",
@@ -81,7 +81,7 @@ func TestRegister(t *testing.T) {
 			assert.Equal(t, "sara", *cmd.config.SelfName, "Service name must be equal to 'sara'")
 			assert.Equal(t, true, *cmd.config.TLS, "Service TLS must be 'true'")
 			assert.NotNil(t, cmd.config.StoreConfig, "cmd.config.StoreConfig must not be nil")
-			assert.Equal(t, "confTestBucket", cmd.config.StoreConfig.Bucket,
+			assert.Equal(t, tt.args.configBucket, cmd.config.bucketName,
 				"Store config bucket name must be equal to confTestBucket")
 			assert.Equal(t, "127.0.0.1:3435", *cmd.config.Listen)
 			assert.Equal(t, "127.0.0.1:3436", *cmd.config.ListenGrpc)
@@ -184,6 +184,8 @@ func Test_rootCmd_newStore(t *testing.T) {
 			if tests[i].args.dbType == "boltdb" {
 				os.RemoveAll("./data")
 			}
+			assert.Equal(t, "testBucket", r.config.bucketName)
+			// assert.Equal(t, "testBucket", r.config.StoreConfig.Bucket)
 		})
 	}
 }

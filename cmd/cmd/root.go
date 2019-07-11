@@ -23,7 +23,8 @@ import (
 	zk "github.com/abronan/valkeyrie/store/zookeeper"
 
 	"encoding/json"
-	// "gopkg.in/yaml.v2"
+
+	"gopkg.in/yaml.v2"
 )
 
 type rootCmd struct {
@@ -217,6 +218,11 @@ func (r *rootCmd) before() {
 		fmt.Fprintf(os.Stderr, "couldn't merge flags config to file config: %s", err.Error())
 		cli.Exit(1)
 	}
+	// data, err := json.MarshalIndent(fileConfig, "", "    ")
+	// if err != nil {
+	// 	panic(err.Error())
+	// }
+	// fmt.Printf("file config:\n%s\n", string(data))
 	// download config from db first
 	err = mergeConfig(fileConfig, dbConfig)
 	if err != nil {
@@ -228,6 +234,11 @@ func (r *rootCmd) before() {
 		fmt.Fprintf(os.Stderr, "couldn't merge file config to app config: %s", err.Error())
 		cli.Exit(1)
 	}
+	// data, err = json.MarshalIndent(r.config, "", "    ")
+	// if err != nil {
+	// 	panic(err.Error())
+	// }
+	// fmt.Printf("cmd config:\n%s\n", string(data))
 	r.logger = logger(*r.config.LogPath)
 }
 
@@ -293,10 +304,15 @@ func (r *rootCmd) newStore(dbType string, dbAddr []string) (*svalkey.Store, erro
 	if r.config.StoreConfig == nil {
 		return nil, fmt.Errorf("StoreConfig pointer is nil")
 	}
+	storeConf, err := r.config.GetStoreConfig()
+	if err != nil {
+		return nil, fmt.Errorf("error in newStore, couldn't create *store.Config: %s",
+			err.Error())
+	}
 	kv, err := valkeyrie.NewStore(
 		backend,
 		dbAddr,
-		r.config.StoreConfig,
+		storeConf,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("error create new valkeyrie store: %s", err.Error())
@@ -355,16 +371,16 @@ func (r *rootCmd) unmarshalConfig() (*Config, error) {
 			DBConfig: nil,
 			Verbose:  nil,
 		},
-		StoreConfig: &store.Config{
-			ClientTLS: &store.ClientTLSConfig{
-				CertFile:   "",
-				KeyFile:    "",
-				CACertFile: "",
+		StoreConfig: &StoreConfig{
+			ClientTLS: &StoreClientTLSConfig{
+				CertFile:           "",
+				KeyFile:            "",
+				CACertFile:         "",
+				InsecureSkipVerify: false,
 			},
-			TLS:               nil,
-			ConnectionTimeout: 0,
-			SyncPeriod:        0,
-			Bucket:            "",
+			ConnectionTimeout: "",
+			SyncPeriod:        "",
+			// Bucket:            "",
 			PersistConnection: false,
 			Username:          "",
 			Password:          "",
@@ -389,7 +405,13 @@ func (r *rootCmd) unmarshalConfig() (*Config, error) {
 				return appConfig, nil
 			}
 		}
-		if filepath.Ext(*r.config.ConfigFile) != ".json" {
+		var unmarshalFunc func(data []byte, v interface{}) error
+		switch filepath.Ext(*r.config.ConfigFile) {
+		case ".json":
+			unmarshalFunc = json.Unmarshal
+		case ".yml", ".yaml":
+			unmarshalFunc = yaml.Unmarshal
+		default:
 			return nil, fmt.Errorf("error unmarshal config: invalid file type")
 		}
 		content, err := ioutil.ReadFile(*r.config.ConfigFile)
@@ -397,7 +419,7 @@ func (r *rootCmd) unmarshalConfig() (*Config, error) {
 			return nil, fmt.Errorf("error reading config file")
 		}
 		// fmt.Printf("read content of config file:\n%s\n", string(content))
-		err = json.Unmarshal(content, appConfig)
+		err = unmarshalFunc(content, appConfig)
 		if err != nil {
 			return nil, fmt.Errorf("error unmarshalling config file: %s", err.Error())
 		}

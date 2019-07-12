@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	cli "github.com/jawher/mow.cli"
-	"github.com/karantin2020/jwtis"
 	"github.com/karantin2020/svalkey"
 	"github.com/rs/zerolog"
 
@@ -27,15 +26,34 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+const (
+	configStoreKey = "jwtis.cmd.config"
+	configCheckKey = "jwtis.cmd.check.key"
+	checkValLength = 256
+)
+
 type rootCmd struct {
+	// config holds app config parameters
 	config *Config
-	// store    *svalkey.Store
-	logger   zerolog.Logger
-	keysRepo jwtis.KeysRepository
+	// logger is the app logger
+	logger zerolog.Logger
+	// store is the db config to store
+	// configs and keys
+	store *svalkey.Store
+	// internal password
+	password [32]byte
+}
+
+// CheckValType stores secretString to check
+type CheckValType struct {
+	Val [checkValLength]byte
 }
 
 // SetGlobalOpts sets global cli options
 func (r *rootCmd) SetGlobalOpts(app *cli.Cli, configBucket, envPrefix string) {
+	if !strings.HasSuffix(envPrefix, "_") {
+		envPrefix = envPrefix + "_"
+	}
 	app.Spec = "[-flgearnpdv] [--tls] [--certFile] [--keyFile] [--caCertFile]" +
 		" [--sigAlg] [--sigBits] [--encAlg] [--encBits] [--contEnc] [--logPath]"
 	confRepo := NewConfig(configBucket)
@@ -194,7 +212,13 @@ func (r *rootCmd) before() {
 	if *r.config.Verbose {
 		zerolog.SetGlobalLevel(zerolog.InfoLevel)
 	}
-	// configs to merge
+
+	r.loadConfig()
+
+	r.logger = logger(*r.config.LogPath)
+}
+
+func (r *rootCmd) loadConfig() {
 	var (
 		// zeroed config based on flag values
 		flagConfig = &Config{}
@@ -208,42 +232,129 @@ func (r *rootCmd) before() {
 	)
 	*flagConfig = *r.config
 	flagConfig.defToNil()
+
+	err = r.loadPassword(flagConfig)
+	exitIfError(err, "error load password")
+
 	fileConfig, err = r.unmarshalConfig()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "couldn't unmarshal config file: %s", err.Error())
-		cli.Exit(1)
-	}
+	exitIfError(err, "error unmarshal config file")
 	err = mergeConfig(fileConfig, flagConfig)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "couldn't merge flags config to file config: %s", err.Error())
-		cli.Exit(1)
-	}
-	// data, err := json.MarshalIndent(fileConfig, "", "    ")
-	// if err != nil {
-	// 	panic(err.Error())
-	// }
-	// fmt.Printf("file config:\n%s\n", string(data))
-	// download config from db first
+	exitIfError(err, "error merge flags config to file config")
+
+	dbConfig, err = r.loadStore(flagConfig)
+	exitIfError(err, "error load store config")
+
 	err = mergeConfig(fileConfig, dbConfig)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "couldn't merge db config to file config: %s", err.Error())
-		cli.Exit(1)
-	}
+	exitIfError(err, "error merge db config to file config")
+
 	err = mergeConfig(r.config, fileConfig)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "couldn't merge file config to app config: %s", err.Error())
-		cli.Exit(1)
-	}
-	// data, err = json.MarshalIndent(r.config, "", "    ")
-	// if err != nil {
-	// 	panic(err.Error())
-	// }
-	// fmt.Printf("cmd config:\n%s\n", string(data))
+	exitIfError(err, "error merge file config to app config")
+	d, err := json.MarshalIndent(r.config, "", "  ")
+	exitIfError(err, "error marshal config")
+	fmt.Println("Config:\n", string(d))
 	r.logger = logger(*r.config.LogPath)
 }
 
+func (r *rootCmd) loadPassword(flagConfig *Config) error {
+	var err error
+	if flagConfig.password == nil {
+		r.password, err = newPassword()
+		if err != nil {
+			return fmt.Errorf("error generate new password: %s", err.Error())
+		}
+		return nil
+	}
+	decPswd, err := hexDecode([]byte(*flagConfig.password))
+	if err != nil {
+		return fmt.Errorf("error hex decode input password: %s", err.Error())
+	}
+	if len(decPswd) != 32 {
+		return fmt.Errorf("error input password length: length is not equal to 32 byte")
+	}
+	copy(r.password[:], decPswd)
+	for i := range decPswd {
+		decPswd[i] = 0
+	}
+	flagConfig.password = nil
+	return nil
+}
+
+func (r *rootCmd) loadStore(flagConfig *Config) (*Config, error) {
+	var (
+		// zeroed config based on db values
+		// if db exists then it's values have precedence before
+		// default flag values
+		dbConfig = &Config{}
+		err      error
+	)
+	// download config from db first
+	dbTypeAddr, err := parseDBConfig(*r.config.DBConfig)
+	if err != nil {
+		return nil, fmt.Errorf("error parse db config: %s", err.Error())
+	}
+	r.store, err = r.newStore(dbTypeAddr[0], dbTypeAddr[1:])
+	if err != nil {
+		return nil, fmt.Errorf("error get new *svalkey.Store: %s", err.Error())
+	}
+
+	exists, err := r.checkStoreConsistency()
+	if err != nil {
+		return nil, fmt.Errorf("error load store, non consistant: %s", err.Error())
+	}
+	if !exists {
+		fmt.Printf("Generated new password: '%s'\n", string(hexEncode(r.password[:])))
+		fmt.Printf("Please save the password safely, it's not recoverable\n")
+	} else {
+		err = r.store.Get(configStoreKey, dbConfig, &store.ReadOptions{
+			Consistent: true,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("error get config from store: %s", err.Error())
+		}
+	}
+
+	return dbConfig, nil
+}
+
+func (r *rootCmd) checkStoreConsistency() (bool, error) {
+	if r.store == nil {
+		return false, fmt.Errorf("error check store consistency: store is nil pointer")
+	}
+	exists, err := r.store.Exists(configStoreKey, &store.ReadOptions{
+		Consistent: true,
+	})
+	if err != nil && err != store.ErrKeyNotFound {
+		return false, fmt.Errorf("error check store consistency: %s", err.Error())
+	}
+	return exists, nil
+}
+
+func exitIfError(err error, msg string) {
+	if err != nil {
+		fmt.Fprintf(os.Stderr, msg+": %s\n", err.Error())
+		cli.Exit(1)
+	}
+}
+
+func checkError(err error, msg string) error {
+	if err != nil {
+		return fmt.Errorf(msg+": %s", err.Error())
+	}
+	return nil
+}
+
 func (r *rootCmd) action() {
+	r.logger.Info().Msg("start root command")
 	fmt.Println("Works fine!")
+	r.logger.Info().Msg("end root command")
+}
+
+func (r *rootCmd) after() {
+	err := r.store.Put(configStoreKey, r.config, nil)
+	exitIfError(err, "error save apps config")
+	for i := range r.password {
+		r.password[i] = 0
+	}
 }
 
 // Register executes root command
@@ -251,6 +362,7 @@ func (r *rootCmd) Register(app *cli.Cli, configBucket, envPrefix string) {
 	r.SetGlobalOpts(app, configBucket, envPrefix)
 	app.Before = r.before
 	app.Action = r.action
+	app.After = r.after
 }
 
 // Register executes root command through calling internal rootCmd.Bootstrap
@@ -259,21 +371,28 @@ func Register(app *cli.Cli, configBucket, envPrefix string) {
 	cmd.Register(app, configBucket, envPrefix)
 }
 
+// dbConfig must be in format:
+// `boltdb:./data/store.db`
+// or
+// `consul:127.0.0.1:8500`
 func parseDBConfig(dbConfig string) ([]string, error) {
 	ret := []string{}
-	i := strings.Index(dbConfig, ":")
-	dbType := dbConfig[:i]
+	// i := strings.Index(dbConfig, ":")
+	sConf := strings.SplitN(dbConfig, ":", 2)
+	if len(sConf) != 2 {
+		return nil, fmt.Errorf("invalid dbConfig string passed")
+	}
+	dbType := sConf[0]
 	switch dbType {
 	case "boltdb", "consul", "dynamodb", "etcd", "redis", "zookeeper":
 		ret = append(ret, dbType)
 	default:
-		return nil, fmt.Errorf("Unsupported store db passed")
+		return nil, fmt.Errorf("unsupported store db passed")
 	}
-	if len(dbConfig) < i+2 {
+	if len(sConf[1]) < 2 {
 		return nil, fmt.Errorf("Store db path/address is not provided")
 	}
-	dbPath := dbConfig[i+1:]
-	ret = append(ret, strings.Split(dbPath, ",")...)
+	ret = append(ret, strings.Split(sConf[1], ",")...)
 	return ret, nil
 }
 
@@ -317,15 +436,7 @@ func (r *rootCmd) newStore(dbType string, dbAddr []string) (*svalkey.Store, erro
 	if err != nil {
 		return nil, fmt.Errorf("error create new valkeyrie store: %s", err.Error())
 	}
-	if r.config.password == nil {
-		return nil, fmt.Errorf("nil pointer to password passed")
-	}
-	if len(*r.config.password) != 32 {
-		return nil, fmt.Errorf("invalid length of db password")
-	}
-	pswd := [32]byte{}
-	copy(pswd[:], []byte(*r.config.password))
-	sdb, err := svalkey.NewStore(kv, []byte{1, 0}, pswd)
+	sdb, err := svalkey.NewStore(kv, []byte{1, 0}, r.password)
 	if err != nil {
 		return nil, fmt.Errorf("error create svalkey store: %s", err.Error())
 	}

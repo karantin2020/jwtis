@@ -33,7 +33,10 @@ func TestRegister(t *testing.T) {
 				configBucket: "bucket",
 				envPrefix:    "prefix",
 			},
-			osArgs: []string{"asd", "--tls", "-n", "sara", "-f./testdata/config.yml"},
+			osArgs: []string{"asd", "--tls", "-n", "sara",
+				"-f./testdata/config.yml",
+				"-d", "boltdb:./testdata/test.db",
+			},
 		},
 		// {
 		// 	name: "Help test",
@@ -89,6 +92,56 @@ func TestRegister(t *testing.T) {
 			assert.Equal(t, "720h", *cmd.config.RefreshTTL)
 		})
 	}
+	os.Remove("./testdata/test.db")
+}
+
+func TestRegisterExisted(t *testing.T) {
+	type args struct {
+		app          *cli.Cli
+		configBucket string
+		envPrefix    string
+	}
+	app := cli.App("appName", "appDescription")
+	appCmd := rootCmd{}
+	appCmd.Register(app, "bucket", "prefix")
+	app.Run([]string{"asd", "-n", "sara",
+		"--logPath", "./testdata/test.log",
+		"-f./testdata/config.yml",
+		"-d", "boltdb:./testdata/test.db",
+	})
+	pswd := appCmd.password
+	hexPswd := hexEncode(pswd[:])
+	appCmd.store.Close()
+	tests := []struct {
+		name   string
+		args   args
+		osArgs []string
+	}{
+		{
+			name: "Positive test",
+			args: args{
+				app:          cli.App("appName", "appDescription"),
+				configBucket: "bucket",
+				envPrefix:    "prefix",
+			},
+			osArgs: []string{"asd", "-n", "sara",
+				"--logPath", "./testdata/test.log",
+				"-f./testdata/config.yml",
+				"-d", "boltdb:./testdata/test.db",
+				"-p", string(hexPswd),
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cmd := rootCmd{}
+			cmd.Register(tt.args.app, tt.args.configBucket, tt.args.envPrefix)
+			err := tt.args.app.Run(tt.osArgs)
+			assert.Nil(t, err, "app.Run must not return error")
+			cmd.store.Close()
+		})
+		os.Remove("./testdata/test.db")
+	}
 }
 
 func Test_parseDBConfig(t *testing.T) {
@@ -102,11 +155,35 @@ func Test_parseDBConfig(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name: "Successful test",
+			name: "Successful test boltdb config",
 			args: args{
-				`boltdb:./data/jwtis.log`,
+				`boltdb:./testdata/jwtis.log`,
 			},
-			want:    []string{"boltdb", "./data/jwtis.log"},
+			want:    []string{"boltdb", "./testdata/jwtis.log"},
+			wantErr: false,
+		},
+		{
+			name: "Error test boltdb config",
+			args: args{
+				`boltdb:a`,
+			},
+			want:    nil,
+			wantErr: true,
+		},
+		{
+			name: "Successful test consul config single",
+			args: args{
+				`consul:127.0.0.1:8500`,
+			},
+			want:    []string{"consul", "127.0.0.1:8500"},
+			wantErr: false,
+		},
+		{
+			name: "Successful test consul config plural",
+			args: args{
+				`consul:127.0.0.1:8500,127.0.0.1:8501`,
+			},
+			want:    []string{"consul", "127.0.0.1:8500", "127.0.0.1:8501"},
 			wantErr: false,
 		},
 	}
@@ -152,7 +229,7 @@ func Test_rootCmd_newStore(t *testing.T) {
 			},
 			args: args{
 				dbType: "boltdb",
-				dbAddr: []string{"./data/logs.log"},
+				dbAddr: []string{"./testdata/test.db"},
 			},
 			want:    assert.NotNil,
 			wantErr: false,
@@ -182,7 +259,7 @@ func Test_rootCmd_newStore(t *testing.T) {
 			}
 			tests[i].want(t, got, "New store result must not be nil")
 			if tests[i].args.dbType == "boltdb" {
-				os.RemoveAll("./data")
+				os.Remove("./testdata/test.db")
 			}
 			assert.Equal(t, "testBucket", r.config.bucketName)
 			// assert.Equal(t, "testBucket", r.config.StoreConfig.Bucket)

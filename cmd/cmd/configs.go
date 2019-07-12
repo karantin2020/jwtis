@@ -14,49 +14,49 @@ const (
 
 // TLSConfig config
 type TLSConfig struct {
-	CertFile   *string `json:"CertFile,omitempty" yaml:"CertFile,omitempty"`
-	KeyFile    *string `json:"KeyFile,omitempty" yaml:"KeyFile,omitempty"`
-	CACertFile *string `json:"CACertFile,omitempty" yaml:"CACertFile,omitempty"`
+	CertFile   *string `json:"CertFile" yaml:"CertFile"`
+	KeyFile    *string `json:"KeyFile" yaml:"KeyFile"`
+	CACertFile *string `json:"CACertFile" yaml:"CACertFile"`
 }
 
 // HTTPConf config
 type HTTPConf struct {
-	Listen    *string `json:"Listen,omitempty" yaml:"Listen,omitempty"` // ip:port to listen to
-	TLS       *bool   `json:"TLS,omitempty" yaml:"TLS,omitempty"`       // Future feature
-	TLSConfig `json:"TLSConfig,omitempty" yaml:"TLSConfig,omitempty"`
+	Listen    *string `json:"Listen" yaml:"Listen"` // ip:port to listen to
+	TLS       *bool   `json:"TLS" yaml:"TLS"`       // Future feature
+	TLSConfig `json:"TLSConfig" yaml:"TLSConfig"`
 }
 
 // GrpcConf config
 type GrpcConf struct {
-	ListenGrpc *string `json:"ListenGrpc,omitempty" yaml:"ListenGrpc,omitempty"`
+	ListenGrpc *string `json:"ListenGrpc" yaml:"ListenGrpc"`
 }
 
 // Sign holds default keys generation options
 type Sign struct {
-	SigAlg  *string `json:"SigAlg,omitempty" yaml:"SigAlg,omitempty"`   // Default algorithm to be used for sign
-	SigBits *int    `json:"SigBits,omitempty" yaml:"SigBits,omitempty"` // Default key size in bits for sign
+	SigAlg  *string `json:"SigAlg" yaml:"SigAlg"`   // Default algorithm to be used for sign
+	SigBits *int    `json:"SigBits" yaml:"SigBits"` // Default key size in bits for sign
 }
 
 // Encryption config
 type Encryption struct {
-	EncAlg  *string `json:"EncAlg,omitempty" yaml:"EncAlg,omitempty"`   // Default algorithm to be used for encrypt
-	EncBits *int    `json:"EncBits,omitempty" yaml:"EncBits,omitempty"` // Default key size in bits for encrypt
-	ContEnc *string `json:"ContEnc,omitempty" yaml:"ContEnc,omitempty"` // Default Content Encryption
+	EncAlg  *string `json:"EncAlg" yaml:"EncAlg"`   // Default algorithm to be used for encrypt
+	EncBits *int    `json:"EncBits" yaml:"EncBits"` // Default key size in bits for encrypt
+	ContEnc *string `json:"ContEnc" yaml:"ContEnc"` // Default Content Encryption
 }
 
 // JwtTTL config
 type JwtTTL struct {
-	AuthTTL    *string `json:"AuthTTL,omitempty" yaml:"AuthTTL,omitempty"`       // Default value for auth jwt ttl
-	RefreshTTL *string `json:"RefreshTTL,omitempty" yaml:"RefreshTTL,omitempty"` // Default value for refresh jwt ttl
+	AuthTTL    *string `json:"AuthTTL" yaml:"AuthTTL"`       // Default value for auth jwt ttl
+	RefreshTTL *string `json:"RefreshTTL" yaml:"RefreshTTL"` // Default value for refresh jwt ttl
 }
 
 // KeyGeneration config
 type KeyGeneration struct {
 	// keys generation options
-	Sign       `json:"Sign,omitempty" yaml:"Sign,omitempty"`
-	Encryption `json:"Encryption,omitempty" yaml:"Encryption,omitempty"`
-	Expiry     *string `json:"Expiry,omitempty" yaml:"Expiry,omitempty"`
-	JwtTTL     `json:"JwtTTL,omitempty" yaml:"JwtTTL,omitempty"`
+	Sign       `json:"Sign" yaml:"Sign"`
+	Encryption `json:"Encryption" yaml:"Encryption"`
+	Expiry     *string `json:"Expiry" yaml:"Expiry"`
+	JwtTTL     `json:"JwtTTL" yaml:"JwtTTL"`
 }
 
 type setByUser struct {
@@ -107,49 +107,50 @@ type defaults struct {
 
 // Options config
 type Options struct {
-	HTTPConf      `json:"HTTPConf,omitempty" yaml:"HTTPConf,omitempty"`
-	GrpcConf      `json:"GrpcConf,omitempty" yaml:"GrpcConf,omitempty"`
-	KeyGeneration `json:"KeyGeneration,omitempty" yaml:"KeyGeneration,omitempty"`
-	SelfName      *string `json:"SelfName,omitempty" yaml:"SelfName,omitempty"` // Name of this service
+	HTTPConf      `json:"HTTPConf" yaml:"HTTPConf"`
+	GrpcConf      `json:"GrpcConf" yaml:"GrpcConf"`
+	KeyGeneration `json:"KeyGeneration" yaml:"KeyGeneration"`
+	SelfName      *string `json:"SelfName" yaml:"SelfName"` // Name of this service
 
 	// internal options
 	password *string `yaml:"-"` // Storage password. App generates password with db creation.
 	// Later user must provide a password to access the database
-	LogPath    *string `json:"LogPath,omitempty" yaml:"LogPath,omitempty"`
-	DBConfig   *string `json:"DBConfig,omitempty" yaml:"DBConfig,omitempty"`
-	ConfigFile *string `json:"ConfigFile,omitempty" yaml:"ConfigFile,omitempty"`
-	Verbose    *bool   `json:"Verbose,omitempty" yaml:"Verbose,omitempty"`
+	LogPath    *string `json:"LogPath" yaml:"LogPath"`
+	DBConfig   *string `json:"DBConfig" yaml:"DBConfig"`
+	ConfigFile *string `json:"ConfigFile" yaml:"ConfigFile"`
+	Verbose    *bool   `json:"Verbose" yaml:"Verbose"`
 	setByUser  `yaml:"-"`
 }
 
 // StoreClientTLSConfig config
 type StoreClientTLSConfig struct {
-	CertFile           string `json:"CertFile,omitempty" yaml:"CertFile,omitempty"`
-	KeyFile            string `json:"KeyFile,omitempty" yaml:"KeyFile,omitempty"`
-	CACertFile         string `json:"CACertFile,omitempty" yaml:"CACertFile,omitempty"`
-	InsecureSkipVerify bool   `json:"InsecureSkipVerify,omitempty" yaml:"InsecureSkipVerify,omitempty"`
+	CertFile           string `json:"CertFile" yaml:"CertFile"`
+	KeyFile            string `json:"KeyFile" yaml:"KeyFile"`
+	CACertFile         string `json:"CACertFile" yaml:"CACertFile"`
+	InsecureSkipVerify bool   `json:"InsecureSkipVerify" yaml:"InsecureSkipVerify"`
 }
 
 // StoreConfig config
 type StoreConfig struct {
-	ClientTLS *StoreClientTLSConfig `json:"ClientTLS,omitempty" yaml:"ClientTLS,omitempty"`
+	ClientTLS *StoreClientTLSConfig `json:"ClientTLS" yaml:"ClientTLS"`
 	// ConnectionTimeout is time.Duration in string format
-	ConnectionTimeout string `json:"ConnectionTimeout,omitempty" yaml:"ConnectionTimeout,omitempty"`
+	ConnectionTimeout string `json:"ConnectionTimeout" yaml:"ConnectionTimeout"`
 	// SyncPeriod is time.Duration in string format
-	SyncPeriod string `json:"SyncPeriod,omitempty" yaml:"SyncPeriod,omitempty"`
-	// Bucket            string `json:"Bucket,omitempty" yaml:"Bucket,omitempty"`
-	PersistConnection bool   `json:"PersistConnection,omitempty" yaml:"PersistConnection,omitempty"`
-	Username          string `json:"Username,omitempty" yaml:"Username,omitempty"`
-	Password          string `json:"Password,omitempty" yaml:"Password,omitempty"`
-	Token             string `json:"Token,omitempty" yaml:"Token,omitempty"`
+	SyncPeriod string `json:"SyncPeriod" yaml:"SyncPeriod"`
+	// Bucket            string `json:"Bucket" yaml:"Bucket"`
+	PersistConnection bool   `json:"PersistConnection" yaml:"PersistConnection"`
+	Username          string `json:"Username" yaml:"Username"`
+	Password          string `json:"Password" yaml:"Password"`
+	Token             string `json:"Token" yaml:"Token"`
 }
 
 // Config contains app option values
 type Config struct {
 	defaults    `yaml:"-"`
-	Options     `json:"Options,omitempty" yaml:"Options,omitempty"`
-	StoreConfig *StoreConfig `json:"StoreConfig,omitempty" yaml:"StoreConfig,omitempty"`
-	// BucketName holds configuration bucket name
+	Options     `json:"Options" yaml:"Options"`
+	StoreConfig *StoreConfig `json:"StoreConfig" yaml:"StoreConfig"`
+	// bucketName holds app bucket name
+	// to store configs and keys
 	bucketName string `yaml:"-"`
 }
 

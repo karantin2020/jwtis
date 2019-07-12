@@ -10,18 +10,18 @@ Options:
         ListenGrpc: '127.0.0.1:3436'
     KeyGeneration:
         Sign:
-            SigAlg: alg
+            SigAlg: 'alg'
             SigBits: 123
         Encryption:
-            EncAlg: alg
+            EncAlg: 'alg'
             EncBits: 123
-            ContEnc: alg
-        Expiry: 72h
+            ContEnc: 'alg'
+        Expiry: '72h'
         JwtTTL:
-            AuthTTL: 72h
-            RefreshTTL: 720h
-    SelfName: testName
-    LogPath: test.log
+            AuthTTL: '72h'
+            RefreshTTL: '720h'
+    SelfName: 'testName'
+    LogPath: './testdata/test.log'
     DBConfig: 'boltdb:./testdata/test.db'
     Verbose: false
 StoreConfig:
@@ -33,6 +33,6 @@ StoreConfig:
     ConnectionTimeout: '30s'
     SyncPeriod: '60s'
     PersistConnection: true
-    Username: testUser
-    Password: testPswd
-    Token: testToken
+    Username: 'testUser'
+    Password: 'testPswd'
+    Token: 'testToken'

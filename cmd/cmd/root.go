@@ -28,8 +28,8 @@ import (
 
 const (
 	configStoreKey = "jwtis.cmd.config"
-	configCheckKey = "jwtis.cmd.check.key"
-	checkValLength = 256
+	// configCheckKey = "jwtis.cmd.check.key"
+	// checkValLength = 256
 )
 
 type rootCmd struct {
@@ -42,12 +42,15 @@ type rootCmd struct {
 	store *svalkey.Store
 	// internal password
 	password [32]byte
+	// exists shows whether app exists or not
+	exists        bool
+	name, version string
 }
 
-// CheckValType stores secretString to check
-type CheckValType struct {
-	Val [checkValLength]byte
-}
+// // CheckValType stores secretString to check
+// type CheckValType struct {
+// 	Val [checkValLength]byte
+// }
 
 // SetGlobalOpts sets global cli options
 func (r *rootCmd) SetGlobalOpts(app *cli.Cli, configBucket, envPrefix string) {
@@ -216,6 +219,8 @@ func (r *rootCmd) before() {
 	r.loadConfig()
 
 	r.logger = logger(*r.config.LogPath)
+
+	r.greetingMsg()
 }
 
 func (r *rootCmd) loadConfig() {
@@ -249,9 +254,9 @@ func (r *rootCmd) loadConfig() {
 
 	err = mergeConfig(r.config, fileConfig)
 	exitIfError(err, "error merge file config to app config")
-	d, err := json.MarshalIndent(r.config, "", "  ")
-	exitIfError(err, "error marshal config")
-	fmt.Println("Config:\n", string(d))
+	// d, err := json.MarshalIndent(r.config, "", "  ")
+	// exitIfError(err, "error marshal config")
+	// fmt.Println("Config:\n", string(d))
 	r.logger = logger(*r.config.LogPath)
 }
 
@@ -297,14 +302,11 @@ func (r *rootCmd) loadStore(flagConfig *Config) (*Config, error) {
 		return nil, fmt.Errorf("error get new *svalkey.Store: %s", err.Error())
 	}
 
-	exists, err := r.checkStoreConsistency()
+	err = r.checkStoreConsistency()
 	if err != nil {
 		return nil, fmt.Errorf("error load store, non consistant: %s", err.Error())
 	}
-	if !exists {
-		fmt.Printf("Generated new password: '%s'\n", string(hexEncode(r.password[:])))
-		fmt.Printf("Please save the password safely, it's not recoverable\n")
-	} else {
+	if r.exists {
 		err = r.store.Get(configStoreKey, dbConfig, &store.ReadOptions{
 			Consistent: true,
 		})
@@ -316,17 +318,18 @@ func (r *rootCmd) loadStore(flagConfig *Config) (*Config, error) {
 	return dbConfig, nil
 }
 
-func (r *rootCmd) checkStoreConsistency() (bool, error) {
+func (r *rootCmd) checkStoreConsistency() error {
 	if r.store == nil {
-		return false, fmt.Errorf("error check store consistency: store is nil pointer")
+		return fmt.Errorf("error check store consistency: store is nil pointer")
 	}
-	exists, err := r.store.Exists(configStoreKey, &store.ReadOptions{
+	var err error
+	r.exists, err = r.store.Exists(configStoreKey, &store.ReadOptions{
 		Consistent: true,
 	})
 	if err != nil && err != store.ErrKeyNotFound {
-		return false, fmt.Errorf("error check store consistency: %s", err.Error())
+		return fmt.Errorf("error check store consistency: %s", err.Error())
 	}
-	return exists, nil
+	return nil
 }
 
 func exitIfError(err error, msg string) {

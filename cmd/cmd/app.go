@@ -8,7 +8,8 @@ import (
 )
 
 /*
-Cli represents the structure of a CLI app. It should be constructed using the App() function
+Cli represents the structure of a CLI app. It should be
+constructed using the App() function
 */
 type Cli struct {
 	cli               *cli.Cli
@@ -18,8 +19,9 @@ type Cli struct {
 }
 
 /*
-App creates a new and empty CLI app configured with the passed name and description.
-name and description will be used to construct the help message for the app:
+App creates a new and empty CLI app configured with the
+passed name and description. name and description will
+be used to construct the help message for the app:
 	Usage: $name [OPTIONS] COMMAND [arg...]
 	$desc
 */
@@ -52,8 +54,9 @@ func (c *Cli) Config(bucket, envPrefix string) {
 }
 
 /*
-Version sets the version string of the CLI app together with the options that can be used to trigger
-printing the version string via the CLI.
+Version sets the version string of the CLI app together with
+the options that can be used to trigger printing the version
+string via the CLI.
 	Usage: appName --$name
 	$version
 */
@@ -65,10 +68,10 @@ func (c *Cli) Version(name, version string) {
 }
 
 /*
-Run uses the app configuration (specs, commands, ...) to parse the args slice
-and to execute the matching command.
-In case of an incorrect usage, and depending on the configured ErrorHandling policy,
-it may return an error, panic or exit
+Run uses the app configuration (specs, commands, ...) to parse
+the args slice and to execute the matching command.
+In case of an incorrect usage, and depending on the configured
+ErrorHandling policy, it may return an error, panic or exit
 */
 func (c *Cli) Run(args []string) error {
 	checkNilCli(c)

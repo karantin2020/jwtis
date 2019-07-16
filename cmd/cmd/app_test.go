@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"fmt"
 	"os"
 	"testing"
 
@@ -46,9 +47,33 @@ func TestCli_Run(t *testing.T) {
 			},
 			wantErr: false,
 		},
+		{
+			name: "Help test",
+			fields: fields{
+				Cli: cli.App("testApp", "test description"),
+				cmd: &rootCmd{
+					name: "testApp",
+				},
+				name:      "testApp",
+				version:   "v0.0.1",
+				bucket:    "testBucket",
+				envPrefix: "TEST",
+			},
+			args: args{
+				args: []string{"asd", "-h"},
+			},
+			wantErr: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			defer func() {
+				if r := recover(); r != nil {
+					fmt.Printf("Recovered in %s: %v", tt.name, r)
+				}
+				os.Remove("./testdata/test.log")
+				os.Remove("./testdata/test.db")
+			}()
 			c := &Cli{
 				cli:       tt.fields.Cli,
 				cmd:       tt.fields.cmd,
@@ -63,6 +88,5 @@ func TestCli_Run(t *testing.T) {
 			}
 		})
 	}
-	os.Remove("./testdata/test.log")
-	os.Remove("./testdata/test.db")
+
 }

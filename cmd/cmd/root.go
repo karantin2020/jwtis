@@ -63,21 +63,21 @@ func (r *rootCmd) SetGlobalOpts(app *cli.Cli, configBucket, envPrefix string) {
 	confRepo.Listen = app.String(cli.StringOpt{
 		Name:      "l listen",
 		Value:     confRepo.defListen,
-		Desc:      "http ip:port to listen to",
+		Desc:      "string Http ip:port to listen to",
 		EnvVar:    envPrefix + "HTTP_ADDRESS",
 		SetByUser: &confRepo.listenSetByUser,
 	})
 	confRepo.ListenGrpc = app.String(cli.StringOpt{
 		Name:      "g grpcAddr",
 		Value:     confRepo.defListenGrpc,
-		Desc:      "grpc ip:port to listen to",
+		Desc:      "string Grpc ip:port to listen to",
 		EnvVar:    envPrefix + "GRPC_ADDRESS",
 		SetByUser: &confRepo.listenGrpcSetByUser,
 	})
 	confRepo.TLS = app.Bool(cli.BoolOpt{
 		Name:      "tls",
 		Value:     confRepo.defTLS,
-		Desc:      "Use tls connection [not implemented yet]",
+		Desc:      "bool Use tls connection [not implemented yet]",
 		EnvVar:    envPrefix + "TLS",
 		SetByUser: &confRepo.tlsSetByUser,
 	})
@@ -85,21 +85,21 @@ func (r *rootCmd) SetGlobalOpts(app *cli.Cli, configBucket, envPrefix string) {
 	confRepo.CertFile = app.String(cli.StringOpt{
 		Name:      "certFile",
 		Value:     confRepo.defCertFile,
-		Desc:      "Default CertFile for tls",
+		Desc:      "string Default CertFile for tls",
 		EnvVar:    envPrefix + "CERT_FILE",
 		SetByUser: &confRepo.certFileSetByUser,
 	})
 	confRepo.KeyFile = app.String(cli.StringOpt{
 		Name:      "keyFile",
 		Value:     confRepo.defKeyFile,
-		Desc:      "Default KeyFile for tls",
+		Desc:      "string Default KeyFile for tls",
 		EnvVar:    envPrefix + "KEY_FILE",
 		SetByUser: &confRepo.keyFileSetByUser,
 	})
 	confRepo.CACertFile = app.String(cli.StringOpt{
 		Name:      "caCertFile",
 		Value:     confRepo.defCACertFile,
-		Desc:      "Default CACertFile for tls",
+		Desc:      "string Default CACertFile for tls",
 		EnvVar:    envPrefix + "CA_CERT_FILE",
 		SetByUser: &confRepo.caCertFileSetByUser,
 	})
@@ -107,56 +107,56 @@ func (r *rootCmd) SetGlobalOpts(app *cli.Cli, configBucket, envPrefix string) {
 	confRepo.SigAlg = app.String(cli.StringOpt{
 		Name:      "sigAlg",
 		Value:     confRepo.defSigAlg,
-		Desc:      "Default algorithm to be used for sign. Possible values are: ES256 ES384 ES512 EdDSA RS256 RS384 RS512 PS256 PS384 PS512",
+		Desc:      "string Default algorithm to be used for sign. Possible values are: ES256 ES384 ES512 EdDSA RS256 RS384 RS512 PS256 PS384 PS512",
 		EnvVar:    envPrefix + "SIG_ALG",
 		SetByUser: &confRepo.sigAlgSetByUser,
 	})
 	confRepo.SigBits = app.Int(cli.IntOpt{
 		Name:      "sigBits",
 		Value:     confRepo.defSigBits,
-		Desc:      "Default key size in bits for sign key. Supported elliptic bit lengths are 256, 384, 521",
+		Desc:      "int Default key size in bits for sign key. Supported elliptic bit lengths are 256, 384, 521",
 		EnvVar:    envPrefix + "SIG_BITS",
 		SetByUser: &confRepo.sigBitsSetByUser,
 	})
 	confRepo.EncAlg = app.String(cli.StringOpt{
 		Name:      "encAlg",
 		Value:     confRepo.defEncAlg,
-		Desc:      "Default algorithm to be used for encrypt. Possible values are RSA1_5 RSA-OAEP RSA-OAEP-256 ECDH-ES ECDH-ES+A128KW ECDH-ES+A192KW ECDH-ES+A256KW",
+		Desc:      "string Default algorithm to be used for encrypt. Possible values are RSA1_5 RSA-OAEP RSA-OAEP-256 ECDH-ES ECDH-ES+A128KW ECDH-ES+A192KW ECDH-ES+A256KW",
 		EnvVar:    envPrefix + "ENC_ALG",
 		SetByUser: &confRepo.encAlgSetByUser,
 	})
 	confRepo.EncBits = app.Int(cli.IntOpt{
 		Name:      "encBits",
 		Value:     confRepo.defEncBits,
-		Desc:      "Default key size in bits for encrypt. Supported elliptic bit lengths are 256, 384, 521",
+		Desc:      "int Default key size in bits for encrypt. Supported elliptic bit lengths are 256, 384, 521",
 		EnvVar:    envPrefix + "ENC_BITS",
 		SetByUser: &confRepo.encBitsSetByUser,
 	})
 	confRepo.ContEnc = app.String(cli.StringOpt{
 		Name:      "contEnc",
 		Value:     confRepo.defContEnc,
-		Desc:      "Default content encryption. Possible values are A128GCM, A192GCM, A256GCM",
+		Desc:      "string Default content encryption. Possible values are A128GCM, A192GCM, A256GCM",
 		EnvVar:    envPrefix + "CONT_ENC",
 		SetByUser: &confRepo.contEncSetByUser,
 	})
 	confRepo.Expiry = app.String(cli.StringOpt{
 		Name:      "e expiry",
 		Value:     confRepo.defExpiry,
-		Desc:      "Default keys time to live, expiration time [Duration string]",
+		Desc:      "string Default keys time to live, expiration time [Duration string]",
 		EnvVar:    envPrefix + "EXPIRY",
 		SetByUser: &confRepo.expirySetByUser,
 	})
 	confRepo.AuthTTL = app.String(cli.StringOpt{
 		Name:      "a authTTL",
 		Value:     confRepo.defAuthTTL,
-		Desc:      "Default auth JWT token time to live, expiration time [Duration string]",
+		Desc:      "string Default auth JWT token time to live, expiration time [Duration string]",
 		EnvVar:    envPrefix + "AUTH_TTL",
 		SetByUser: &confRepo.authTTLSetByUser,
 	})
 	confRepo.RefreshTTL = app.String(cli.StringOpt{
 		Name:      "r refreshTTL",
 		Value:     confRepo.defRefreshTTL,
-		Desc:      "Default refresh JWT token time to live, expiration time [Duration string]",
+		Desc:      "string Default refresh JWT token time to live, expiration time [Duration string]",
 		EnvVar:    envPrefix + "REFRESH_TTL",
 		SetByUser: &confRepo.refreshTTLSetByUser,
 	})
@@ -164,42 +164,42 @@ func (r *rootCmd) SetGlobalOpts(app *cli.Cli, configBucket, envPrefix string) {
 	confRepo.SelfName = app.String(cli.StringOpt{
 		Name:      "n name",
 		Value:     confRepo.defSelfName,
-		Desc:      "Name of this service",
+		Desc:      "string Name of this service",
 		EnvVar:    envPrefix + "NAME",
 		SetByUser: &confRepo.selfNameSetByUser,
 	})
 	confRepo.password = app.String(cli.StringOpt{
 		Name:      "p pswd",
 		Value:     confRepo.defPassword,
-		Desc:      "Storage password. App generates password with db creation. Later user must provide a password to access the database",
+		Desc:      "string Storage password. App generates password with db creation. Later user must provide a password to access the database",
 		EnvVar:    envPrefix + "PSWD",
 		SetByUser: &confRepo.passwordSetByUser,
 	})
 	confRepo.DBConfig = app.String(cli.StringOpt{
 		Name:      "d dbConfig",
 		Value:     confRepo.defDBConfig,
-		Desc:      "Config to setup db",
+		Desc:      "string Config to setup db",
 		EnvVar:    envPrefix + "DB_CONFIG",
 		SetByUser: &confRepo.dbConfigSetByUser,
 	})
 	confRepo.ConfigFile = app.String(cli.StringOpt{
 		Name:      "f file",
 		Value:     confRepo.defConfigFile,
-		Desc:      "Path to config file",
+		Desc:      "string Path to config file",
 		EnvVar:    envPrefix + "CONFIG_FILE",
 		SetByUser: &confRepo.configFileSetByUser,
 	})
 	confRepo.LogPath = app.String(cli.StringOpt{
 		Name:      "logPath",
 		Value:     confRepo.defLogPath,
-		Desc:      "Path to store logs",
+		Desc:      "string Path to store logs",
 		EnvVar:    envPrefix + "LOG_PATH",
 		SetByUser: &confRepo.logPathSetByUser,
 	})
 	confRepo.Verbose = app.Bool(cli.BoolOpt{
 		Name:      "v verbose",
 		Value:     confRepo.defVerbose,
-		Desc:      "Verbose. Show detailed logs",
+		Desc:      "bool Verbose. Show detailed logs",
 		EnvVar:    envPrefix + "VERBOSE",
 		SetByUser: &confRepo.verboseSetByUser,
 	})

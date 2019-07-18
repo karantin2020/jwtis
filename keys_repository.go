@@ -3,13 +3,18 @@ package jwtis
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
-	bolt "github.com/coreos/bbolt"
 	"github.com/pkg/errors"
 	jose "gopkg.in/square/go-jose.v2"
 	jwt "gopkg.in/square/go-jose.v2/jwt"
+
+	"github.com/karantin2020/svalkey"
+	// "github.com/rs/zerolog"
+	// "github.com/abronan/valkeyrie"
+	"github.com/abronan/valkeyrie/store"
 )
 
 var (
@@ -130,27 +135,45 @@ type KeysRepository struct {
 	defSigOptions KeyOptions
 	defEncOptions KeyOptions
 
-	boltDB     *bolt.DB
-	bucketName []byte // repository bucket name in boltDB
-	encKey     *Key
-	nonce      []byte
-	ml         sync.RWMutex
+	store  *svalkey.Store
+	prefix string
+
+	// boltDB     *bolt.DB
+	// bucketName []byte // repository bucket name in boltDB
+	// encKey     *Key
+	// nonce      []byte
+	ml sync.RWMutex
 }
 
-// Init initiates created KeysRepository
-func (p *KeysRepository) Init(db *bolt.DB, bucketName []byte,
-	opts *DefaultOptions, encKey *Key, nonce []byte) error {
-	if p == nil {
-		panic("KeysRepository pointer is nil")
+// KeysRepoOptions holds options for NewKeysRepo func
+type KeysRepoOptions struct {
+	Store  *svalkey.Store
+	Prefix string
+	Opts   *DefaultOptions
+}
+
+// NewKeysRepo returns pointer to new KeysRepository
+func NewKeysRepo(repoOpts *KeysRepoOptions) (*KeysRepository, error) {
+	if repoOpts == nil {
+		return nil, fmt.Errorf("error NewKeysRepo: nil pointer to KeysRepoOptions")
 	}
-	if opts == nil {
-		panic("options pointer in key repository init is nil")
+	if repoOpts.Opts == nil {
+		return nil, fmt.Errorf("error NewKeysRepo: nil pointer to keysRepo DefaultOptions")
 	}
-	p.boltDB = db
-	p.bucketName = bucketName
+	if repoOpts.Store == nil {
+		return nil, fmt.Errorf("error NewKeysRepo: nil pointer to svalkey.Store")
+	}
+	p := &KeysRepository{
+		store:  repoOpts.Store,
+		prefix: repoOpts.Prefix,
+	}
+	if !strings.HasSuffix(p.prefix, "/") {
+		p.prefix = p.prefix + "/"
+	}
 	p.Keys = make(map[string]JWTKeysIssuerSet)
-	p.DefaultOptions = *opts
+	p.DefaultOptions = *repoOpts.Opts
 	p.DefaultOptions.RefreshStrategy = "noRefresh"
+	opts := repoOpts.Opts
 	p.defSigOptions = KeyOptions{
 		Use:  "sig",
 		Alg:  opts.SigAlg,
@@ -161,17 +184,48 @@ func (p *KeysRepository) Init(db *bolt.DB, bucketName []byte,
 		Alg:  opts.EncAlg,
 		Bits: opts.EncBits,
 	}
-	p.encKey = encKey
-	p.nonce = nonce
 	err := p.LoadAll()
 	if err != nil {
-		return fmt.Errorf("error initianing keys repository: %s", err.Error())
+		return nil, fmt.Errorf("error loading keys repository: %s", err.Error())
 	}
-	return nil
+	return p, nil
 }
 
-// CheckKeys checks if all keys are valid and are not expired
-func (p *KeysRepository) CheckKeys() error {
+// // Init initiates created KeysRepository
+// func (p *KeysRepository) Init(db *bolt.DB, bucketName []byte,
+// 	opts *DefaultOptions, encKey *Key, nonce []byte) error {
+// 	if p == nil {
+// 		panic("KeysRepository pointer is nil")
+// 	}
+// 	if opts == nil {
+// 		panic("options pointer in key repository init is nil")
+// 	}
+// 	p.boltDB = db
+// 	p.bucketName = bucketName
+// 	p.Keys = make(map[string]JWTKeysIssuerSet)
+// 	p.DefaultOptions = *opts
+// 	p.DefaultOptions.RefreshStrategy = "noRefresh"
+// 	p.defSigOptions = KeyOptions{
+// 		Use:  "sig",
+// 		Alg:  opts.SigAlg,
+// 		Bits: opts.SigBits,
+// 	}
+// 	p.defEncOptions = KeyOptions{
+// 		Use:  "enc",
+// 		Alg:  opts.EncAlg,
+// 		Bits: opts.EncBits,
+// 	}
+// 	p.encKey = encKey
+// 	p.nonce = nonce
+// 	err := p.LoadAll()
+// 	if err != nil {
+// 		return fmt.Errorf("error initianing keys repository: %s", err.Error())
+// 	}
+// 	return nil
+// }
+
+// ValidateKeys checks if all keys are valid and are not expired
+func (p *KeysRepository) ValidateKeys() error {
 	var res Error
 	p.ml.RLock()
 	defer p.ml.RUnlock()
@@ -189,7 +243,7 @@ func (p *KeysRepository) CheckKeys() error {
 // NewKey creates new key with key_id and adds it to repository
 // returns public jose.JSONWebKey
 func (p *KeysRepository) NewKey(kid string, opts *DefaultOptions) (SigEncKeys, error) {
-	fmt.Printf("keyrepo: newkey for kid '%s'\n", kid)
+	// fmt.Printf("keyrepo: newkey for kid '%s'\n", kid)
 	if p == nil {
 		return SigEncKeys{},
 			fmt.Errorf("error in NewKey: pointer to KeysRepository is nil")
@@ -268,18 +322,19 @@ func (p *KeysRepository) KeyExists(kid []byte) (bool, *JWTKeysIssuerSet, error) 
 	exists := false
 	p.ml.RLock()
 	defer p.ml.RUnlock()
-	if err := p.boltDB.View(func(tx *bolt.Tx) error {
-		b := tx.Bucket(p.bucketName)
-		if err := LoadSealed(p.encKey, p.nonce, b, kid, &privKeys); err != nil {
-			if err == ErrKeyNotFound {
-				return nil
-			}
-			return fmt.Errorf("error loading key %s: %s", string(kid), err.Error())
-		}
-		exists = true
-		return nil
-	}); err != nil {
+	exists, err := p.store.Exists(string(kid), &store.ReadOptions{
+		Consistent: true,
+	})
+	if err != nil {
 		return exists, nil, fmt.Errorf("error looking for key %s: %s", string(kid), err.Error())
+	}
+	if exists {
+		err = p.store.Get(p.prefix+string(kid), &privKeys, &store.ReadOptions{
+			Consistent: true,
+		})
+		if err != nil {
+			return exists, nil, fmt.Errorf("error loading key %s: %s", string(kid), err.Error())
+		}
 	}
 	return exists, &privKeys, nil
 }
@@ -310,14 +365,9 @@ func (p *KeysRepository) AddKey(key *JWTKeysIssuerSet) (SigEncKeys, error) {
 	key.attachPublic()
 	p.ml.Lock()
 	defer p.ml.Unlock()
-	if err := p.boltDB.Update(func(tx *bolt.Tx) error {
-		b := tx.Bucket(p.bucketName)
-		if err := SaveSealed(p.encKey, p.nonce, b, key.KID, key); err != nil {
-			return fmt.Errorf("error saving keys with kid %s", string(key.KID))
-		}
-		return nil
-	}); err != nil {
-		return SigEncKeys{}, fmt.Errorf("error save keys in repository: %s", err.Error())
+	err = p.store.Put(p.prefix+string(key.KID), key, nil)
+	if err != nil {
+		return SigEncKeys{}, fmt.Errorf("error save keys for %s in repository: %s", string(key.KID), err.Error())
 	}
 	p.Keys[string(key.KID)] = *key
 	pubKeys := SigEncKeys{
@@ -334,23 +384,19 @@ func (p *KeysRepository) AddKey(key *JWTKeysIssuerSet) (SigEncKeys, error) {
 func (p *KeysRepository) DelKey(kid string) error {
 	p.ml.Lock()
 	defer p.ml.Unlock()
-	if err := p.boltDB.Update(func(tx *bolt.Tx) error {
-		b := tx.Bucket(p.bucketName)
+	exists, err := p.store.Exists(p.prefix+kid, &store.ReadOptions{
+		Consistent: true,
+	})
+	if err != nil {
+		return fmt.Errorf("error delete: error looking for key %s: %s", kid, err.Error())
+	}
+	if !exists {
+		return ErrKeyNotFound
+	}
 
-		val := b.Get([]byte(kid))
-		if val == nil {
-			return ErrKeyNotFound
-		}
-
-		if err := b.Delete([]byte(kid)); err != nil {
-			return fmt.Errorf("error delete key with kid %s: %s", kid, err.Error())
-		}
-		return nil
-	}); err != nil {
-		if err == ErrKeyNotFound {
-			return err
-		}
-		return fmt.Errorf("error delete keys from repository: %s", err.Error())
+	err = p.store.Delete(kid)
+	if err != nil {
+		return fmt.Errorf("error delete key %s: %s", kid, err.Error())
 	}
 	delete(p.Keys, kid)
 	return nil
@@ -441,51 +487,36 @@ func (p *KeysRepository) ListKeys() ([]KeysInfoSet, error) {
 
 // SaveAll puts all keys from memory to boltDB
 func (p *KeysRepository) SaveAll() error {
+	var resErr Error
 	p.ml.Lock()
 	defer p.ml.Unlock()
-	if err := p.boltDB.Batch(func(tx *bolt.Tx) error {
-		b := tx.Bucket(p.bucketName)
-		for _, v := range p.Keys {
-			if err := SaveSealed(p.encKey, p.nonce, b, v.KID, v); err != nil {
-				return fmt.Errorf("error saving keys with kid %s", string(v.KID))
-			}
+	for _, v := range p.Keys {
+		if err := p.store.Put(p.prefix+string(v.KID), &v, nil); err != nil {
+			resErr.Append(fmt.Errorf("error saving keys with kid %s: %s", string(v.KID), err.Error()))
 		}
-		return nil
-	}); err != nil {
-		return fmt.Errorf("error SaveAll keys repository: %s", err.Error())
+	}
+	if len(resErr) > 0 {
+		return resErr
 	}
 	return nil
 }
 
 // LoadAll loads all keys from boltDB to memory
 func (p *KeysRepository) LoadAll() error {
+	if p.Keys == nil {
+		p.Keys = make(map[string]JWTKeysIssuerSet)
+	}
 	p.ml.Lock()
 	defer p.ml.Unlock()
-	if err := p.boltDB.View(func(tx *bolt.Tx) error {
-		b := tx.Bucket(p.bucketName)
-		err := b.ForEach(func(k, v []byte) error {
-			if v == nil {
-				return fmt.Errorf("error loading key %s, value is empty", string(k))
-			}
-
-			buf := make([]byte, 0, len(v))
-			value, err := p.encKey.Open(buf, p.nonce, v, nil)
-			if err != nil {
-				return err
-			}
-			res := JWTKeysIssuerSet{}
-			if err := json.Unmarshal(value, &res); err != nil {
-				return fmt.Errorf("in loading key %s failed to unmarshal: %s", string(k), err.Error())
-			}
-			res.Valid()
-			res.Expired()
-			res.attachPublic()
-			p.Keys[string(res.KID)] = res
-			return nil
-		})
-		return err
-	}); err != nil {
-		return fmt.Errorf("error LoadAll keys repository: %s", err.Error())
+	keysList := []JWTKeysIssuerSet{}
+	_, err := p.store.List(p.prefix, &keysList, &store.ReadOptions{
+		Consistent: true,
+	})
+	if err != nil {
+		return fmt.Errorf("error loading keys list: %s", err.Error())
+	}
+	for i := range keysList {
+		p.Keys[string(keysList[i].KID)] = keysList[i]
 	}
 	return nil
 }

@@ -122,12 +122,12 @@ func (s *JWTService) NewJWT(kid string, claims map[string]interface{}) (*JWTPair
 		}
 	}
 	claims["exp"] = &exp
-	auth, err := jwtis.JWTSigned(privKeys.Sig, claims)
+	auth, err := jwtis.JWTSigned(&privKeys.Sig, claims)
 	if err != nil {
 		return nil, fmt.Errorf("error in JWT auth token: %s", err.Error())
 	}
 	claims["exp"] = jwt.NewNumericDate(time.Now().Add(ttl[1]))
-	refresh, err := jwtis.JWTSignedAndEncrypted(s.defContEnc, privKeys.Enc, privKeys.Sig, claims)
+	refresh, err := jwtis.JWTSignedAndEncrypted(s.defContEnc, &privKeys.Enc, &privKeys.Sig, claims)
 	if err != nil {
 		return nil, fmt.Errorf("error in JWT refresh token: %s", err.Error())
 	}
@@ -304,7 +304,7 @@ func (s *JWTService) AuthJWT(kid string) (string, error) {
 	claims := make(map[string]interface{})
 	claims["kid"] = kid
 	claims["iss"] = "JWTIS"
-	authJWT, err := jwtis.JWTSigned(privKeys.Sig, claims)
+	authJWT, err := jwtis.JWTSigned(&privKeys.Sig, claims)
 	if err != nil {
 		log.Error().Err(err).Msg("error in AuthJWT: sign error")
 		return "", fmt.Errorf("error in AuthJWT: %s", err.Error())

@@ -88,8 +88,8 @@ func (k *JWTKeysIssuerSet) Valid() bool {
 // Public returns SigEncKeys with public sig and enc keys
 func (k *JWTKeysIssuerSet) Public() SigEncKeys {
 	return SigEncKeys{
-		Sig:    &k.pubSig,
-		Enc:    &k.pubEnc,
+		Sig:    k.pubSig,
+		Enc:    k.pubEnc,
 		Expiry: k.Expiry,
 		Valid:  !k.invalid,
 	}
@@ -102,11 +102,11 @@ func (k *JWTKeysIssuerSet) attachPublic() {
 
 // SigEncKeys represents a structure that holds public or private JWT keys
 type SigEncKeys struct {
-	Sig             *jose.JSONWebKey `json:"sig"`
-	Enc             *jose.JSONWebKey `json:"enc"`
-	Expiry          jwt.NumericDate  `json:"expiry"`
-	Valid           bool             `json:"valid"`
-	RefreshStrategy string           `json:"refresh_strategy"`
+	Sig             jose.JSONWebKey `json:"sig"`
+	Enc             jose.JSONWebKey `json:"enc"`
+	Expiry          jwt.NumericDate `json:"expiry"`
+	Valid           bool            `json:"valid"`
+	RefreshStrategy string          `json:"refresh_strategy"`
 }
 
 // KeyOptions represent the set of option to create sig or enc keys
@@ -117,9 +117,9 @@ type KeyOptions struct {
 
 // DefaultOptions represents default sig ang enc options
 type DefaultOptions struct {
-	SigAlg          string        // Default algorithn to be used for sign
+	SigAlg          string        // Default algorithm to be used for sign
 	SigBits         int           // Default key size in bits for sign
-	EncAlg          string        // Default algorithn to be used for encrypt
+	EncAlg          string        // Default algorithm to be used for encrypt
 	EncBits         int           // Default key size in bits for encrypt
 	Expiry          time.Duration // Default value for keys ttl
 	AuthTTL         time.Duration // Default value for auth jwt ttl
@@ -138,10 +138,6 @@ type KeysRepository struct {
 	store  *svalkey.Store
 	prefix string
 
-	// boltDB     *bolt.DB
-	// bucketName []byte // repository bucket name in boltDB
-	// encKey     *Key
-	// nonce      []byte
 	ml sync.RWMutex
 }
 
@@ -191,39 +187,6 @@ func NewKeysRepo(repoOpts *KeysRepoOptions) (*KeysRepository, error) {
 	return p, nil
 }
 
-// // Init initiates created KeysRepository
-// func (p *KeysRepository) Init(db *bolt.DB, bucketName []byte,
-// 	opts *DefaultOptions, encKey *Key, nonce []byte) error {
-// 	if p == nil {
-// 		panic("KeysRepository pointer is nil")
-// 	}
-// 	if opts == nil {
-// 		panic("options pointer in key repository init is nil")
-// 	}
-// 	p.boltDB = db
-// 	p.bucketName = bucketName
-// 	p.Keys = make(map[string]JWTKeysIssuerSet)
-// 	p.DefaultOptions = *opts
-// 	p.DefaultOptions.RefreshStrategy = "noRefresh"
-// 	p.defSigOptions = KeyOptions{
-// 		Use:  "sig",
-// 		Alg:  opts.SigAlg,
-// 		Bits: opts.SigBits,
-// 	}
-// 	p.defEncOptions = KeyOptions{
-// 		Use:  "enc",
-// 		Alg:  opts.EncAlg,
-// 		Bits: opts.EncBits,
-// 	}
-// 	p.encKey = encKey
-// 	p.nonce = nonce
-// 	err := p.LoadAll()
-// 	if err != nil {
-// 		return fmt.Errorf("error initianing keys repository: %s", err.Error())
-// 	}
-// 	return nil
-// }
-
 // ValidateKeys checks if all keys are valid and are not expired
 func (p *KeysRepository) ValidateKeys() error {
 	var res Error
@@ -256,7 +219,7 @@ func (p *KeysRepository) NewKey(kid string, opts *DefaultOptions) (SigEncKeys, e
 	exists, privKeys, err := p.KeyExists([]byte(kid))
 	if err != nil {
 		return SigEncKeys{},
-			fmt.Errorf("error in NewKey checking key existance: %s", err.Error())
+			fmt.Errorf("error in NewKey checking key existence: %s", err.Error())
 	}
 	if exists {
 		if !privKeys.Valid() {
@@ -312,24 +275,30 @@ func (p *KeysRepository) NewKey(kid string, opts *DefaultOptions) (SigEncKeys, e
 	}
 	if opts.RefreshStrategy != "" {
 		privKeys.RefreshStrategy = opts.RefreshStrategy
+	} else {
+		privKeys.RefreshStrategy = p.DefaultOptions.RefreshStrategy
 	}
 	return p.AddKey(privKeys)
 }
 
 // KeyExists return true is key with kid is in boltDB
 func (p *KeysRepository) KeyExists(kid []byte) (bool, *JWTKeysIssuerSet, error) {
+	nKid := p.normalizeKid(string(kid))
 	privKeys := JWTKeysIssuerSet{}
 	exists := false
 	p.ml.RLock()
 	defer p.ml.RUnlock()
-	exists, err := p.store.Exists(string(kid), &store.ReadOptions{
+	exists, err := p.store.Exists(nKid, &store.ReadOptions{
 		Consistent: true,
 	})
 	if err != nil {
+		if err == store.ErrKeyNotFound {
+			return false, &privKeys, nil
+		}
 		return exists, nil, fmt.Errorf("error looking for key %s: %s", string(kid), err.Error())
 	}
 	if exists {
-		err = p.store.Get(p.prefix+string(kid), &privKeys, &store.ReadOptions{
+		err = p.store.Get(nKid, &privKeys, &store.ReadOptions{
 			Consistent: true,
 		})
 		if err != nil {
@@ -342,10 +311,11 @@ func (p *KeysRepository) KeyExists(kid []byte) (bool, *JWTKeysIssuerSet, error) 
 // AddKey adds jose.JSONWebKey with key.KeyID to repository
 // returns public jose.JSONWebKey
 func (p *KeysRepository) AddKey(key *JWTKeysIssuerSet) (SigEncKeys, error) {
+	nKid := p.normalizeKid(string(key.KID))
 	exists, privKeys, err := p.KeyExists(key.KID)
 	if err != nil {
 		return SigEncKeys{},
-			fmt.Errorf("error in AddKey checking key existance: %s", err.Error())
+			fmt.Errorf("error in AddKey checking key existence: %s", err.Error())
 	}
 	if exists {
 		if !privKeys.Expired() {
@@ -365,14 +335,14 @@ func (p *KeysRepository) AddKey(key *JWTKeysIssuerSet) (SigEncKeys, error) {
 	key.attachPublic()
 	p.ml.Lock()
 	defer p.ml.Unlock()
-	err = p.store.Put(p.prefix+string(key.KID), key, nil)
+	err = p.store.Put(nKid, key, nil)
 	if err != nil {
 		return SigEncKeys{}, fmt.Errorf("error save keys for %s in repository: %s", string(key.KID), err.Error())
 	}
 	p.Keys[string(key.KID)] = *key
 	pubKeys := SigEncKeys{
-		Enc:             &key.pubEnc,
-		Sig:             &key.pubSig,
+		Enc:             key.pubEnc,
+		Sig:             key.pubSig,
 		Expiry:          key.Expiry,
 		Valid:           !key.invalid,
 		RefreshStrategy: key.RefreshStrategy,
@@ -382,9 +352,10 @@ func (p *KeysRepository) AddKey(key *JWTKeysIssuerSet) (SigEncKeys, error) {
 
 // DelKey deletes key from cache and boltDB
 func (p *KeysRepository) DelKey(kid string) error {
+	nKid := p.normalizeKid(kid)
 	p.ml.Lock()
 	defer p.ml.Unlock()
-	exists, err := p.store.Exists(p.prefix+kid, &store.ReadOptions{
+	exists, err := p.store.Exists(nKid, &store.ReadOptions{
 		Consistent: true,
 	})
 	if err != nil {
@@ -394,7 +365,7 @@ func (p *KeysRepository) DelKey(kid string) error {
 		return ErrKeyNotFound
 	}
 
-	err = p.store.Delete(kid)
+	err = p.store.Delete(nKid)
 	if err != nil {
 		return fmt.Errorf("error delete key %s: %s", kid, err.Error())
 	}
@@ -406,23 +377,17 @@ func (p *KeysRepository) DelKey(kid string) error {
 // returns pointer to public jose.JSONWebKey
 func (p *KeysRepository) GetPublicKeys(kid string) (SigEncKeys, error) {
 	p.ml.RLock()
-	key, ok := p.Keys[kid]
-	p.ml.RUnlock()
-	if !ok {
-		return SigEncKeys{}, ErrKeysNotFound
-	}
-	if key.Expired() {
-		return SigEncKeys{}, ErrKeysExpired
-	}
-	if !key.Valid() {
-		return SigEncKeys{}, ErrKeysInvalid
+	defer p.ml.RUnlock()
+	privKeys, err := p.GetPrivateKeys(kid)
+	if err != nil {
+		return SigEncKeys{}, err
 	}
 	pubKeys := SigEncKeys{
-		Enc:             &key.pubEnc,
-		Sig:             &key.pubSig,
-		Expiry:          key.Expiry,
-		Valid:           !key.invalid,
-		RefreshStrategy: key.RefreshStrategy,
+		Enc:             privKeys.Enc.Public(),
+		Sig:             privKeys.Sig.Public(),
+		Expiry:          privKeys.Expiry,
+		Valid:           privKeys.Valid,
+		RefreshStrategy: privKeys.RefreshStrategy,
 	}
 	return pubKeys, nil
 }
@@ -431,50 +396,60 @@ func (p *KeysRepository) GetPublicKeys(kid string) (SigEncKeys, error) {
 // returns pointer to public jose.JSONWebKey
 func (p *KeysRepository) GetPrivateKeys(kid string) (SigEncKeys, error) {
 	p.ml.RLock()
-	key, ok := p.Keys[kid]
-	p.ml.RUnlock()
-	if !ok {
+	defer p.ml.RUnlock()
+	exists, privKeys, err := p.KeyExists([]byte(kid))
+	if err != nil {
+		return SigEncKeys{},
+			fmt.Errorf("error check keys existence: %s", err.Error())
+	}
+	if !exists {
 		return SigEncKeys{}, ErrKeysNotFound
 	}
-	if key.Expired() {
+	if privKeys.Expired() {
 		return SigEncKeys{}, ErrKeysExpired
 	}
-	privKeys := SigEncKeys{
-		Enc:             &key.Enc,
-		Sig:             &key.Sig,
-		Expiry:          key.Expiry,
-		Valid:           !key.invalid,
-		RefreshStrategy: key.RefreshStrategy,
+	if !privKeys.Valid() {
+		return SigEncKeys{}, ErrKeysInvalid
 	}
-	return privKeys, nil
+	retKeys := SigEncKeys{
+		Enc:             privKeys.Enc,
+		Sig:             privKeys.Sig,
+		Expiry:          privKeys.Expiry,
+		Valid:           !privKeys.invalid,
+		RefreshStrategy: privKeys.RefreshStrategy,
+	}
+	return retKeys, nil
 }
 
 // ListKeys returns info about keys for all registered kids
 func (p *KeysRepository) ListKeys() ([]KeysInfoSet, error) {
 	var resErr Error
-	keysList := make([]KeysInfoSet, 0, len(p.Keys))
-	p.LoadAll()
+	keysList := []KeysInfoSet{}
 	p.ml.RLock()
 	defer p.ml.RUnlock()
-	for k, v := range p.Keys {
+	kvs, err := p.loadKeys()
+	if err != nil {
+		resErr.Append(fmt.Errorf("error loading keys list: %s", err.Error()))
+	}
+	for i := range kvs {
 		keySet := KeysInfoSet{
-			KID:             k,
-			Expiry:          int64(v.Expiry),
-			AuthTTL:         int64(v.AuthTTL),
-			RefreshTTL:      int64(v.RefreshTTL),
-			RefreshStrategy: v.RefreshStrategy,
-			Locked:          v.Locked,
+			KID:             string(kvs[i].KID),
+			Expiry:          int64(kvs[i].Expiry),
+			AuthTTL:         int64(kvs[i].AuthTTL),
+			RefreshTTL:      int64(kvs[i].RefreshTTL),
+			RefreshStrategy: kvs[i].RefreshStrategy,
+			Locked:          kvs[i].Locked,
 		}
-		keySet.Valid = v.Valid()
-		keySet.Expired = v.Expired()
-		b, err := json.Marshal(v.Enc.Public())
+		keySet.Valid = kvs[i].Valid()
+		keySet.Expired = kvs[i].Expired()
+		b, err := json.Marshal(kvs[i].Enc.Public())
 		if err != nil {
-			resErr.Append(fmt.Errorf("error marshal public enc key for kid: '%s': %s", k, err.Error()))
+			resErr.Append(fmt.Errorf("error marshal public enc key for kid: '%s': %s", string(kvs[i].KID), err.Error()))
 		}
 		keySet.Enc = b
-		b, err = json.Marshal(v.Sig.Public())
+		b, err = json.Marshal(kvs[i].Sig.Public())
 		if err != nil {
-			resErr.Append(fmt.Errorf("error marshal public sig key for kid: '%s': %s", k, err.Error()))
+			resErr.Append(fmt.Errorf("error marshal public sig key for kid: '%s': %s", string(kvs[i].KID), err.Error()))
 		}
 		keySet.Sig = b
 		keysList = append(keysList, keySet)
@@ -491,7 +466,8 @@ func (p *KeysRepository) SaveAll() error {
 	p.ml.Lock()
 	defer p.ml.Unlock()
 	for _, v := range p.Keys {
-		if err := p.store.Put(p.prefix+string(v.KID), &v, nil); err != nil {
+		nKid := p.normalizeKid(string(v.KID))
+		if err := p.store.Put(nKid, &v, nil); err != nil {
 			resErr.Append(fmt.Errorf("error saving keys with kid %s: %s", string(v.KID), err.Error()))
 		}
 	}
@@ -503,20 +479,34 @@ func (p *KeysRepository) SaveAll() error {
 
 // LoadAll loads all keys from boltDB to memory
 func (p *KeysRepository) LoadAll() error {
-	if p.Keys == nil {
-		p.Keys = make(map[string]JWTKeysIssuerSet)
-	}
 	p.ml.Lock()
 	defer p.ml.Unlock()
+	keysList, err := p.loadKeys()
+	if err != nil {
+		return fmt.Errorf("error loading keys list: %s", err.Error())
+	}
+	p.Keys = nil
+	p.Keys = make(map[string]JWTKeysIssuerSet)
+	for i := range keysList {
+		keysList[i].invalid = !keysList[i].Valid()
+		keysList[i].expired = keysList[i].Expired()
+		keysList[i].attachPublic()
+		p.Keys[string(keysList[i].KID)] = keysList[i]
+	}
+	return nil
+}
+
+func (p *KeysRepository) normalizeKid(kid string) string {
+	return p.prefix + kid
+}
+
+func (p *KeysRepository) loadKeys() ([]JWTKeysIssuerSet, error) {
 	keysList := []JWTKeysIssuerSet{}
 	_, err := p.store.List(p.prefix, &keysList, &store.ReadOptions{
 		Consistent: true,
 	})
 	if err != nil {
-		return fmt.Errorf("error loading keys list: %s", err.Error())
+		return nil, err
 	}
-	for i := range keysList {
-		p.Keys[string(keysList[i].KID)] = keysList[i]
-	}
-	return nil
+	return keysList, nil
 }

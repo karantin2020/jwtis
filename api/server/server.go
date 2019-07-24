@@ -12,6 +12,7 @@ import (
 	"time"
 
 	chi "github.com/go-chi/chi"
+	middleware "github.com/go-chi/chi/middleware"
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	"github.com/karantin2020/jwtis"
 	pb "github.com/karantin2020/jwtis/api/pb"
@@ -89,6 +90,10 @@ func (j *JWTISServer) Prepare(listen, listenGrpc string) error {
 		return fmt.Errorf("error prepare server, bad server addrs")
 	}
 	hmux := chi.NewRouter()
+	hmux.Use(middleware.RequestID)
+	hmux.Use(middleware.RealIP)
+	hmux.Use(middleware.Logger)
+	hmux.Use(middleware.Recoverer)
 	j.httpSrv = &http.Server{
 		ReadTimeout:       15 * time.Second,
 		ReadHeaderTimeout: 1 * time.Second,

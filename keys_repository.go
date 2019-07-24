@@ -15,6 +15,8 @@ import (
 	// "github.com/rs/zerolog"
 	// "github.com/abronan/valkeyrie"
 	"github.com/abronan/valkeyrie/store"
+	"github.com/abronan/valkeyrie/store/boltdb"
+	"github.com/abronan/valkeyrie/store/dynamodb"
 )
 
 var (
@@ -28,6 +30,14 @@ var (
 	ErrKeysExistInvalid = errors.New("keys with kid exist in repository and are not valid")
 	// ErrKeysInvalid fires when keys are not valid
 	ErrKeysInvalid = errors.New("keys with kid exist in repository and are not valid")
+)
+
+var (
+	refreshStrategies = []string{
+		"refreshBoth",
+		"refreshOnExpire",
+		"noRefresh",
+	}
 )
 
 // JWTKeysIssuerSet holds keys info
@@ -95,6 +105,11 @@ func (k *JWTKeysIssuerSet) Public() SigEncKeys {
 	}
 }
 
+// Validate checks Expired() and Valid()
+func (k *JWTKeysIssuerSet) Validate() bool {
+	return !k.Expired() && k.Valid()
+}
+
 func (k *JWTKeysIssuerSet) attachPublic() {
 	k.pubEnc = k.Enc.Public()
 	k.pubSig = k.Sig.Public()
@@ -160,13 +175,20 @@ func NewKeysRepo(repoOpts *KeysRepoOptions) (*KeysRepository, error) {
 		return nil, fmt.Errorf("error NewKeysRepo: nil pointer to svalkey.Store")
 	}
 	p := &KeysRepository{
-		store:  repoOpts.Store,
-		prefix: repoOpts.Prefix,
+		store: repoOpts.Store,
 	}
-	if !strings.HasSuffix(p.prefix, "/") {
-		p.prefix = p.prefix + "/"
+	modPrefix := func(i interface{}) {
+		switch i.(type) {
+		case *boltdb.BoltDB, *dynamodb.DynamoDB:
+			p.prefix = ""
+		default:
+			p.prefix = repoOpts.Prefix
+			if !strings.HasSuffix(p.prefix, "/") {
+				p.prefix = p.prefix + "/"
+			}
+		}
 	}
-	p.Keys = make(map[string]JWTKeysIssuerSet)
+	modPrefix(p.store.Store)
 	p.DefaultOptions = *repoOpts.Opts
 	p.DefaultOptions.RefreshStrategy = "noRefresh"
 	opts := repoOpts.Opts
@@ -180,33 +202,12 @@ func NewKeysRepo(repoOpts *KeysRepoOptions) (*KeysRepository, error) {
 		Alg:  opts.EncAlg,
 		Bits: opts.EncBits,
 	}
-	err := p.LoadAll()
-	if err != nil {
-		return nil, fmt.Errorf("error loading keys repository: %s", err.Error())
-	}
 	return p, nil
-}
-
-// ValidateKeys checks if all keys are valid and are not expired
-func (p *KeysRepository) ValidateKeys() error {
-	var res Error
-	p.ml.RLock()
-	defer p.ml.RUnlock()
-	for k, v := range p.Keys {
-		if v.invalid || !v.Valid() {
-			res.Append(fmt.Errorf("keys with kid %s are invalid", k))
-		}
-		if v.expired || v.Expired() {
-			res.Append(fmt.Errorf("keys with kid %s are expired", k))
-		}
-	}
-	return res
 }
 
 // NewKey creates new key with key_id and adds it to repository
 // returns public jose.JSONWebKey
 func (p *KeysRepository) NewKey(kid string, opts *DefaultOptions) (SigEncKeys, error) {
-	// fmt.Printf("keyrepo: newkey for kid '%s'\n", kid)
 	if p == nil {
 		return SigEncKeys{},
 			fmt.Errorf("error in NewKey: pointer to KeysRepository is nil")
@@ -229,6 +230,12 @@ func (p *KeysRepository) NewKey(kid string, opts *DefaultOptions) (SigEncKeys, e
 			return SigEncKeys{}, ErrKeysExist
 		}
 		return SigEncKeys{}, ErrKeysExpired
+	}
+
+	if opts.RefreshStrategy != "" {
+		if !stringInSlice(opts.RefreshStrategy, refreshStrategies) {
+			return SigEncKeys{}, fmt.Errorf("NewKey error: invalid RefreshStrategy option value")
+		}
 	}
 
 	// If there is no key with kid in db, we continue creation of new key
@@ -339,7 +346,6 @@ func (p *KeysRepository) AddKey(key *JWTKeysIssuerSet) (SigEncKeys, error) {
 	if err != nil {
 		return SigEncKeys{}, fmt.Errorf("error save keys for %s in repository: %s", string(key.KID), err.Error())
 	}
-	p.Keys[string(key.KID)] = *key
 	pubKeys := SigEncKeys{
 		Enc:             key.pubEnc,
 		Sig:             key.pubSig,
@@ -369,7 +375,6 @@ func (p *KeysRepository) DelKey(kid string) error {
 	if err != nil {
 		return fmt.Errorf("error delete key %s: %s", kid, err.Error())
 	}
-	delete(p.Keys, kid)
 	return nil
 }
 
@@ -460,42 +465,6 @@ func (p *KeysRepository) ListKeys() ([]KeysInfoSet, error) {
 	return keysList, nil
 }
 
-// SaveAll puts all keys from memory to boltDB
-func (p *KeysRepository) SaveAll() error {
-	var resErr Error
-	p.ml.Lock()
-	defer p.ml.Unlock()
-	for _, v := range p.Keys {
-		nKid := p.normalizeKid(string(v.KID))
-		if err := p.store.Put(nKid, &v, nil); err != nil {
-			resErr.Append(fmt.Errorf("error saving keys with kid %s: %s", string(v.KID), err.Error()))
-		}
-	}
-	if len(resErr) > 0 {
-		return resErr
-	}
-	return nil
-}
-
-// LoadAll loads all keys from boltDB to memory
-func (p *KeysRepository) LoadAll() error {
-	p.ml.Lock()
-	defer p.ml.Unlock()
-	keysList, err := p.loadKeys()
-	if err != nil {
-		return fmt.Errorf("error loading keys list: %s", err.Error())
-	}
-	p.Keys = nil
-	p.Keys = make(map[string]JWTKeysIssuerSet)
-	for i := range keysList {
-		keysList[i].invalid = !keysList[i].Valid()
-		keysList[i].expired = keysList[i].Expired()
-		keysList[i].attachPublic()
-		p.Keys[string(keysList[i].KID)] = keysList[i]
-	}
-	return nil
-}
-
 func (p *KeysRepository) normalizeKid(kid string) string {
 	return p.prefix + kid
 }
@@ -508,5 +477,18 @@ func (p *KeysRepository) loadKeys() ([]JWTKeysIssuerSet, error) {
 	if err != nil {
 		return nil, err
 	}
+	for i := range keysList {
+		keysList[i].Validate()
+		keysList[i].attachPublic()
+	}
 	return keysList, nil
+}
+
+func stringInSlice(a string, list []string) bool {
+	for i := range list {
+		if list[i] == a {
+			return true
+		}
+	}
+	return false
 }

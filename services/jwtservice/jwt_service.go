@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/karantin2020/jwtis"
+	bluemonday "github.com/microcosm-cc/bluemonday"
 	"github.com/rs/zerolog"
 	uuid "github.com/satori/go.uuid"
 	jose "gopkg.in/square/go-jose.v2"
@@ -74,6 +75,8 @@ func (s *JWTService) NewJWT(kid string, claims map[string]interface{}) (*JWTPair
 		log.Error().Err(err).Bool("ok", ok).Msgf("error in NewJWT: keys with kid '%s' don't exist", kid)
 		return nil, ErrKIDNotExists
 	}
+
+	sanitize(claims)
 
 	// define jwt id
 	if jti, ok := claims["jti"]; !ok || jti.(string) == "" {
@@ -311,4 +314,17 @@ func (s *JWTService) AuthJWT(kid string) (string, error) {
 	}
 
 	return authJWT, nil
+}
+
+func sanitize(m map[string]interface{}) {
+	p := bluemonday.StrictPolicy()
+	for k, v := range m {
+		switch t := v.(type) {
+		case string:
+			m[k] = p.Sanitize(t)
+		case []byte:
+			m[k] = p.SanitizeBytes(t)
+		default:
+		}
+	}
 }

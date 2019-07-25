@@ -10,13 +10,13 @@ Options:
         ListenGrpc: '127.0.0.1:3436'
     KeyGeneration:
         Sign:
-            SigAlg: 'alg'
-            SigBits: 123
+            SigAlg: 'ES256'
+            SigBits: 256
         Encryption:
-            EncAlg: 'alg'
-            EncBits: 123
-            ContEnc: 'alg'
-        Expiry: '72h'
+            EncAlg: 'ECDH-ES+A256KW'
+            EncBits: 256
+            ContEnc: 'A256GCM'
+        Expiry: '4320h'
         JwtTTL:
             AuthTTL: '72h'
             RefreshTTL: '720h'

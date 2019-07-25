@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/abronan/valkeyrie/store"
+	"github.com/karantin2020/jwtis"
+	jose "gopkg.in/square/go-jose.v2"
 )
 
 const (
@@ -404,4 +406,86 @@ func mergeConfig(dst, src *Config) error {
 	}
 
 	return nil
+}
+
+func (c *Config) validate() error {
+	var mErr jwtis.Error
+
+	switch *c.SigAlg {
+	case "RS256", "RS384", "RS512", "PS256", "PS384", "PS512":
+		if *c.SigBits != 0 && *c.SigBits < 2048 {
+			mErr.Append(f(errInvalidSigBitsValue, *c.SigAlg, *c.SigBits))
+		}
+	case "ES256", "ES384", "ES512", "EdDSA":
+		keylen := map[string]int{
+			"ES256": 256,
+			"ES384": 384,
+			"ES512": 521,
+			"EdDSA": 256,
+		}
+		if *c.SigBits != 0 && *c.SigBits != keylen[*c.SigAlg] {
+			mErr.Append(f(errInvalidSigBitsValueA, *c.SigAlg, *c.SigBits))
+		}
+	default:
+		mErr.Append(errInvalidSigConfig)
+	}
+
+	switch *c.EncAlg {
+	case "RSA1_5", "RSA-OAEP", "RSA-OAEP-256":
+		if *c.EncBits != 0 && *c.EncBits < 2048 {
+			mErr.Append(f(errInvalidEncBitsValue, *c.EncAlg, *c.EncBits))
+		}
+	case "ECDH-ES", "ECDH-ES+A128KW", "ECDH-ES+A192KW", "ECDH-ES+A256KW":
+		if !containsInt(bits, *c.EncBits) {
+			mErr.Append(f(errInvalidEncBitsValueA, *c.EncAlg, *c.EncBits))
+		}
+	default:
+		mErr.Append(errInvalidEncConfig)
+	}
+
+	switch jose.ContentEncryption(*c.ContEnc) {
+	case jose.A128GCM, jose.A192GCM, jose.A256GCM:
+	default:
+		mErr.Append(errInvalidContEnc)
+
+	}
+
+	if len(mErr) != 0 {
+		return mErr
+	}
+	return nil
+}
+
+var (
+	bits = []int{0, 256, 384, 521}
+)
+
+var (
+	f = fmt.Errorf
+
+	errInvalidEncBitsValue  = "%s: too short enc key for RSA `alg`, 2048+ is required, have: %d"
+	errInvalidEncBitsValueA = "%s: this enc elliptic curve supports bit length one of 256, 384, 521, have: %d"
+	errInvalidEncConfig     = fmt.Errorf("invalid encrypt config flags")
+	errInvalidSigBitsValue  = "%s: too short sig key for RSA `alg`, 2048+ is required, have: %d"
+	errInvalidSigBitsValueA = "%s: this sig elliptic curve supports bit length one of 256, 384, 521, have: %d, you just can set it to 0"
+	errInvalidSigConfig     = fmt.Errorf("invalid sign config flags")
+	errInvalidContEnc       = fmt.Errorf("invalid content encryption value")
+)
+
+func containsString(l []string, s string) bool {
+	for i := range l {
+		if l[i] == s {
+			return true
+		}
+	}
+	return false
+}
+
+func containsInt(l []int, s int) bool {
+	for i := range l {
+		if l[i] == s {
+			return true
+		}
+	}
+	return false
 }

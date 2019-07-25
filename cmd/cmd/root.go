@@ -254,6 +254,8 @@ func (r *rootCmd) loadConfig() {
 
 	err = mergeConfig(r.config, fileConfig)
 	exitIfError(err, "error merge file config to app config")
+	err = r.config.validate()
+	exitIfError(err, "error validate app config")
 	// d, err := json.MarshalIndent(r.config, "", "  ")
 	// exitIfError(err, "error marshal config")
 	// fmt.Println("Config:\n", string(d))

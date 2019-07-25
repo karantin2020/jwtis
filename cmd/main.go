@@ -121,7 +121,7 @@ func main() {
 			if err != nil {
 				log.Error().Err(err).Msg("server shutdown error")
 			}
-			log.Info().Msg("http server gracefuly shutdown")
+			log.Info().Msg("http server gracefully shutdown")
 			return nil
 		})
 		g.Wait()

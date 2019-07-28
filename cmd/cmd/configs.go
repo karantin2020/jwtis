@@ -193,7 +193,7 @@ func NewConfig(bucketName string) *Config {
 }
 
 // GetStoreConfig converts internal config to *store.Config
-func (c *Config) GetStoreConfig() (*store.Config, error) {
+func (c Config) GetStoreConfig() (*store.Config, error) {
 	cs := c.StoreConfig
 	if cs == nil {
 		return nil, fmt.Errorf("error convert to *store.Config: internal StoreConfig is nil pointer")
@@ -228,6 +228,29 @@ func (c *Config) GetStoreConfig() (*store.Config, error) {
 			err.Error())
 	}
 	return conf, nil
+}
+
+func (c Config) getKeysRepoOptions() (*jwtis.DefaultOptions, error) {
+	opts := jwtis.DefaultOptions{
+		SigAlg:  *c.SigAlg,
+		SigBits: *c.SigBits,
+		EncAlg:  *c.EncAlg,
+		EncBits: *c.EncBits,
+	}
+	var err error
+	opts.Expiry, err = time.ParseDuration(*c.Expiry)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing config Expiry value: %s", err.Error())
+	}
+	opts.AuthTTL, err = time.ParseDuration(*c.AuthTTL)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing config AuthTTL value: %s", err.Error())
+	}
+	opts.RefreshTTL, err = time.ParseDuration(*c.RefreshTTL)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing config RefreshTTL value: %s", err.Error())
+	}
+	return &opts, nil
 }
 
 func (c *Config) defToNil() {
@@ -408,7 +431,25 @@ func mergeConfig(dst, src *Config) error {
 	return nil
 }
 
-func (c *Config) validate() error {
+func (c Config) printConfigs() {
+	fmt.Printf("Current configuration:\n")
+	fmt.Printf("  configs.listen:\t%s\n", *c.Listen)
+	fmt.Printf("  configs.listenGrpc:\t%s\n", *c.ListenGrpc)
+	fmt.Printf("  configs.tls:\t\t%t\n", *c.TLS)
+	fmt.Printf("  configs.sigAlg:\t%s\n", *c.SigAlg)
+	fmt.Printf("  configs.sigBits:\t%d\n", *c.SigBits)
+	fmt.Printf("  configs.encAlg:\t%s\n", *c.EncAlg)
+	fmt.Printf("  configs.encBits:\t%d\n", *c.EncBits)
+	fmt.Printf("  configs.contEnc:\t%s\n", *c.ContEnc)
+	fmt.Printf("  configs.selfName:\t%s\n", string(*c.SelfName))
+	fmt.Printf("  configs.expiry:\t%s\n", *c.Expiry)
+	fmt.Printf("  configs.authTTL:\t%s\n", *c.AuthTTL)
+	fmt.Printf("  configs.refreshTTL:\t%s\n", *c.RefreshTTL)
+	// fmt.Printf("internalRepo.configs.password: '%s'\n", string(p.password))
+	fmt.Printf("  configs.DBConfig:\t%s\n", *c.DBConfig)
+}
+
+func (c Config) validate() error {
 	var mErr jwtis.Error
 
 	switch *c.SigAlg {
@@ -448,6 +489,25 @@ func (c *Config) validate() error {
 	default:
 		mErr.Append(errInvalidContEnc)
 
+	}
+
+	expiry, err := time.ParseDuration(*c.Expiry)
+	if err != nil {
+		mErr.Append(f("error parsing config Expiry value: %s", err.Error()))
+	}
+	authTTL, err := time.ParseDuration(*c.AuthTTL)
+	if err != nil {
+		mErr.Append(f("error parsing config AuthTTL value: %s", err.Error()))
+	}
+	refreshTTL, err := time.ParseDuration(*c.RefreshTTL)
+	if err != nil {
+		mErr.Append(f("error parsing config RefreshTTL value: %s", err.Error()))
+	}
+	if int64(expiry) <= int64(refreshTTL) {
+		mErr.Append(f("invalid expiry value: must be more than refreshTTL"))
+	}
+	if int64(refreshTTL) <= int64(authTTL) {
+		mErr.Append(f("invalid refreshTTL and authTTL values: authTTL must be less than refreshTTL"))
 	}
 
 	if len(mErr) != 0 {

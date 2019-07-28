@@ -25,7 +25,7 @@ func logger(path string) zerolog.Logger {
 		os.Stderr,
 	)).With().
 		Timestamp().
-		Str("s", "jwtis").
+		Str("service", "jwtis").
 		Logger()
 	return log
 }

@@ -194,9 +194,9 @@ func TestNewKeysRepo(t *testing.T) {
 				},
 			},
 			want: func(t *testing.T, kr *KeysRepository) {
-				assert.Equal(t, "", kr.prefix, "In BoltDB prefix must be empty string")
+				assert.NotEqual(t, "", kr.prefix, "In BoltDB prefix must be empty string")
 				assert.NotEqual(t, "test", kr.prefix, "In BoltDB prefix must be empty string")
-				assert.NotEqual(t, "test/", kr.prefix, "In BoltDB prefix must be empty string")
+				assert.Equal(t, "test/", kr.prefix, "In BoltDB prefix must be empty string")
 			},
 			wantErr: false,
 		},

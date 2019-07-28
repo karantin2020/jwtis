@@ -15,8 +15,6 @@ import (
 	// "github.com/rs/zerolog"
 	// "github.com/abronan/valkeyrie"
 	"github.com/abronan/valkeyrie/store"
-	"github.com/abronan/valkeyrie/store/boltdb"
-	"github.com/abronan/valkeyrie/store/dynamodb"
 )
 
 var (
@@ -174,21 +172,31 @@ func NewKeysRepo(repoOpts *KeysRepoOptions) (*KeysRepository, error) {
 	if repoOpts.Store == nil {
 		return nil, fmt.Errorf("error NewKeysRepo: nil pointer to svalkey.Store")
 	}
+	// remove white spaces if they present in prefix
+	repoOpts.Prefix = strings.TrimSpace(repoOpts.Prefix)
+	if repoOpts.Prefix == "" {
+		return nil, fmt.Errorf("error NewKeysRepo: empty prefix in options")
+	}
 	p := &KeysRepository{
 		store: repoOpts.Store,
 	}
-	modPrefix := func(i interface{}) {
-		switch i.(type) {
-		case *boltdb.BoltDB, *dynamodb.DynamoDB:
-			p.prefix = ""
-		default:
-			p.prefix = repoOpts.Prefix
-			if !strings.HasSuffix(p.prefix, "/") {
-				p.prefix = p.prefix + "/"
-			}
-		}
+	// modPrefix := func(i interface{}) {
+	// 	switch i.(type) {
+	// 	case *boltdb.BoltDB, *dynamodb.DynamoDB:
+	// 		p.prefix = ""
+	// 	default:
+	// 		p.prefix = repoOpts.Prefix
+	// 		if !strings.HasSuffix(p.prefix, "/") {
+	// 			p.prefix = p.prefix + "/"
+	// 		}
+	// 	}
+	// }
+	// modPrefix(p.store.Store)
+
+	p.prefix = repoOpts.Prefix
+	if !strings.HasSuffix(p.prefix, "/") {
+		p.prefix = p.prefix + "/"
 	}
-	modPrefix(p.store.Store)
 	p.DefaultOptions = *repoOpts.Opts
 	p.DefaultOptions.RefreshStrategy = "noRefresh"
 	opts := repoOpts.Opts

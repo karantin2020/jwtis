@@ -8,7 +8,7 @@ import (
 	cli "github.com/jawher/mow.cli"
 )
 
-func TestCli_Run(t *testing.T) {
+func TestCli_FirstRun(t *testing.T) {
 	type fields struct {
 		Cli       *cli.Cli
 		cmd       *rootCmd
@@ -39,7 +39,7 @@ func TestCli_Run(t *testing.T) {
 				envPrefix: "TEST_",
 			},
 			args: args{
-				args: []string{"asd", "--tls", "-n", "sara",
+				args: []string{"asd", "-v", "--tls", "-n", "sara",
 					"-f./testdata/config.yml",
 					"--logPath=./testdata/test.log",
 					"-d", "boltdb:./testdata/test.db",
@@ -47,23 +47,23 @@ func TestCli_Run(t *testing.T) {
 			},
 			wantErr: false,
 		},
-		{
-			name: "Help test",
-			fields: fields{
-				Cli: cli.App("testApp", "test description"),
-				cmd: &rootCmd{
-					name: "testApp",
-				},
-				name:      "testApp",
-				version:   "v0.0.1",
-				bucket:    "testBucket",
-				envPrefix: "TEST",
-			},
-			args: args{
-				args: []string{"asd", "-h"},
-			},
-			wantErr: false,
-		},
+		// {
+		// 	name: "Help test",
+		// 	fields: fields{
+		// 		Cli: cli.App("testApp", "test description"),
+		// 		cmd: &rootCmd{
+		// 			name: "testApp",
+		// 		},
+		// 		name:      "testApp",
+		// 		version:   "v0.0.1",
+		// 		bucket:    "testBucket",
+		// 		envPrefix: "TEST",
+		// 	},
+		// 	args: args{
+		// 		args: []string{"asd", "-h"},
+		// 	},
+		// 	wantErr: false,
+		// },
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

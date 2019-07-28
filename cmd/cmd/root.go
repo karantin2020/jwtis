@@ -1,13 +1,23 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
+	"net/http"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"strings"
+	"syscall"
+	"time"
 
 	cli "github.com/jawher/mow.cli"
+	"github.com/karantin2020/jwtis"
+	server "github.com/karantin2020/jwtis/api/server"
+	"golang.org/x/sync/errgroup"
+	jose "gopkg.in/square/go-jose.v2"
+
 	"github.com/karantin2020/svalkey"
 	"github.com/rs/zerolog"
 
@@ -27,9 +37,14 @@ import (
 )
 
 const (
-	configStoreKey = "jwtis.cmd.config"
+	configStoreKey  = "jwtis.cmd.config"
+	keysStorePrefix = "jwtis.keysRepo"
 	// configCheckKey = "jwtis.cmd.check.key"
 	// checkValLength = 256
+)
+
+var (
+	log zerolog.Logger
 )
 
 type rootCmd struct {
@@ -210,19 +225,6 @@ func (r *rootCmd) Logger() *zerolog.Logger {
 	return &r.logger
 }
 
-func (r *rootCmd) before() {
-	zerolog.SetGlobalLevel(zerolog.WarnLevel)
-	if *r.config.Verbose {
-		zerolog.SetGlobalLevel(zerolog.InfoLevel)
-	}
-
-	r.loadConfig()
-
-	r.logger = logger(*r.config.LogPath)
-
-	r.greetingMsg()
-}
-
 func (r *rootCmd) loadConfig() {
 	var (
 		// zeroed config based on flag values
@@ -341,6 +343,17 @@ func exitIfError(err error, msg string) {
 	}
 }
 
+// func (r *rootCmd) saveAndExitIfError(err error, msg string) {
+// 	if err != nil {
+// 		log.Error().Err(err).Msg(msg)
+// 		err = r.store.Put(configStoreKey, r.config, nil)
+// 		if err != nil {
+// 			log.Error().Err(err).Msg("error store config in db while exiting")
+// 		}
+// 		cli.Exit(1)
+// 	}
+// }
+
 func checkError(err error, msg string) error {
 	if err != nil {
 		return fmt.Errorf(msg+": %s", err.Error())
@@ -348,17 +361,88 @@ func checkError(err error, msg string) error {
 	return nil
 }
 
+func (r *rootCmd) before() {
+	zerolog.SetGlobalLevel(zerolog.WarnLevel)
+	if *r.config.Verbose {
+		zerolog.SetGlobalLevel(zerolog.InfoLevel)
+	}
+
+	r.loadConfig()
+
+	r.logger = logger(*r.config.LogPath)
+	log = r.logger.With().Str("subj", "rootCmd").Logger()
+
+	r.greetingMsg()
+	if *r.config.Verbose {
+		r.config.printConfigs()
+	}
+}
+
 func (r *rootCmd) action() {
-	r.logger.Info().Msg("start root command")
-	fmt.Println("Works fine!")
-	r.logger.Info().Msg("end root command")
+	log.Info().Msg("start jwtis service")
+
+	opts, err := r.config.getKeysRepoOptions()
+	exitIfError(err, "error prepare keys repo options")
+	keysRepo, err := jwtis.NewKeysRepo(&jwtis.KeysRepoOptions{
+		Store:  r.store,
+		Prefix: keysStorePrefix,
+		Opts:   opts,
+	})
+	exitIfError(err, "error create keys repository; exit")
+	// if err != nil {
+	// 	log.Error().Err(err).Msg("error create keys repository; exit")
+	// 	// err = r.store.Put(configStoreKey, r.config, nil)
+	// 	// if err != nil {
+	// 	// 	log.Error().Err(err).Msg("error store config in db while exiting")
+	// 	// }
+	// 	cli.Exit(1)
+	// }
+
+	srv, err := server.NewJWTISServer(*r.config.Listen,
+		*r.config.ListenGrpc, keysRepo,
+		&r.logger, jose.ContentEncryption(*r.config.ContEnc))
+	exitIfError(err, "error in setup http server")
+	var g errgroup.Group
+	g.Go(func() error {
+		err = srv.Run()
+		if err != nil && err != http.ErrServerClosed {
+			log.Error().Err(err).Msg("run server error")
+			return err
+		}
+		return nil
+	})
+	g.Go(func() error {
+		// Wait for interrupt signal to gracefully shutdown the server with
+		// a timeout of 5 seconds.
+		quit := make(chan os.Signal, 1)
+		// kill (no param) default send syscanll.SIGTERM
+		// kill -2 is syscall.SIGINT
+		// kill -9 is syscall. SIGKILL but can"t be catch, so don't need add it
+		signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+		<-quit
+		fmt.Print("\r")
+		log.Info().Msg("shutdown server on signal")
+		// TODO: add shutdown timeout app option
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
+		defer cancel()
+		err := srv.Shutdown(ctx)
+		if err != nil {
+			log.Error().Err(err).Msg("server shutdown error")
+		}
+		log.Info().Msg("http server gracefully shutdown")
+		return nil
+	})
+	g.Wait()
+	log.Info().Msg("jwtis finished work")
 }
 
 func (r *rootCmd) after() {
-	err := r.store.Put(configStoreKey, r.config, nil)
-	exitIfError(err, "error save apps config")
-	for i := range r.password {
-		r.password[i] = 0
+	if r.store != nil && r.store.Store != nil {
+		err := r.store.Put(configStoreKey, r.config, nil)
+		for i := range r.password {
+			r.password[i] = 0
+		}
+		exitIfError(err, "error save apps config")
 	}
 }
 

@@ -48,7 +48,7 @@ func (j *JWTISServer) GetDescription() transport.ServiceDesc {
 // NewJWTISServer returns new pb.JWTISServer instance
 func NewJWTISServer(listen, listenGrpc string, keysRepo *jwtis.KeysRepository,
 	zlog *zerolog.Logger, contEnc jose.ContentEncryption) (*JWTISServer, error) {
-	log = zlog.With().Str("c", "server").Logger()
+	log = zlog.With().Str("subj", "server").Logger()
 	keySrvc, err := keyservice.New(keysRepo, zlog)
 	if err != nil {
 		log.Error().Err(err).Msg("error creating key service")
@@ -125,13 +125,13 @@ func (j *JWTISServer) Run() error {
 	return err
 }
 
-// Shutdown gracefuly stops the server with context ctx
+// Shutdown gracefully stops the server with context ctx
 func (j *JWTISServer) Shutdown(ctx context.Context) error {
 	fmt.Print("\r")
-	log.Info().Msg("gracefuly shutdown server")
-	var gg errgroup.Group
+	log.Info().Msg("gracefully shutdown server")
+	var g errgroup.Group
 
-	gg.Go(func() error {
+	g.Go(func() error {
 		err := j.httpSrv.Shutdown(ctx)
 		if err != nil {
 			log.Error().Err(err).Msg("http server shutdown with error")
@@ -139,10 +139,10 @@ func (j *JWTISServer) Shutdown(ctx context.Context) error {
 		log.Info().Msg("http server exiting")
 		return nil
 	})
-	gg.Go(func() error {
+	g.Go(func() error {
 		j.grpcSrv.GracefulStop()
 		log.Info().Msg("grpc server exiting")
 		return nil
 	})
-	return gg.Wait()
+	return g.Wait()
 }

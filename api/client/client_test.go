@@ -42,7 +42,7 @@ func TestClient_Register(t *testing.T) {
 	}
 	c := &Client{
 		cfg: Config{
-			ID: "test13",
+			ID: "test1",
 		},
 		grpcOpts:     []grpc.CallOption{},
 		client:       pb.NewJWTISClient(conn),
@@ -67,7 +67,7 @@ func TestClient_Register(t *testing.T) {
 				t.Errorf("Client.Register() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			fmt.Printf("recieved resp: %v\n", got)
+			fmt.Printf("received resp: %v\n", got)
 			// if !reflect.DeepEqual(got, tt.want) {
 			// 	t.Errorf("Client.Register() = %v, want %v", got, tt.want)
 			// }

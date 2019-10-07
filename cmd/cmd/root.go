@@ -245,8 +245,8 @@ func (r *rootCmd) loadConfig() {
 
 	fileConfig, err = r.unmarshalConfig()
 	exitIfError(err, "error unmarshal config file")
-	err = mergeConfig(fileConfig, flagConfig)
-	exitIfError(err, "error merge flags config to file config")
+	// err = mergeConfig(fileConfig, flagConfig)
+	// exitIfError(err, "error merge flags config to file config")
 
 	dbConfig, err = r.loadStore(flagConfig)
 	exitIfError(err, "error load store config")
@@ -256,12 +256,14 @@ func (r *rootCmd) loadConfig() {
 
 	err = mergeConfig(r.config, fileConfig)
 	exitIfError(err, "error merge file config to app config")
+	err = mergeConfig(r.config, flagConfig)
+	exitIfError(err, "error merge flags config to app config")
 	err = r.config.validate()
 	exitIfError(err, "error validate app config")
-	// d, err := json.MarshalIndent(r.config, "", "  ")
-	// exitIfError(err, "error marshal config")
-	// fmt.Println("Config:\n", string(d))
-	r.logger = logger(*r.config.LogPath)
+	d, err := json.MarshalIndent(r.config, "", "  ")
+	exitIfError(err, "error marshal config")
+	fmt.Println("Config:\n", string(d))
+	// r.logger = logger(*r.config.LogPath)
 }
 
 func (r *rootCmd) loadPassword(flagConfig *Config) error {
@@ -273,7 +275,7 @@ func (r *rootCmd) loadPassword(flagConfig *Config) error {
 		}
 		return nil
 	}
-	decPswd, err := hexDecode([]byte(*flagConfig.password))
+	decPswd, err := decodeBytes([]byte(*flagConfig.password))
 	if err != nil {
 		return fmt.Errorf("error hex decode input password: %s", err.Error())
 	}
@@ -317,7 +319,10 @@ func (r *rootCmd) loadStore(flagConfig *Config) (*Config, error) {
 		if err != nil {
 			return nil, fmt.Errorf("error get config from store: %s", err.Error())
 		}
+		fmt.Println("...downloaded db config")
 	}
+	fmt.Printf("...dbConfig: %#v\n", dbConfig)
+	// fmt.Println("...db config listen:", *dbConfig.Options.HTTPConf.Listen)
 
 	return dbConfig, nil
 }
@@ -332,6 +337,9 @@ func (r *rootCmd) checkStoreConsistency() error {
 	})
 	if err != nil && err != store.ErrKeyNotFound {
 		return fmt.Errorf("error check store consistency: %s", err.Error())
+	}
+	if r.exists {
+		fmt.Println("...store exists")
 	}
 	return nil
 }
@@ -370,7 +378,7 @@ func (r *rootCmd) before() {
 	r.loadConfig()
 
 	r.logger = logger(*r.config.LogPath)
-	log = r.logger.With().Str("subj", "rootCmd").Logger()
+	log = r.logger.With().Str("sub", "rootCmd").Logger()
 
 	r.greetingMsg()
 	if *r.config.Verbose {
@@ -439,6 +447,7 @@ func (r *rootCmd) action() {
 func (r *rootCmd) after() {
 	if r.store != nil && r.store.Store != nil {
 		err := r.store.Put(configStoreKey, r.config, nil)
+		fmt.Println("...saved config to db")
 		for i := range r.password {
 			r.password[i] = 0
 		}
@@ -525,10 +534,14 @@ func (r *rootCmd) newStore(dbType string, dbAddr []string) (*svalkey.Store, erro
 	if err != nil {
 		return nil, fmt.Errorf("error create new valkeyrie store: %s", err.Error())
 	}
-	sdb, err := svalkey.NewStore(kv, []byte{1, 0}, r.password)
+	fmt.Printf("db password: %x\n", r.password)
+	sdb, err := svalkey.NewJSONStore(kv, []byte{1, 0}, r.password)
 	if err != nil {
 		return nil, fmt.Errorf("error create svalkey store: %s", err.Error())
 	}
+	// for i := range r.password {
+	// 	r.password[i] = 0
+	// }
 	return sdb, nil
 }
 

@@ -3,12 +3,20 @@ package cmd
 import (
 	"crypto/rand"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
 	"fmt"
 
 	"io"
 
 	"golang.org/x/crypto/hkdf"
+)
+
+var (
+	// encodeBytes is default variable for password encoding func
+	encodeBytes = base64Encode
+	// decodeBytes is default variable for password decoding func
+	decodeBytes = base64Decode
 )
 
 func newPassword() ([32]byte, error) {
@@ -26,6 +34,21 @@ func newPassword() ([32]byte, error) {
 		derived[i] = 0
 	}
 	return pswd, nil
+}
+
+func base64Encode(src []byte) []byte {
+	dst := make([]byte, base64.RawURLEncoding.EncodedLen(len(src)))
+	base64.RawURLEncoding.Encode(dst, src)
+	return dst
+}
+
+func base64Decode(src []byte) ([]byte, error) {
+	dst := make([]byte, base64.RawURLEncoding.DecodedLen(len(src)))
+	n, err := base64.RawURLEncoding.Decode(dst, src)
+	if err != nil || n != len(dst) {
+		return nil, fmt.Errorf("error base64 decode: %s", err.Error())
+	}
+	return dst, nil
 }
 
 func hexEncode(src []byte) []byte {

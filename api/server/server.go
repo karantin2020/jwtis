@@ -48,7 +48,7 @@ func (j *JWTISServer) GetDescription() transport.ServiceDesc {
 // NewJWTISServer returns new pb.JWTISServer instance
 func NewJWTISServer(listen, listenGrpc string, keysRepo *jwtis.KeysRepository,
 	zlog *zerolog.Logger, contEnc jose.ContentEncryption) (*JWTISServer, error) {
-	log = zlog.With().Str("subj", "server").Logger()
+	log = zlog.With().Str("sub", "server").Logger()
 	keySrvc, err := keyservice.New(keysRepo, zlog)
 	if err != nil {
 		log.Error().Err(err).Msg("error creating key service")

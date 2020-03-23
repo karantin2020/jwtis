@@ -215,34 +215,34 @@ func NewKeysRepo(repoOpts *KeysRepoOptions) (*KeysRepository, error) {
 
 // NewKey creates new key with key_id and adds it to repository
 // returns public jose.JSONWebKey
-func (p *KeysRepository) NewKey(kid string, opts *DefaultOptions) (SigEncKeys, error) {
+func (p *KeysRepository) NewKey(kid string, opts *DefaultOptions) (*SigEncKeys, error) {
 	if p == nil {
-		return SigEncKeys{},
+		return nil,
 			fmt.Errorf("error in NewKey: pointer to KeysRepository is nil")
 	}
 	if opts == nil {
-		return SigEncKeys{},
+		return nil,
 			fmt.Errorf("error in NewKey: pointer to key options is nil")
 	}
 	// Keys in db must be checked for strong consistency
 	exists, privKeys, err := p.KeyExists([]byte(kid))
 	if err != nil {
-		return SigEncKeys{},
+		return nil,
 			fmt.Errorf("error in NewKey checking key existence: %s", err.Error())
 	}
 	if exists {
 		if !privKeys.Valid() {
-			return SigEncKeys{}, ErrKeysExistInvalid
+			return nil, ErrKeysExistInvalid
 		}
 		if !privKeys.Expired() {
-			return SigEncKeys{}, ErrKeysExist
+			return nil, ErrKeysExist
 		}
-		return SigEncKeys{}, ErrKeysExpired
+		return nil, ErrKeysExpired
 	}
 
 	if opts.RefreshStrategy != "" {
 		if !stringInSlice(opts.RefreshStrategy, refreshStrategies) {
-			return SigEncKeys{}, fmt.Errorf("NewKey error: invalid RefreshStrategy option value")
+			return nil, fmt.Errorf("NewKey error: invalid RefreshStrategy option value")
 		}
 	}
 
@@ -272,11 +272,11 @@ func (p *KeysRepository) NewKey(kid string, opts *DefaultOptions) (SigEncKeys, e
 	}
 	privKeys.Sig, _, err = GenerateKeys(kid, privKeys.SigOpts)
 	if err != nil {
-		return SigEncKeys{}, fmt.Errorf("error generating sig keys: %s", err.Error())
+		return nil, fmt.Errorf("error generating sig keys: %s", err.Error())
 	}
 	privKeys.Enc, _, err = GenerateKeys(kid, privKeys.EncOpts)
 	if err != nil {
-		return SigEncKeys{}, fmt.Errorf("error generating enc keys: %s", err.Error())
+		return nil, fmt.Errorf("error generating enc keys: %s", err.Error())
 	}
 	if int64(opts.AuthTTL) != 0 {
 		privKeys.AuthTTL = opts.AuthTTL
@@ -325,26 +325,26 @@ func (p *KeysRepository) KeyExists(kid []byte) (bool, *JWTKeysIssuerSet, error) 
 
 // AddKey adds jose.JSONWebKey with key.KeyID to repository
 // returns public jose.JSONWebKey
-func (p *KeysRepository) AddKey(key *JWTKeysIssuerSet) (SigEncKeys, error) {
+func (p *KeysRepository) AddKey(key *JWTKeysIssuerSet) (*SigEncKeys, error) {
 	nKid := p.normalizeKid(string(key.KID))
 	exists, privKeys, err := p.KeyExists(key.KID)
 	if err != nil {
-		return SigEncKeys{},
+		return nil,
 			fmt.Errorf("error in AddKey checking key existence: %s", err.Error())
 	}
 	if exists {
 		if !privKeys.Expired() {
-			return SigEncKeys{},
+			return nil,
 				fmt.Errorf("error adding new keys: keys with kid %s exist and not expired", key.KID)
 		}
-		return SigEncKeys{}, ErrKeysExpired
+		return nil, ErrKeysExpired
 	}
 	if !key.Valid() {
-		return SigEncKeys{},
+		return nil,
 			fmt.Errorf("error adding new keys: new keys with kid %s are not valid", key.KID)
 	}
 	if key.Expired() {
-		return SigEncKeys{},
+		return nil,
 			fmt.Errorf("error adding new keys: new key with kid %s is expired", key.KID)
 	}
 	key.attachPublic()
@@ -352,7 +352,7 @@ func (p *KeysRepository) AddKey(key *JWTKeysIssuerSet) (SigEncKeys, error) {
 	defer p.ml.Unlock()
 	err = p.store.Put(nKid, key, nil)
 	if err != nil {
-		return SigEncKeys{}, fmt.Errorf("error save keys for %s in repository: %s", string(key.KID), err.Error())
+		return nil, fmt.Errorf("error save keys for %s in repository: %s", string(key.KID), err.Error())
 	}
 	pubKeys := SigEncKeys{
 		Enc:             key.pubEnc,
@@ -361,7 +361,7 @@ func (p *KeysRepository) AddKey(key *JWTKeysIssuerSet) (SigEncKeys, error) {
 		Valid:           !key.invalid,
 		RefreshStrategy: key.RefreshStrategy,
 	}
-	return pubKeys, nil
+	return &pubKeys, nil
 }
 
 // DelKey deletes key from cache and boltDB
@@ -388,12 +388,12 @@ func (p *KeysRepository) DelKey(kid string) error {
 
 // GetPublicKeys returns from boltDB public keys with kid
 // returns pointer to public jose.JSONWebKey
-func (p *KeysRepository) GetPublicKeys(kid string) (SigEncKeys, error) {
+func (p *KeysRepository) GetPublicKeys(kid string) (*SigEncKeys, error) {
 	p.ml.RLock()
 	defer p.ml.RUnlock()
 	privKeys, err := p.GetPrivateKeys(kid)
 	if err != nil {
-		return SigEncKeys{}, err
+		return nil, err
 	}
 	pubKeys := SigEncKeys{
 		Enc:             privKeys.Enc.Public(),
@@ -402,7 +402,7 @@ func (p *KeysRepository) GetPublicKeys(kid string) (SigEncKeys, error) {
 		Valid:           privKeys.Valid,
 		RefreshStrategy: privKeys.RefreshStrategy,
 	}
-	return pubKeys, nil
+	return &pubKeys, nil
 }
 
 // GetPrivateKeys returns from boltDB private keys with kid

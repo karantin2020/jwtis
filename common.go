@@ -71,9 +71,9 @@ func (mr Error) Error() string {
 
 	strs := make([]string, len(mr))
 	for i, err := range mr {
-		strs[i] = fmt.Sprintf("%v; ", err)
+		strs[i] = err.Error()
 	}
-	return strings.Join(strs, "")
+	return strings.Join(strs, "; ")
 }
 
 // Append appends errors to array if err != nil

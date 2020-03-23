@@ -1,37 +1,7 @@
 package main
 
-import (
-	"os"
-
-	"github.com/karantin2020/jwtis/cmd/cmd"
-)
-
-const (
-	appName        = "jwtis"
-	appDescription = "JWT issuer server. Provides trusted JWT tokens\n" +
-		"\nSource https://github.com/karantin2020/jwtis"
-	envPrefix  = "JWTIS_"
-	bucketName = "jwtis"
-	// passwordLength = 32
-)
-
-var (
-	appVersion = "v0.3.1"
-	// boltDB     *bolt.DB
-	// buckets    = map[string][]byte{
-	// 	"internalBucketName": []byte("internalBucket"),
-	// 	"keysBucketName":     []byte("keysBucket"),
-	// }
-	app *cmd.Cli
-	// confRepo      configRepository
-	// internalsRepo internalRepository
-	// keysRepo      jwtis.KeysRepository
-	// log           zerolog.Logger
-)
+import service "github.com/karantin2020/jwtis/cmd/service"
 
 func main() {
-	app := cmd.App(appName, appDescription)
-	app.Config(bucketName, envPrefix)
-	app.Version("V version", appVersion)
-	app.Run(os.Args)
+	service.Run()
 }

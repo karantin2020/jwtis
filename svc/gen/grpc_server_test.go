@@ -372,20 +372,21 @@ func TestServerClient(t *testing.T) {
 				t.Logf("resp : %#v", resp)
 			},
 		},
-		// testType{
-		// 	name: "test ListKeys",
-		// 	test: func(t *testing.T, client ClientService) {
-		// 		ctx := context.Background()
-		// 		err := client.ListKeys(ctx, &ListKeysRequest{})
-		// 		if err != nil {
-		// 			t.Fatalf("unable to test: %+v", err)
-		// 		}
-		// 		// TODO : check response (write the actual test)
-		// 		t.Logf("resp : %#v", resp)
-		// 		authJWT = resp.AuthJWT
-		// 		_ = authJWT
-		// 	},
-		// },
+		testType{
+			name: "test FetchListKeys",
+			test: func(t *testing.T, client ClientService) {
+				ctx := context.Background()
+				resp, err := client.FetchListKeys(ctx, &ListKeysRequest{})
+				if err != nil {
+					t.Fatalf("unable to test: %+v", err)
+				}
+				// TODO : check response (write the actual test)
+				t.Logf("resp : %#v", resp)
+				for i := range resp {
+					t.Logf("resp %d: %s", i, resp[i].KID)
+				}
+			},
+		},
 		testType{
 			name: "test DeleteKeys",
 			test: func(t *testing.T, client ClientService) {
@@ -398,6 +399,21 @@ func TestServerClient(t *testing.T) {
 				}
 				// TODO : check response (write the actual test)
 				t.Logf("resp : %#v", resp)
+			},
+		},
+		testType{
+			name: "test FetchListKeys after delete",
+			test: func(t *testing.T, client ClientService) {
+				ctx := context.Background()
+				resp, err := client.FetchListKeys(ctx, &ListKeysRequest{})
+				if err != nil {
+					t.Fatalf("unable to test: %+v", err)
+				}
+				// TODO : check response (write the actual test)
+				t.Logf("resp : %#v", resp)
+				for i := range resp {
+					t.Logf("resp %d: %s", i, resp[i].KID)
+				}
 			},
 		},
 		testType{
@@ -435,11 +451,7 @@ func TestServerClient(t *testing.T) {
 		// 	name: "test RevokeJWT",
 		// 	test: func(t *testing.T, client ClientService) {
 		// 		ctx := context.Background()
-		// 		resp, err := client.RevokeJWT(ctx, &RevokeJWTRequest{
-		// 			KID:          "test_kid",
-		// 			ID:           id,
-		// 			RefreshToken: refreshToken,
-		// 		})
+		// 		err := client.RevokeJWT(ctx, &RevokeJWTRequest{})
 		// 		if err != nil {
 		// 			t.Fatalf("unable to test: %+v", err)
 		// 		}
@@ -874,19 +886,19 @@ func TestGRPCListKeys(t *testing.T) {
 	ctx, cancel = context.WithCancel(ctx)
 	// simulate broadcasting messages
 	go func() {
-		ticker := time.NewTicker(2 * time.Second)
+		// ticker := time.NewTicker(2 * time.Second)
 		stopTimer := time.After(12 * time.Second)
 		for {
 			select {
 			case <-ctx.Done():
 				logger.Log("server", "stop")
 				return
-			case <-ticker.C:
-				grpcService.BroadcastListKeys() <- ListKeysResponse{}
-				logger.Log("broadcasting", "ListKeys <- ListKeysResponse{}")
+			// case <-ticker.C:
+			// 	grpcService.BroadcastListKeys() <- ListKeysResponse{}
+			// 	logger.Log("broadcasting", "ListKeys <- ListKeysResponse{}")
 			case <-stopTimer:
 				logger.Log("server", "end of life")
-				ticker.Stop()
+				// ticker.Stop()
 				cancel()
 			}
 		}
@@ -903,19 +915,31 @@ func TestGRPCListKeys(t *testing.T) {
 				// TODO : check response (write the actual test)
 
 				t.Logf("kid : %v", message.KID)
-				t.Logf("expiry : %v", message.Keys.Expiry)
-				t.Logf("authTTL : %v", message.Keys.AuthTTL)
-				t.Logf("refreshTTL : %v", message.Keys.RefreshTTL)
-				t.Logf("refreshStrategy : %v", message.Keys.RefreshStrategy)
-				t.Logf("pubSigKey : %v", message.Keys.Sig)
-				t.Logf("pubEncKey : %v", message.Keys.Enc)
-				t.Logf("locked : %v", message.Keys.Locked)
-				t.Logf("valid : %v", message.Keys.Valid)
-				t.Logf("expired : %v", message.Keys.Expired)
+				// t.Logf("expiry : %v", message.Keys.Expiry)
+				// t.Logf("authTTL : %v", message.Keys.AuthTTL)
+				// t.Logf("refreshTTL : %v", message.Keys.RefreshTTL)
+				// t.Logf("refreshStrategy : %v", message.Keys.RefreshStrategy)
+				// t.Logf("pubSigKey : %v", message.Keys.Sig)
+				// t.Logf("pubEncKey : %v", message.Keys.Enc)
+				// t.Logf("locked : %v", message.Keys.Locked)
+				// t.Logf("valid : %v", message.Keys.Valid)
+				// t.Logf("expired : %v", message.Keys.Expired)
 			}
 		}
 	}()
 	logger.Log("client", "placing call to ListKeys")
+	_, err = client.Register(ctx, &RegisterRequest{
+		KID: testKID,
+	})
+	if err != nil {
+		t.Fatalf("unable to test: %+v", err)
+	}
+	_, err = client.Register(ctx, &RegisterRequest{
+		KID: testKID + "1",
+	})
+	if err != nil {
+		t.Fatalf("unable to test: %+v", err)
+	}
 	// TODO : load the payloads
 	err = client.CallListKeys(ctx, &ListKeysRequest{})
 	if err != nil && err.Error() != "rpc error: code = Canceled desc = context canceled" {

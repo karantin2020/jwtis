@@ -3,6 +3,7 @@ package gen
 import (
 	"context"
 	"encoding/json"
+	"strconv"
 	"time"
 
 	"github.com/go-kit/kit/log"
@@ -400,65 +401,44 @@ func (s *serviceImpl) ListKeys(pbReq *pb.ListKeysRequest, stream pb.JWTISService
 	if s.keysRepo == nil {
 		return ErrNullKeysRepo
 	}
-	waitc := make(chan struct{})
-	// server sending loop. exit conditions : client closes or sending error
-	var sendErr error
-	go func(ctx context.Context, waitChannel chan struct{}) {
-		for {
-			select {
-			case <-ctx.Done():
-				level.Debug(s.log).Log("ListKeysService", "Context done (client closed)")
-				close(waitChannel)
-				return
-			case message := <-s.broadcastListKeys:
-				level.Debug(s.log).Log("ListKeysService", "Sending payload")
-				sigKey, err := json.Marshal(message.Keys.Sig)
-				if err != nil {
-					err = errors.Wrap(err, "error marshal Sig key")
-					level.Error(s.log).Log("send_error", sendErr)
-					close(waitChannel)
-				}
-				encKey, err := json.Marshal(message.Keys.Enc)
-				if err != nil {
-					err = errors.Wrap(err, "error marshal Enc key")
-					level.Error(s.log).Log("send_error", sendErr)
-					close(waitChannel)
-				}
-				var result = pb.ListKeysResponse{
-					KID:             message.KID,
-					Expiry:          message.Keys.Expiry,
-					AuthTTL:         message.Keys.AuthTTL,
-					RefreshTTL:      message.Keys.RefreshTTL,
-					RefreshStrategy: message.Keys.RefreshStrategy,
-					PubSigKey:       sigKey,
-					PubEncKey:       encKey,
-					Locked:          message.Keys.Locked,
-					Valid:           message.Keys.Valid,
-					Expired:         message.Keys.Expired,
-				}
-				// payload := NewPBFromListKeysResponse(&message)
-				// send a message to the client
-				if sendErr = stream.Send(&result); sendErr != nil {
-					level.Error(s.log).Log("send_error", sendErr)
-					close(waitChannel)
-					return
-				}
-			}
-		}
-	}(stream.Context(), waitc)
-	// send response to client : POC for using broadcast channel
 	req := NewListKeysRequestFromPB(pbReq)
 	resp, err := s.listKeys(stream.Context(), req)
 	if err != nil {
 		return err
 	}
-	for i := range resp {
-		s.broadcastListKeys <- resp[i]
+	level.Debug(s.log).Log("server_listKeys_resp_len", strconv.Itoa(len(resp)))
+	for _, message := range resp {
+		level.Debug(s.log).Log("ListKeysService", "Sending payload")
+		sigKey, err := json.Marshal(message.Keys.Sig)
+		if err != nil {
+			err = errors.Wrap(err, "error marshal Sig key")
+			level.Error(s.log).Log("ListKeysService error", err)
+		}
+		encKey, err := json.Marshal(message.Keys.Enc)
+		if err != nil {
+			err = errors.Wrap(err, "error marshal Enc key")
+			level.Error(s.log).Log("ListKeysService error", err)
+		}
+		var result = pb.ListKeysResponse{
+			KID:             message.KID,
+			Expiry:          message.Keys.Expiry,
+			AuthTTL:         message.Keys.AuthTTL,
+			RefreshTTL:      message.Keys.RefreshTTL,
+			RefreshStrategy: message.Keys.RefreshStrategy,
+			PubSigKey:       sigKey,
+			PubEncKey:       encKey,
+			Locked:          message.Keys.Locked,
+			Valid:           message.Keys.Valid,
+			Expired:         message.Keys.Expired,
+		}
+		// payload := NewPBFromListKeysResponse(&message)
+		// send a message to the client
+		if sendErr := stream.Send(&result); sendErr != nil {
+			level.Error(s.log).Log("send_error", sendErr)
+			return sendErr
+		}
 	}
-	// s.broadcastListKeys <- *resp
-	// wait until client has closed or we're having a sending error
-	<-waitc
-	return sendErr
+	return nil
 }
 
 func (s *serviceImpl) listKeys(ctx context.Context, req *ListKeysRequest) ([]ListKeysResponse, error) {

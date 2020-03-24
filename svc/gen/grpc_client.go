@@ -44,8 +44,9 @@ func ClientAfter(after ...ClientResponseFunc) ClientOption {
 type ClientService interface {
 	Service
 	ApplyExtraOptions(options ...ClientOption)
-	ReceiveListKeys() chan *ListKeysResponse
+	ReceiveListKeys() chan ListKeysResponse
 	CallListKeys(extCtx context.Context, inReq *ListKeysRequest) error
+	FetchListKeys(extCtx context.Context, inReq *ListKeysRequest) ([]*ListKeysResponse, error)
 }
 
 type grpcClient struct {
@@ -56,7 +57,7 @@ type grpcClient struct {
 	AuthEndpoint       endpoint.Endpoint
 	RegisterEndpoint   endpoint.Endpoint
 	UpdateKeysEndpoint endpoint.Endpoint
-	receiveListKeys    chan *ListKeysResponse // TODO : collect payloads from this channel
+	receiveListKeys    chan ListKeysResponse // TODO : collect payloads from this channel
 	DelKeysEndpoint    endpoint.Endpoint
 	PublicKeysEndpoint endpoint.Endpoint
 	PingEndpoint       endpoint.Endpoint
@@ -79,7 +80,7 @@ func (c *grpcClient) ApplyExtraOptions(options ...ClientOption) {
 }
 
 // ReceiveListKeys getter for receiveListKeys chan ListKeysResponse
-func (c *grpcClient) ReceiveListKeys() chan *ListKeysResponse {
+func (c *grpcClient) ReceiveListKeys() chan ListKeysResponse {
 	return c.receiveListKeys
 }
 
@@ -142,7 +143,7 @@ func NewClient(conn *grpc.ClientConn, logger log.Logger, options ...kitGRPC.Clie
 			&pb.UpdateKeysResponse{},
 			options...,
 		).Endpoint(),
-		receiveListKeys: make(chan *ListKeysResponse),
+		receiveListKeys: make(chan ListKeysResponse),
 		DelKeysEndpoint: kitGRPC.NewClient(
 			conn,
 			"pb.JWTISService",
@@ -695,10 +696,88 @@ func (c *grpcClient) CallListKeys(extCtx context.Context, inReq *ListKeysRequest
 				Sig:             sigKey,
 			},
 		}
-
+		fmt.Printf("in CallList send in chan: %s\n", domResp.KID)
 		// domResp := NewListKeysResponseFromPB(message)
-		c.receiveListKeys <- &domResp // writing payloads to this channel, so dev can collect them
+		c.receiveListKeys <- domResp // writing payloads to this channel, so dev can collect them
 	}
 
 	return nil
+}
+
+func (c *grpcClient) FetchListKeys(extCtx context.Context, inReq *ListKeysRequest) ([]*ListKeysResponse, error) {
+	// ml := &sync.Mutex{}
+	listKeys := []*ListKeysResponse{}
+	var err error
+	ctx, cancel := context.WithCancel(extCtx)
+
+	ctx = context.WithValue(ctx, kitGRPC.ContextKeyRequestMethod, "CallListKeys")
+
+	req := NewPBFromListKeysRequest(inReq)
+
+	md := &metadata.MD{}
+	for _, f := range c.before {
+		ctx = f(ctx, md)
+	}
+	ctx = metadata.NewOutgoingContext(ctx, *md)
+
+	var header, trailer metadata.MD
+
+	stream, err := c.directClient.ListKeys(ctx, req, grpc.Header(&header), grpc.Trailer(&trailer))
+	if err != nil {
+		c.log.Log("client_error", err)
+		return nil, err
+	}
+
+	var closing = func() {
+		cancel()
+		stream.CloseSend()
+		for _, f := range c.after {
+			ctx = f(ctx, header, trailer)
+		}
+	}
+	// receiving from server loop
+	for {
+		message, err := stream.Recv()
+		if err == io.EOF {
+			closing()
+			// read done.
+			return listKeys, nil
+		}
+		if err != nil {
+			// TODO : if server needs to close, with an error, which is a known error (no-error)
+			//if err == CloseCommunication {
+			//    closing()
+			//    return listKeys, nil
+			//}
+			c.log.Log("client_error", fmt.Sprintf("server return error : %v\n", err))
+			closing()
+			return nil, err
+		}
+
+		sigKey, err := json.Marshal(message.PubSigKey)
+		if err != nil {
+			return nil, errors.Wrap(err, "error marshal Sig key")
+		}
+		encKey, err := json.Marshal(message.PubEncKey)
+		if err != nil {
+			return nil, errors.Wrap(err, "error marshal Enc key")
+		}
+		var domResp = ListKeysResponse{
+			KID: message.KID,
+			Keys: jwtis.KeysInfoSet{
+				Expiry:          message.Expiry,
+				AuthTTL:         message.AuthTTL,
+				RefreshTTL:      message.RefreshTTL,
+				RefreshStrategy: message.RefreshStrategy,
+				Locked:          message.Locked,
+				Valid:           message.Valid,
+				Expired:         message.Expired,
+				Enc:             encKey,
+				Sig:             sigKey,
+			},
+		}
+		listKeys = append(listKeys, &domResp)
+	}
+
+	return listKeys, nil
 }

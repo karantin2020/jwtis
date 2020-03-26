@@ -16,7 +16,7 @@ const (
 )
 
 var (
-	appVersion = "v0.3.1"
+	// appVersion = "v0.3.1"
 	// boltDB     *bolt.DB
 	// buckets    = map[string][]byte{
 	// 	"internalBucketName": []byte("internalBucket"),
@@ -32,6 +32,11 @@ var (
 func main() {
 	app := cmd.App(appName, appDescription)
 	app.Config(bucketName, envPrefix)
-	app.Version("V version", appVersion)
+	app.Version("V version", cmd.BuildDetails())
+	// app.Command("version", "get version details", func(cmd *cli.Cmd) {
+	// 	cmd.Action = func() {
+	// 		fmt.Printf("user %q details (detailed mode: %v)\n", *id, *detailed)
+	// 	}
+	// })
 	app.Run(os.Args)
 }

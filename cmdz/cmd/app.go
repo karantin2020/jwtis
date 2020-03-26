@@ -32,6 +32,12 @@ func App(name, desc string) *Cli {
 			name: name,
 		},
 	}
+	// // c.cli.Version("v", appVersion)
+	// c.cli.Command("version", "print delailed version info", func(cmd *cli.Cmd) {
+	// 	cmd.Action = func() {
+	// 		fmt.Print(BuildDetails())
+	// 	}
+	// })
 	c.name = name
 	return c
 }
@@ -63,8 +69,8 @@ string via the CLI.
 func (c *Cli) Version(name, version string) {
 	checkNilCli(c)
 	c.cli.Version(name, version)
-	c.version = version
-	c.cmd.version = version
+	c.version = appVersion
+	c.cmd.version = appVersion
 }
 
 /*

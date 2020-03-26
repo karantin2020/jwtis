@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	cli "github.com/jawher/mow.cli"
-	"github.com/karantin2020/jwtis/cmd/cmd"
+	"github.com/karantin2020/jwtis/cmdz/cmd"
 	"github.com/stretchr/testify/assert"
 )
 

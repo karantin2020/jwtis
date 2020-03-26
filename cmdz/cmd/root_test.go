@@ -1,4 +1,4 @@
-package cmd
+package cmd_test
 
 import (
 	"bytes"
@@ -9,6 +9,7 @@ import (
 
 	cli "github.com/jawher/mow.cli"
 	"github.com/karantin2020/jwtis"
+	. "github.com/karantin2020/jwtis/cmdz/cmd"
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/assert"
 )

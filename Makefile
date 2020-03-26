@@ -1,3 +1,21 @@
+BIN            = jwtis
+BUILD         ?= $(shell git rev-parse --short HEAD)
+BUILD_DATE    ?= $(shell git log -1 --format=%ci)
+BUILD_BRANCH  ?= $(shell git rev-parse --abbrev-ref HEAD)
+BUILD_VERSION ?= $(shell git describe --always --tags)
+BUILD_TAGS    ?=
+GOPATH        ?= $(shell go env GOPATH)
+
+export GO111MODULE := off
+
+# Build-time Go variables
+appVersion     = github.com/karantin2020/jwtis/cmdz/cmd.appVersion
+gitBranch      = github.com/karantin2020/jwtis/cmdz/cmd.gitBranch
+lastCommitSHA  = github.com/karantin2020/jwtis/cmdz/cmd.lastCommitSHA
+lastCommitTime = github.com/karantin2020/jwtis/cmdz/cmd.lastCommitTime
+
+BUILD_FLAGS   ?= -ldflags '-s -w -X ${lastCommitSHA}=${BUILD} -X "${lastCommitTime}=${BUILD_DATE}" -X "${appVersion}=${BUILD_VERSION}" -X ${gitBranch}=${BUILD_BRANCH}'
+
 all: proto openapi
 
 proto:
@@ -46,4 +64,4 @@ cleardb:
 	rm cmd/data/keys.db
 
 build:
-	CGO_ENABLED=0 go build -ldflags="-s -w" -v -o cmd/jwtis ./cmd
+	CGO_ENABLED=0 go build $(BUILD_FLAGS) -v -o cmdz/jwtis ./cmdz

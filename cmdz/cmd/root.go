@@ -7,12 +7,16 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/pkg/errors"
+
 	cli "github.com/jawher/mow.cli"
 	"github.com/karantin2020/jwtis"
 	jose "gopkg.in/square/go-jose.v2"
 
 	"github.com/karantin2020/svalkey"
-	"github.com/rs/zerolog"
+	// "github.com/rs/zerolog"
+	kitlog "github.com/go-kit/kit/log"
+	"github.com/go-kit/kit/log/level"
 
 	"github.com/abronan/valkeyrie"
 	"github.com/abronan/valkeyrie/store"
@@ -29,7 +33,9 @@ import (
 
 	"gopkg.in/yaml.v2"
 
-	grpcs "github.com/karantin2020/jwtis/cmd/service"
+	// grpcs "github.com/karantin2020/jwtis/cmd/service"
+	"github.com/karantin2020/jwtis/svc"
+	group "github.com/oklog/run"
 )
 
 const (
@@ -40,14 +46,15 @@ const (
 )
 
 var (
-	log zerolog.Logger
+	log             kitlog.Logger
+	cancelInterrupt chan struct{}
 )
 
 type rootCmd struct {
 	// config holds app config parameters
 	config *Config
 	// logger is the app logger
-	logger zerolog.Logger
+	logger kitlog.Logger
 	// store is the db config to store
 	// configs and keys
 	store *svalkey.Store
@@ -217,8 +224,8 @@ func (r *rootCmd) SetGlobalOpts(app *cli.Cli, configBucket, envPrefix string) {
 	r.config = confRepo
 }
 
-func (r *rootCmd) Logger() *zerolog.Logger {
-	return &r.logger
+func (r *rootCmd) Logger() kitlog.Logger {
+	return r.logger
 }
 
 func (r *rootCmd) loadConfig() {
@@ -260,6 +267,11 @@ func (r *rootCmd) loadConfig() {
 	exitIfError(err, "error marshal config")
 	fmt.Println("Config:\n", string(d))
 	// r.logger = logger(*r.config.LogPath)
+	err = r.store.Put(configStoreKey, r.config, nil)
+	exitIfError(err, "error save apps config")
+	if log != nil {
+		level.Info(log).Log("event", "saved config to db")
+	}
 }
 
 func (r *rootCmd) loadPassword(flagConfig *Config) error {
@@ -342,6 +354,9 @@ func (r *rootCmd) checkStoreConsistency() error {
 
 func exitIfError(err error, msg string) {
 	if err != nil {
+		if log != nil {
+			level.Error(log).Log("exit", err)
+		}
 		fmt.Fprintf(os.Stderr, msg+": %s\n", err.Error())
 		cli.Exit(1)
 	}
@@ -366,15 +381,22 @@ func checkError(err error, msg string) error {
 }
 
 func (r *rootCmd) before() {
-	zerolog.SetGlobalLevel(zerolog.WarnLevel)
+	// zerolog.SetGlobalLevel(zerolog.WarnLevel)
+	var logger kitlog.Logger
+	logger = kitlog.NewLogfmtLogger(kitlog.NewSyncWriter(os.Stderr))
+	logger = kitlog.With(logger, "ts", kitlog.DefaultTimestampUTC)
 	if *r.config.Verbose {
-		zerolog.SetGlobalLevel(zerolog.InfoLevel)
+		// zerolog.SetGlobalLevel(zerolog.InfoLevel)
+		logger = level.NewFilter(logger, level.AllowDebug())
+	} else {
+		logger = level.NewFilter(logger, level.AllowInfo())
 	}
+	log = logger
 
 	r.loadConfig()
 
-	r.logger = logger(*r.config.LogPath)
-	log = r.logger.With().Str("sub", "rootCmd").Logger()
+	// r.logger = logger(*r.config.LogPath)
+	// log = r.logger.With().Str("sub", "rootCmd").Logger()
 
 	r.greetingMsg()
 	if *r.config.Verbose {
@@ -383,7 +405,7 @@ func (r *rootCmd) before() {
 }
 
 func (r *rootCmd) action() {
-	log.Info().Msg("start jwtis service")
+	level.Info(log).Log("event", "start jwtis service")
 
 	opts, err := r.config.getKeysRepoOptions()
 	exitIfError(err, "error prepare keys repo options")
@@ -402,8 +424,18 @@ func (r *rootCmd) action() {
 	// 	cli.Exit(1)
 	// }
 
-	grpcs.RunServer(*r.config.Listen, *r.config.ListenGrpc,
-		keysRepo, jose.ContentEncryption(*r.config.ContEnc))
+	// grpcs.RunServer(*r.config.Listen, *r.config.ListenGrpc,
+	// 	keysRepo, jose.ContentEncryption(*r.config.ContEnc))
+	cancelInterrupt = make(chan struct{})
+	svc.Run(svc.ServerOpts{
+		MetricsAddr:     *r.config.Listen,
+		Addr:            *r.config.ListenGrpc,
+		KeysRepo:        keysRepo,
+		ContEnc:         jose.ContentEncryption(*r.config.ContEnc),
+		Logger:          log,
+		G:               &group.Group{},
+		CancelInterrupt: cancelInterrupt,
+	})
 
 	// srv, err := server.NewJWTISServer(*r.config.Listen,
 	// 	*r.config.ListenGrpc, keysRepo,
@@ -440,17 +472,17 @@ func (r *rootCmd) action() {
 	// 	return nil
 	// })
 	// g.Wait()
-	log.Info().Msg("jwtis finished work")
+	level.Info(log).Log("event", "jwtis finished work")
 }
 
 func (r *rootCmd) after() {
 	if r.store != nil && r.store.Store != nil {
 		err := r.store.Put(configStoreKey, r.config, nil)
-		fmt.Println("...saved config to db")
 		for i := range r.password {
 			r.password[i] = 0
 		}
 		exitIfError(err, "error save apps config")
+		level.Info(log).Log("event", "saved config to db")
 	}
 }
 
@@ -515,14 +547,14 @@ func (r *rootCmd) newStore(dbType string, dbAddr []string) (*svalkey.Store, erro
 	// 	dynamodb.Register()
 	// 	backend = store.DYNAMODB
 	default:
-		return nil, fmt.Errorf("invalid store db type")
+		return nil, errors.New("invalid store db type")
 	}
 	if r.config.StoreConfig == nil {
-		return nil, fmt.Errorf("StoreConfig pointer is nil")
+		return nil, errors.New("StoreConfig pointer is nil")
 	}
 	storeConf, err := r.config.GetStoreConfig()
 	if err != nil {
-		return nil, fmt.Errorf("error in newStore, couldn't create *store.Config: %s",
+		return nil, errors.New("error in newStore, couldn't create *store.Config: " +
 			err.Error())
 	}
 	kv, err := valkeyrie.NewStore(
@@ -531,12 +563,12 @@ func (r *rootCmd) newStore(dbType string, dbAddr []string) (*svalkey.Store, erro
 		storeConf,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("error create new valkeyrie store: %s", err.Error())
+		return nil, errors.New("error create new valkeyrie store: " + err.Error())
 	}
 	fmt.Printf("db password: %x\n", r.password)
 	sdb, err := svalkey.NewJSONStore(kv, []byte{1, 0}, r.password)
 	if err != nil {
-		return nil, fmt.Errorf("error create svalkey store: %s", err.Error())
+		return nil, errors.New("error create svalkey store: " + err.Error())
 	}
 	// for i := range r.password {
 	// 	r.password[i] = 0
@@ -624,16 +656,16 @@ func (r *rootCmd) unmarshalConfig() (*Config, error) {
 		case ".yml", ".yaml":
 			unmarshalFunc = yaml.Unmarshal
 		default:
-			return nil, fmt.Errorf("error unmarshal config: invalid file type")
+			return nil, errors.New("error unmarshal config: invalid file type")
 		}
 		content, err := ioutil.ReadFile(*r.config.ConfigFile)
 		if err != nil {
-			return nil, fmt.Errorf("error reading config file")
+			return nil, errors.New("error reading config file")
 		}
 		// fmt.Printf("read content of config file:\n%s\n", string(content))
 		err = unmarshalFunc(content, appConfig)
 		if err != nil {
-			return nil, fmt.Errorf("error unmarshalling config file: %s", err.Error())
+			return nil, errors.New("error unmarshalling config file: " + err.Error())
 		}
 	}
 	// Don't set default here, only in config.go in func NewConfig

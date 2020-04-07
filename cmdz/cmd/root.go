@@ -327,7 +327,7 @@ func (r *rootCmd) loadStore(flagConfig *Config) (*Config, error) {
 		if err != nil {
 			return nil, fmt.Errorf("error get config from store: %s", err.Error())
 		}
-		fmt.Println("...downloaded db config")
+		// fmt.Println("...downloaded db config")
 	}
 	return dbConfig, nil
 }
@@ -343,9 +343,9 @@ func (r *rootCmd) checkStoreConsistency() error {
 	if err != nil && err != store.ErrKeyNotFound {
 		return fmt.Errorf("error check store consistency: %s", err.Error())
 	}
-	if r.exists {
-		fmt.Println("...store exists")
-	}
+	// if r.exists {
+	// 	fmt.Println("...store exists")
+	// }
 	return nil
 }
 

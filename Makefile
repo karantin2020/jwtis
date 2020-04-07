@@ -1,6 +1,6 @@
 BIN            = jwtis
 BUILD         ?= $(shell git rev-parse --short HEAD)
-BUILD_DATE    ?= $(shell git log -1 --format=%ci)
+BUILD_DATE    ?= $(shell git log -1 --format=%ai)
 BUILD_BRANCH  ?= $(shell git rev-parse --abbrev-ref HEAD)
 BUILD_VERSION ?= $(shell git describe --always --tags)
 BUILD_TAGS    ?=

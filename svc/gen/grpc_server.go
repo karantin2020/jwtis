@@ -11,8 +11,7 @@ import (
 	pb "github.com/karantin2020/jwtis/svc/pb"
 
 	errors "github.com/pkg/errors"
-
-	cstatus "github.com/cockroachdb/errors/grpc/status"
+	// cstatus "github.com/cockroachdb/errors/grpc/status"
 )
 
 // GRPCServer struct holds gokit handlers
@@ -235,7 +234,7 @@ func encodeRegisterGRPCResponse() func(context.Context, interface{}) (interface{
 		}
 		sigKey, err := msg.Keys.Sig.MarshalJSON()
 		if err != nil {
-			st := cstatus.WrapErr(codes.Internal, "encodeRegisterGRPCResponse: error marshal signing key", err)
+			st := errors.Wrap(ErrInternal, "encodeRegisterGRPCResponse: error marshal signing key: "+err.Error())
 			return nil, st
 		}
 		encKey, err := json.Marshal(msg.Keys.Enc)

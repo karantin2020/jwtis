@@ -75,26 +75,26 @@ func (r *rootCmd) SetGlobalOpts(app *cli.Cli, configBucket, envPrefix string) {
 	if !strings.HasSuffix(envPrefix, "_") {
 		envPrefix = envPrefix + "_"
 	}
-	app.Spec = "[-flgearnpdv] [--tls] [--certFile] [--keyFile] [--caCertFile]" +
+	app.Spec = "[-cmgearnpdv] [--tls] [--certFile] [--keyFile] [--caCertFile]" +
 		" [--sigAlg] [--sigBits] [--encAlg] [--encBits] [--contEnc] [--logPath]"
 	confRepo := NewConfig(configBucket)
-	confRepo.Listen = app.String(cli.StringOpt{
-		Name:      "l listen",
-		Value:     confRepo.defListen,
-		Desc:      "string Http ip:port to listen to",
+	confRepo.ListenMetrics = app.String(cli.StringOpt{
+		Name:      "m metricsAddr",
+		Value:     "127.0.0.1:4343",
+		Desc:      "string Http ip:port to listen to for metrics",
 		EnvVar:    envPrefix + "HTTP_ADDRESS",
 		SetByUser: &confRepo.listenSetByUser,
 	})
 	confRepo.ListenGrpc = app.String(cli.StringOpt{
 		Name:      "g grpcAddr",
-		Value:     confRepo.defListenGrpc,
-		Desc:      "string Grpc ip:port to listen to",
+		Value:     "127.0.0.1:40430",
+		Desc:      "string Grpc ip:port to listen to for service communication",
 		EnvVar:    envPrefix + "GRPC_ADDRESS",
 		SetByUser: &confRepo.listenGrpcSetByUser,
 	})
 	confRepo.TLS = app.Bool(cli.BoolOpt{
 		Name:      "tls",
-		Value:     confRepo.defTLS,
+		Value:     false,
 		Desc:      "bool Use tls connection [not implemented yet]",
 		EnvVar:    envPrefix + "TLS",
 		SetByUser: &confRepo.tlsSetByUser,
@@ -102,21 +102,21 @@ func (r *rootCmd) SetGlobalOpts(app *cli.Cli, configBucket, envPrefix string) {
 
 	confRepo.CertFile = app.String(cli.StringOpt{
 		Name:      "certFile",
-		Value:     confRepo.defCertFile,
+		Value:     "",
 		Desc:      "string Default CertFile for tls",
 		EnvVar:    envPrefix + "CERT_FILE",
 		SetByUser: &confRepo.certFileSetByUser,
 	})
 	confRepo.KeyFile = app.String(cli.StringOpt{
 		Name:      "keyFile",
-		Value:     confRepo.defKeyFile,
+		Value:     "",
 		Desc:      "string Default KeyFile for tls",
 		EnvVar:    envPrefix + "KEY_FILE",
 		SetByUser: &confRepo.keyFileSetByUser,
 	})
 	confRepo.CACertFile = app.String(cli.StringOpt{
 		Name:      "caCertFile",
-		Value:     confRepo.defCACertFile,
+		Value:     "",
 		Desc:      "string Default CACertFile for tls",
 		EnvVar:    envPrefix + "CA_CERT_FILE",
 		SetByUser: &confRepo.caCertFileSetByUser,
@@ -124,56 +124,56 @@ func (r *rootCmd) SetGlobalOpts(app *cli.Cli, configBucket, envPrefix string) {
 
 	confRepo.SigAlg = app.String(cli.StringOpt{
 		Name:      "sigAlg",
-		Value:     confRepo.defSigAlg,
+		Value:     "ES256",
 		Desc:      "string Default algorithm to be used for sign. Possible values are: ES256 ES384 ES512 EdDSA RS256 RS384 RS512 PS256 PS384 PS512",
 		EnvVar:    envPrefix + "SIG_ALG",
 		SetByUser: &confRepo.sigAlgSetByUser,
 	})
 	confRepo.SigBits = app.Int(cli.IntOpt{
 		Name:      "sigBits",
-		Value:     confRepo.defSigBits,
+		Value:     256,
 		Desc:      "int Default key size in bits for sign key. Supported elliptic bit lengths are 256, 384, 521",
 		EnvVar:    envPrefix + "SIG_BITS",
 		SetByUser: &confRepo.sigBitsSetByUser,
 	})
 	confRepo.EncAlg = app.String(cli.StringOpt{
 		Name:      "encAlg",
-		Value:     confRepo.defEncAlg,
+		Value:     "ECDH-ES+A256KW",
 		Desc:      "string Default algorithm to be used for encrypt. Possible values are RSA1_5 RSA-OAEP RSA-OAEP-256 ECDH-ES ECDH-ES+A128KW ECDH-ES+A192KW ECDH-ES+A256KW",
 		EnvVar:    envPrefix + "ENC_ALG",
 		SetByUser: &confRepo.encAlgSetByUser,
 	})
 	confRepo.EncBits = app.Int(cli.IntOpt{
 		Name:      "encBits",
-		Value:     confRepo.defEncBits,
+		Value:     256,
 		Desc:      "int Default key size in bits for encrypt. Supported elliptic bit lengths are 256, 384, 521",
 		EnvVar:    envPrefix + "ENC_BITS",
 		SetByUser: &confRepo.encBitsSetByUser,
 	})
 	confRepo.ContEnc = app.String(cli.StringOpt{
 		Name:      "contEnc",
-		Value:     confRepo.defContEnc,
+		Value:     "A256GCM",
 		Desc:      "string Default content encryption. Possible values are A128GCM, A192GCM, A256GCM",
 		EnvVar:    envPrefix + "CONT_ENC",
 		SetByUser: &confRepo.contEncSetByUser,
 	})
 	confRepo.Expiry = app.String(cli.StringOpt{
 		Name:      "e expiry",
-		Value:     confRepo.defExpiry,
+		Value:     "4320h",
 		Desc:      "string Default keys time to live, expiration time [Duration string]",
 		EnvVar:    envPrefix + "EXPIRY",
 		SetByUser: &confRepo.expirySetByUser,
 	})
 	confRepo.AuthTTL = app.String(cli.StringOpt{
 		Name:      "a authTTL",
-		Value:     confRepo.defAuthTTL,
+		Value:     "72h",
 		Desc:      "string Default auth JWT token time to live, expiration time [Duration string]",
 		EnvVar:    envPrefix + "AUTH_TTL",
 		SetByUser: &confRepo.authTTLSetByUser,
 	})
 	confRepo.RefreshTTL = app.String(cli.StringOpt{
 		Name:      "r refreshTTL",
-		Value:     confRepo.defRefreshTTL,
+		Value:     "720h",
 		Desc:      "string Default refresh JWT token time to live, expiration time [Duration string]",
 		EnvVar:    envPrefix + "REFRESH_TTL",
 		SetByUser: &confRepo.refreshTTLSetByUser,
@@ -181,42 +181,42 @@ func (r *rootCmd) SetGlobalOpts(app *cli.Cli, configBucket, envPrefix string) {
 
 	confRepo.SelfName = app.String(cli.StringOpt{
 		Name:      "n name",
-		Value:     confRepo.defSelfName,
+		Value:     "JWTIS",
 		Desc:      "string Name of this service",
 		EnvVar:    envPrefix + "NAME",
 		SetByUser: &confRepo.selfNameSetByUser,
 	})
 	confRepo.password = app.String(cli.StringOpt{
 		Name:      "p pswd",
-		Value:     confRepo.defPassword,
+		Value:     "",
 		Desc:      "string Storage password. App generates password with db creation. Later user must provide a password to access the database",
 		EnvVar:    envPrefix + "PSWD",
 		SetByUser: &confRepo.passwordSetByUser,
 	})
 	confRepo.DBConfig = app.String(cli.StringOpt{
 		Name:      "d dbConfig",
-		Value:     confRepo.defDBConfig,
+		Value:     boltDBConfig,
 		Desc:      "string Config to setup db",
 		EnvVar:    envPrefix + "DB_CONFIG",
 		SetByUser: &confRepo.dbConfigSetByUser,
 	})
 	confRepo.ConfigFile = app.String(cli.StringOpt{
-		Name:      "f file",
-		Value:     confRepo.defConfigFile,
+		Name:      "c config",
+		Value:     "./data/config.json",
 		Desc:      "string Path to config file",
 		EnvVar:    envPrefix + "CONFIG_FILE",
 		SetByUser: &confRepo.configFileSetByUser,
 	})
 	confRepo.LogPath = app.String(cli.StringOpt{
 		Name:      "logPath",
-		Value:     confRepo.defLogPath,
+		Value:     "./data/jwtis.log",
 		Desc:      "string Path to store logs",
 		EnvVar:    envPrefix + "LOG_PATH",
 		SetByUser: &confRepo.logPathSetByUser,
 	})
 	confRepo.Verbose = app.Bool(cli.BoolOpt{
 		Name:      "v verbose",
-		Value:     confRepo.defVerbose,
+		Value:     false,
 		Desc:      "bool Verbose. Show detailed logs",
 		EnvVar:    envPrefix + "VERBOSE",
 		SetByUser: &confRepo.verboseSetByUser,
@@ -263,9 +263,9 @@ func (r *rootCmd) loadConfig() {
 	exitIfError(err, "error merge flags config to app config")
 	err = r.config.validate()
 	exitIfError(err, "error validate app config")
-	d, err := json.MarshalIndent(r.config, "", "  ")
-	exitIfError(err, "error marshal config")
-	fmt.Println("Config:\n", string(d))
+	// d, err := json.MarshalIndent(r.config, "", "  ")
+	// exitIfError(err, "error marshal config")
+	// fmt.Println("Config:\n", string(d))
 	// r.logger = logger(*r.config.LogPath)
 	err = r.store.Put(configStoreKey, r.config, nil)
 	exitIfError(err, "error save apps config")
@@ -329,9 +329,6 @@ func (r *rootCmd) loadStore(flagConfig *Config) (*Config, error) {
 		}
 		fmt.Println("...downloaded db config")
 	}
-	fmt.Printf("...dbConfig: %#v\n", dbConfig)
-	// fmt.Println("...db config listen:", *dbConfig.Options.HTTPConf.Listen)
-
 	return dbConfig, nil
 }
 
@@ -428,7 +425,7 @@ func (r *rootCmd) action() {
 	// 	keysRepo, jose.ContentEncryption(*r.config.ContEnc))
 	cancelInterrupt = make(chan struct{})
 	svc.Run(svc.ServerOpts{
-		MetricsAddr:     *r.config.Listen,
+		MetricsAddr:     *r.config.ListenMetrics,
 		Addr:            *r.config.ListenGrpc,
 		KeysRepo:        keysRepo,
 		ContEnc:         jose.ContentEncryption(*r.config.ContEnc),
@@ -565,7 +562,6 @@ func (r *rootCmd) newStore(dbType string, dbAddr []string) (*svalkey.Store, erro
 	if err != nil {
 		return nil, errors.New("error create new valkeyrie store: " + err.Error())
 	}
-	fmt.Printf("db password: %x\n", r.password)
 	sdb, err := svalkey.NewJSONStore(kv, []byte{1, 0}, r.password)
 	if err != nil {
 		return nil, errors.New("error create svalkey store: " + err.Error())
@@ -583,8 +579,8 @@ func (r *rootCmd) unmarshalConfig() (*Config, error) {
 	appConfig := &Config{
 		Options: Options{
 			HTTPConf: HTTPConf{
-				Listen: nil,
-				TLS:    nil,
+				ListenMetrics: nil,
+				TLS:           nil,
 				TLSConfig: TLSConfig{
 					CertFile:   nil,
 					KeyFile:    nil,

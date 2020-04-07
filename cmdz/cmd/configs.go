@@ -23,9 +23,9 @@ type TLSConfig struct {
 
 // HTTPConf config
 type HTTPConf struct {
-	Listen    *string `json:"Listen" yaml:"Listen"` // ip:port to listen to
-	TLS       *bool   `json:"TLS" yaml:"TLS"`       // Future feature
-	TLSConfig `json:"TLSConfig" yaml:"TLSConfig"`
+	ListenMetrics *string `json:"ListenMetrics" yaml:"ListenMetrics"` // ip:port to listen to
+	TLS           *bool   `json:"TLS" yaml:"TLS"`                     // Future feature
+	TLSConfig     `json:"TLSConfig" yaml:"TLSConfig"`
 }
 
 // GrpcConf config
@@ -84,28 +84,28 @@ type setByUser struct {
 	verboseSetByUser    bool
 }
 
-type defaults struct {
-	defListen     string
-	defListenGrpc string
-	defTLS        bool
-	defCertFile   string
-	defKeyFile    string
-	defCACertFile string
-	defSigAlg     string
-	defSigBits    int
-	defEncAlg     string
-	defEncBits    int
-	defContEnc    string
-	defExpiry     string
-	defAuthTTL    string
-	defRefreshTTL string
-	defSelfName   string
-	defPassword   string
-	defDBConfig   string
-	defConfigFile string
-	defLogPath    string
-	defVerbose    bool
-}
+// type defaults struct {
+// 	defListen     string
+// 	defListenGrpc string
+// 	defTLS        bool
+// 	defCertFile   string
+// 	defKeyFile    string
+// 	defCACertFile string
+// 	defSigAlg     string
+// 	defSigBits    int
+// 	defEncAlg     string
+// 	defEncBits    int
+// 	defContEnc    string
+// 	defExpiry     string
+// 	defAuthTTL    string
+// 	defRefreshTTL string
+// 	defSelfName   string
+// 	defPassword   string
+// 	defDBConfig   string
+// 	defConfigFile string
+// 	defLogPath    string
+// 	defVerbose    bool
+// }
 
 // Options config
 type Options struct {
@@ -148,7 +148,7 @@ type StoreConfig struct {
 
 // Config contains app option values
 type Config struct {
-	defaults    `yaml:"-"`
+	// defaults    `yaml:"-"`
 	Options     `json:"Options" yaml:"Options"`
 	StoreConfig *StoreConfig `json:"StoreConfig" yaml:"StoreConfig"`
 	// bucketName holds app bucket name
@@ -159,28 +159,28 @@ type Config struct {
 // NewConfig returns initiated config instance
 func NewConfig(bucketName string) *Config {
 	p := &Config{
-		defaults: defaults{
-			defListen:     "127.0.0.1:4343",
-			defListenGrpc: "127.0.0.1:40430",
-			defTLS:        false,
-			defCertFile:   "",
-			defKeyFile:    "",
-			defCACertFile: "",
-			defSigAlg:     "ES256",
-			defSigBits:    256,
-			defEncAlg:     "ECDH-ES+A256KW",
-			defEncBits:    256,
-			defContEnc:    "A256GCM",
-			defExpiry:     "4320h",
-			defAuthTTL:    "72h",
-			defRefreshTTL: "720h",
-			defSelfName:   "JWTIS",
-			defPassword:   "",
-			defDBConfig:   boltDBConfig,
-			defConfigFile: "./data/config.json",
-			defLogPath:    "./data/jwtis.log",
-			defVerbose:    false,
-		},
+		// defaults: defaults{
+		// 	defListen:     "127.0.0.1:4343",
+		// 	defListenGrpc: "127.0.0.1:40430",
+		// 	defTLS:        false,
+		// 	defCertFile:   "",
+		// 	defKeyFile:    "",
+		// 	defCACertFile: "",
+		// 	defSigAlg:     "ES256",
+		// 	defSigBits:    256,
+		// 	defEncAlg:     "ECDH-ES+A256KW",
+		// 	defEncBits:    256,
+		// 	defContEnc:    "A256GCM",
+		// 	defExpiry:     "4320h",
+		// 	defAuthTTL:    "72h",
+		// 	defRefreshTTL: "720h",
+		// 	defSelfName:   "JWTIS",
+		// 	defPassword:   "",
+		// 	defDBConfig:   boltDBConfig,
+		// 	defConfigFile: "./data/config.json",
+		// 	defLogPath:    "./data/jwtis.log",
+		// 	defVerbose:    false,
+		// },
 		bucketName: bucketName,
 		StoreConfig: &StoreConfig{
 			ConnectionTimeout: "30s",
@@ -258,7 +258,7 @@ func (c *Config) defToNil() {
 		return
 	}
 	if !c.listenSetByUser {
-		c.Listen = nil
+		c.ListenMetrics = nil
 	}
 	if !c.listenGrpcSetByUser {
 		c.ListenGrpc = nil
@@ -329,8 +329,8 @@ func mergeConfig(dst, src *Config) error {
 	if src == nil {
 		return fmt.Errorf("mergeConfig: source Config pointer is nil")
 	}
-	if src.Listen != nil {
-		dst.Listen = src.Listen
+	if src.ListenMetrics != nil {
+		dst.ListenMetrics = src.ListenMetrics
 	}
 	if src.ListenGrpc != nil {
 		dst.ListenGrpc = src.ListenGrpc
@@ -433,7 +433,7 @@ func mergeConfig(dst, src *Config) error {
 
 func (c Config) printConfigs() {
 	fmt.Printf("Current configuration:\n")
-	fmt.Printf("  configs.listen:\t%s\n", *c.Listen)
+	fmt.Printf("  configs.listen:\t%s\n", *c.ListenMetrics)
 	fmt.Printf("  configs.listenGrpc:\t%s\n", *c.ListenGrpc)
 	fmt.Printf("  configs.tls:\t\t%t\n", *c.TLS)
 	fmt.Printf("  configs.sigAlg:\t%s\n", *c.SigAlg)

@@ -68,8 +68,8 @@ string via the CLI.
 */
 func (c *Cli) Version(name, version string) {
 	checkNilCli(c)
-	c.cli.Version(name, version)
-	c.version = appVersion
+	c.name = name
+	c.version = version
 	c.cmd.version = appVersion
 }
 
@@ -90,6 +90,7 @@ func (c *Cli) Run(args []string) error {
 		cli.Exit(1)
 	}
 	c.cmd.Register(c.cli, c.bucket, c.envPrefix)
+	c.cli.Version(c.name, c.version)
 	return c.cli.Run(args)
 }
 

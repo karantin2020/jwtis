@@ -6,7 +6,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/pkg/errors"
 
@@ -37,8 +36,6 @@ import (
 	// grpcs "github.com/karantin2020/jwtis/cmd/service"
 	"github.com/karantin2020/jwtis/svc"
 	group "github.com/oklog/run"
-
-	"go.uber.org/zap"
 )
 
 const (
@@ -270,11 +267,7 @@ func (r *rootCmd) loadConfig() {
 	// exitIfError(err, "error marshal config")
 	// fmt.Println("Config:\n", string(d))
 	// r.logger = logger(*r.config.LogPath)
-	err = r.store.Put(configStoreKey, r.config, nil)
-	exitIfError(err, "error save apps config")
-	if log != nil {
-		level.Info(log).Log("event", "saved config to db")
-	}
+
 }
 
 func (r *rootCmd) loadPassword(flagConfig *Config) error {
@@ -392,7 +385,9 @@ func (r *rootCmd) before() {
 		logger = level.NewFilter(logger, level.AllowInfo())
 	}
 	log = logger
+}
 
+func (r *rootCmd) action() {
 	r.loadConfig()
 
 	// r.logger = logger(*r.config.LogPath)
@@ -402,25 +397,11 @@ func (r *rootCmd) before() {
 	if *r.config.Verbose {
 		r.config.printConfigs()
 	}
-}
-
-func (r *rootCmd) action() {
-	zlogger, _ := zap.NewProduction()
-	defer zlogger.Sync() // flushes buffer, if any
-	sugar := zlogger.Sugar()
-	sugar.Infow("failed to fetch URL",
-		// Structured context as loosely typed key-value pairs.
-		"url", "https://google.com",
-		"attempt", 3,
-		"backoff", time.Second,
-	)
-	sugar.Infof("Failed to fetch URL: %s", "https://google.com")
-	zlogger.Info("failed to fetch URL",
-		// Structured context as strongly typed Field values.
-		zap.String("url", "https://google.com"),
-		zap.Int("attempt", 3),
-		zap.Duration("backoff", time.Second),
-	)
+	err := r.store.Put(configStoreKey, r.config, nil)
+	exitIfError(err, "error save apps config")
+	if log != nil {
+		level.Info(log).Log("event", "saved config to db")
+	}
 
 	level.Info(log).Log("event", "start jwtis service")
 
@@ -509,6 +490,7 @@ func (r *rootCmd) Register(app *cli.Cli, configBucket, envPrefix string) {
 	app.Before = r.before
 	app.Action = r.action
 	app.After = r.after
+	r.printConfigCMD(app)
 }
 
 // Register executes root command through calling internal rootCmd.Bootstrap

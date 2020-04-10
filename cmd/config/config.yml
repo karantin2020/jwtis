@@ -1,0 +1,35 @@
+Options:
+    HTTPConf:
+        ListenMetrics: 127.0.0.1:4343
+        TLS: false
+        TLSConfig:
+            CertFile: ""
+            KeyFile: ""
+            CACertFile: ""
+    GrpcConf:
+        ListenGrpc: 127.0.0.1:40430
+    KeyGeneration:
+        Sign:
+            SigAlg: ES256
+            SigBits: 256
+        Encryption:
+            EncAlg: ECDH-ES+A256KW
+            EncBits: 256
+            ContEnc: A256GCM
+        Expiry: 4320h
+        JwtTTL:
+            AuthTTL: 72h
+            RefreshTTL: 720h
+    SelfName: JWTIS
+    LogPath: ./data/jwtis.log
+    DBConfig: boltdb:./data/jwtis.db
+    ConfigFile: ./data/config.json
+    Verbose: false
+StoreConfig:
+    ClientTLS: null
+    ConnectionTimeout: 30s
+    SyncPeriod: 0s
+    PersistConnection: true
+    Username: ""
+    Password: ""
+    Token: ""

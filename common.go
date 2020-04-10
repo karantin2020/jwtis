@@ -5,12 +5,9 @@ package jwtis
 
 import (
 	"crypto/rand"
-	"encoding/json"
-	"fmt"
+	"errors"
 	"math/big"
 	"strings"
-
-	bolt "github.com/coreos/bbolt"
 )
 
 var secretCharSet = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890_-.~!{}[]&?@#$&*()")
@@ -41,6 +38,11 @@ var (
 	AlphaUpper = []rune("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
 	// Numeric contains runes [0123456789].
 	Numeric = []rune("0123456789")
+)
+
+var (
+	// ErrKeyNotFound describes error when looking key is not found in db
+	ErrKeyNotFound = errors.New("requested key was not found in db")
 )
 
 // RuneSequence returns a random sequence using the defined allowed runes.
@@ -89,36 +91,36 @@ func (mr *Error) Append(errs ...error) Error {
 	return *mr
 }
 
-// SaveSealed saves marshaled value to key for bucket. Should run in update tx
-func SaveSealed(encKey *Key, nonce []byte, bkt *bolt.Bucket, key []byte, value interface{}) (err error) {
-	if value == nil {
-		return fmt.Errorf("can't save nil value for %s", string(key))
-	}
-	data, err := json.Marshal(value)
-	if err != nil {
-		return fmt.Errorf("can't marshal value: %s", err.Error())
-	}
-	buf := make([]byte, 0, len(data)+Extension)
-	ciphertext := encKey.Seal(buf[:0], nonce, data, nil)
-	if err = bkt.Put(key, ciphertext); err != nil {
-		return fmt.Errorf("failed to save key %s, error: %s", string(key), err.Error())
-	}
-	return nil
-}
+// // SaveSealed saves marshaled value to key for bucket. Should run in update tx
+// func SaveSealed(encKey *Key, nonce []byte, bkt *bolt.Bucket, key []byte, value interface{}) (err error) {
+// 	if value == nil {
+// 		return fmt.Errorf("can't save nil value for %s", string(key))
+// 	}
+// 	data, err := json.Marshal(value)
+// 	if err != nil {
+// 		return fmt.Errorf("can't marshal value: %s", err.Error())
+// 	}
+// 	buf := make([]byte, 0, len(data)+Extension)
+// 	ciphertext := encKey.Seal(buf[:0], nonce, data, nil)
+// 	if err = bkt.Put(key, ciphertext); err != nil {
+// 		return fmt.Errorf("failed to save key %s, error: %s", string(key), err.Error())
+// 	}
+// 	return nil
+// }
 
-// LoadSealed loads and unmarshals json value by key from bucket. Should run in view tx
-func LoadSealed(encKey *Key, nonce []byte, bkt *bolt.Bucket, key []byte, res interface{}) error {
-	plaintext := bkt.Get(key)
-	if plaintext == nil {
-		return ErrKeyNotFound
-	}
-	buf := make([]byte, 0, len(plaintext))
-	value, err := encKey.Open(buf, nonce, plaintext, nil)
-	if err != nil {
-		return err
-	}
-	if err := json.Unmarshal(value, &res); err != nil {
-		return fmt.Errorf("failed to unmarshal: %s", err.Error())
-	}
-	return nil
-}
+// // LoadSealed loads and unmarshals json value by key from bucket. Should run in view tx
+// func LoadSealed(encKey *Key, nonce []byte, bkt *bolt.Bucket, key []byte, res interface{}) error {
+// 	plaintext := bkt.Get(key)
+// 	if plaintext == nil {
+// 		return ErrKeyNotFound
+// 	}
+// 	buf := make([]byte, 0, len(plaintext))
+// 	value, err := encKey.Open(buf, nonce, plaintext, nil)
+// 	if err != nil {
+// 		return err
+// 	}
+// 	if err := json.Unmarshal(value, &res); err != nil {
+// 		return fmt.Errorf("failed to unmarshal: %s", err.Error())
+// 	}
+// 	return nil
+// }

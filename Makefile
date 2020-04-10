@@ -6,13 +6,15 @@ BUILD_VERSION ?= $(shell git describe --always --tags)
 BUILD_TAGS    ?=
 GOPATH        ?= $(shell go env GOPATH)
 
+BASEPATH = github.com/karantin2020/jwtis/cmd/cmd
+
 export GO111MODULE := off
 
 # Build-time Go variables
-appVersion     = github.com/karantin2020/jwtis/cmdz/cmd.appVersion
-gitBranch      = github.com/karantin2020/jwtis/cmdz/cmd.gitBranch
-lastCommitSHA  = github.com/karantin2020/jwtis/cmdz/cmd.lastCommitSHA
-lastCommitTime = github.com/karantin2020/jwtis/cmdz/cmd.lastCommitTime
+appVersion     = ${BASEPATH}.appVersion
+gitBranch      = ${BASEPATH}.gitBranch
+lastCommitSHA  = ${BASEPATH}.lastCommitSHA
+lastCommitTime = ${BASEPATH}.lastCommitTime
 
 BUILD_FLAGS   ?= -ldflags '-s -w -X ${lastCommitSHA}=${BUILD} -X "${lastCommitTime}=${BUILD_DATE}" -X "${appVersion}=${BUILD_VERSION}" -X ${gitBranch}=${BUILD_BRANCH}'
 
@@ -64,4 +66,4 @@ cleardb:
 	rm cmd/data/keys.db
 
 build:
-	CGO_ENABLED=0 go build $(BUILD_FLAGS) -v -o cmdz/jwtis ./cmdz
+	CGO_ENABLED=0 go build $(BUILD_FLAGS) -v -o cmd/${BIN} ./cmd

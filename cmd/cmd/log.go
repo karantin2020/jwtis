@@ -3,8 +3,8 @@ package cmd
 import (
 	"os"
 
-	"github.com/uber-go/zap"
-	"github.com/uber-go/zap/zapcore"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 	lumberjack "gopkg.in/natefinch/lumberjack.v2"
 )
 
@@ -37,7 +37,7 @@ func (r *rootCmd) newLogger() *zap.Logger {
 			Compress:   cfg.LogCompress,
 		}))
 	}
-	writers = append(writers, os.StdErr)
+	writers = append(writers, os.Stderr)
 	multiWriter := zapcore.NewMultiWriteSyncer(writers...)
 
 	if *r.config.Verbose {

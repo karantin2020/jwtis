@@ -126,8 +126,8 @@ type StoreConfig struct {
 // Config contains app option values
 type Config struct {
 	// defaults    `yaml:"-"`
-	Options     `json:"Options" yaml:"Options"`
-	StoreConfig *StoreConfig `json:"StoreConfig" yaml:"StoreConfig"`
+	Options      `json:"Options" yaml:"Options"`
+	StoreConfig  *StoreConfig  `json:"StoreConfig" yaml:"StoreConfig"`
 	LoggerConfig *LoggerConfig `json:"LoggerConfig" yaml:"LoggerConfig"`
 	// bucketName holds app bucket name
 	// to store configs and keys
@@ -144,16 +144,16 @@ func NewConfig(bucketName string) *Config {
 			// Bucket:            bucketName,
 			PersistConnection: true,
 		},
-		LoggerConfig: LoggerConfig{
-			LogFileName: "./data/jwtis.log",
-			LogMaxSize: 20,
-			LogMaxAge: 14,
+		LoggerConfig: &LoggerConfig{
+			LogFileName:  "./data/jwtis.log",
+			LogMaxSize:   20,
+			LogMaxAge:    14,
 			LogMaxBackUp: 15,
-			LogCompress: true
+			LogCompress:  true,
 			LogLocalTime: false,
-			LogLevel: "info",
-			LogFileSave: true,
-		}
+			LogLevel:     "info",
+			LogFileSave:  true,
+		},
 	}
 	return p
 }

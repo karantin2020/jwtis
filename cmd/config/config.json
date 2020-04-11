@@ -42,5 +42,15 @@
     "Username": "",
     "Password": "",
     "Token": ""
+  },
+  "LoggerConfig": {
+    "LogFileName": "./data/jwtis.log",
+    "LogMaxSize": 20,
+    "LogMaxAge": 14,
+    "LogMaxBackUp": 15,
+    "LogCompress": true,
+    "LogLocalTime": false,
+    "LogLevel": "info",
+    "LogFileSave": true
   }
 }

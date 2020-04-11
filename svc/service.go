@@ -14,11 +14,8 @@ import (
 	"github.com/karantin2020/jwtis"
 	"github.com/pkg/errors"
 
-	// grpc "github.com/karantin2020/jwtis/pkg/grpc"
 	pb "github.com/karantin2020/jwtis/svc/pb"
 	group "github.com/oklog/run"
-
-	// prometheus1 "github.com/prometheus/client_golang/prometheus"
 
 	grpc "google.golang.org/grpc"
 	jose "gopkg.in/square/go-jose.v2"

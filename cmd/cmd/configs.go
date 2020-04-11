@@ -84,29 +84,6 @@ type setByUser struct {
 	verboseSetByUser    bool
 }
 
-// type defaults struct {
-// 	defListen     string
-// 	defListenGrpc string
-// 	defTLS        bool
-// 	defCertFile   string
-// 	defKeyFile    string
-// 	defCACertFile string
-// 	defSigAlg     string
-// 	defSigBits    int
-// 	defEncAlg     string
-// 	defEncBits    int
-// 	defContEnc    string
-// 	defExpiry     string
-// 	defAuthTTL    string
-// 	defRefreshTTL string
-// 	defSelfName   string
-// 	defPassword   string
-// 	defDBConfig   string
-// 	defConfigFile string
-// 	defLogPath    string
-// 	defVerbose    bool
-// }
-
 // Options config
 type Options struct {
 	HTTPConf      `json:"HTTPConf" yaml:"HTTPConf"`
@@ -151,6 +128,7 @@ type Config struct {
 	// defaults    `yaml:"-"`
 	Options     `json:"Options" yaml:"Options"`
 	StoreConfig *StoreConfig `json:"StoreConfig" yaml:"StoreConfig"`
+	LoggerConfig *LoggerConfig `json:"LoggerConfig" yaml:"LoggerConfig"`
 	// bucketName holds app bucket name
 	// to store configs and keys
 	bucketName string `yaml:"-"`
@@ -159,28 +137,6 @@ type Config struct {
 // NewConfig returns initiated config instance
 func NewConfig(bucketName string) *Config {
 	p := &Config{
-		// defaults: defaults{
-		// 	defListen:     "127.0.0.1:4343",
-		// 	defListenGrpc: "127.0.0.1:40430",
-		// 	defTLS:        false,
-		// 	defCertFile:   "",
-		// 	defKeyFile:    "",
-		// 	defCACertFile: "",
-		// 	defSigAlg:     "ES256",
-		// 	defSigBits:    256,
-		// 	defEncAlg:     "ECDH-ES+A256KW",
-		// 	defEncBits:    256,
-		// 	defContEnc:    "A256GCM",
-		// 	defExpiry:     "4320h",
-		// 	defAuthTTL:    "72h",
-		// 	defRefreshTTL: "720h",
-		// 	defSelfName:   "JWTIS",
-		// 	defPassword:   "",
-		// 	defDBConfig:   boltDBConfig,
-		// 	defConfigFile: "./data/config.json",
-		// 	defLogPath:    "./data/jwtis.log",
-		// 	defVerbose:    false,
-		// },
 		bucketName: bucketName,
 		StoreConfig: &StoreConfig{
 			ConnectionTimeout: "30s",
@@ -188,6 +144,16 @@ func NewConfig(bucketName string) *Config {
 			// Bucket:            bucketName,
 			PersistConnection: true,
 		},
+		LoggerConfig: LoggerConfig{
+			LogFileName: "./data/jwtis.log",
+			LogMaxSize: 20,
+			LogMaxAge: 14,
+			LogMaxBackUp: 15,
+			LogCompress: true
+			LogLocalTime: false,
+			LogLevel: "info",
+			LogFileSave: true,
+		}
 	}
 	return p
 }

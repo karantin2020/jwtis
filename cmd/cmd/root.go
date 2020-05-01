@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -8,15 +9,13 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
+	"go.uber.org/zap"
 
 	cli "github.com/jawher/mow.cli"
-	"github.com/karantin2020/jwtis"
-	jose "gopkg.in/square/go-jose.v2"
 
 	"github.com/karantin2020/svalkey"
 	// "github.com/rs/zerolog"
 	kitlog "github.com/go-kit/kit/log"
-	"github.com/go-kit/kit/log/level"
 
 	"github.com/abronan/valkeyrie"
 	"github.com/abronan/valkeyrie/store"
@@ -31,22 +30,25 @@ import (
 
 	"encoding/json"
 
+	jose "gopkg.in/square/go-jose.v2"
 	"gopkg.in/yaml.v3"
 
-	// grpcs "github.com/karantin2020/jwtis/cmd/service"
-	"github.com/karantin2020/jwtis/svc"
+	"github.com/karantin2020/jwtis/pkg/repos/keys"
+	"github.com/karantin2020/jwtis/pkg/server"
+	"github.com/karantin2020/jwtis/pkg/services"
 	group "github.com/oklog/run"
 )
 
 const (
-	configStoreKey  = "jwtis.cmd.config"
-	keysStorePrefix = "jwtis.keysRepo"
+	configStoreKey    = "jwtis.cmd.config"
+	keysStorePrefix   = "jwtis.keysRepo"
+	tokensStorePrefix = "jwtis.tokensRepo"
 	// configCheckKey = "jwtis.cmd.check.key"
 	// checkValLength = 256
 )
 
 var (
-	log             kitlog.Logger
+	log             *zap.Logger
 	cancelInterrupt chan struct{}
 )
 
@@ -65,11 +67,6 @@ type rootCmd struct {
 	name, version string
 }
 
-// // CheckValType stores secretString to check
-// type CheckValType struct {
-// 	Val [checkValLength]byte
-// }
-
 // SetGlobalOpts sets global cli options
 func (r *rootCmd) SetGlobalOpts(app *cli.Cli, configBucket, envPrefix string) {
 	if !strings.HasSuffix(envPrefix, "_") {
@@ -85,7 +82,7 @@ func (r *rootCmd) SetGlobalOpts(app *cli.Cli, configBucket, envPrefix string) {
 		EnvVar:    envPrefix + "HTTP_ADDRESS",
 		SetByUser: &confRepo.listenSetByUser,
 	})
-	confRepo.ListenGrpc = app.String(cli.StringOpt{
+	confRepo.ListenGRPC = app.String(cli.StringOpt{
 		Name:      "g grpcAddr",
 		Value:     "127.0.0.1:40430",
 		Desc:      "string Grpc ip:port to listen to for service communication",
@@ -348,7 +345,7 @@ func (r *rootCmd) checkStoreConsistency() error {
 func exitIfError(err error, msg string) {
 	if err != nil {
 		if log != nil {
-			level.Error(log).Log("exit", err)
+			log.Error("exit", zap.Error(err))
 		}
 		fmt.Fprintf(os.Stderr, msg+": %s\n", err.Error())
 		cli.Exit(1)
@@ -375,16 +372,17 @@ func checkError(err error, msg string) error {
 
 func (r *rootCmd) before() {
 	// zerolog.SetGlobalLevel(zerolog.WarnLevel)
-	var logger kitlog.Logger
-	logger = kitlog.NewLogfmtLogger(kitlog.NewSyncWriter(os.Stderr))
-	logger = kitlog.With(logger, "ts", kitlog.DefaultTimestampUTC)
-	if *r.config.Verbose {
-		// zerolog.SetGlobalLevel(zerolog.InfoLevel)
-		logger = level.NewFilter(logger, level.AllowDebug())
-	} else {
-		logger = level.NewFilter(logger, level.AllowInfo())
-	}
-	log = logger
+
+	// var logger kitlog.Logger
+	// logger = kitlog.NewLogfmtLogger(kitlog.NewSyncWriter(os.Stderr))
+	// logger = kitlog.With(logger, "ts", kitlog.DefaultTimestampUTC)
+	// if *r.config.Verbose {
+	// 	// zerolog.SetGlobalLevel(zerolog.InfoLevel)
+	// 	logger = level.NewFilter(logger, level.AllowDebug())
+	// } else {
+	// 	logger = level.NewFilter(logger, level.AllowInfo())
+	// }
+	// log = logger
 }
 
 func (r *rootCmd) action() {
@@ -397,17 +395,21 @@ func (r *rootCmd) action() {
 	if *r.config.Verbose {
 		r.config.printConfigs()
 	}
+	zapLogger := r.newLogger()
+	defer zapLogger.Sync()
+	log = zapLogger
+	rootLogger := zapLogger.With(zap.String("component", "root"))
 	err := r.store.Put(configStoreKey, r.config, nil)
 	exitIfError(err, "error save apps config")
 	if log != nil {
-		level.Info(log).Log("event", "saved config to db")
+		rootLogger.Info("saved config to db")
 	}
 
-	level.Info(log).Log("event", "start jwtis service")
+	rootLogger.Info("start jwtis service")
 
 	opts, err := r.config.getKeysRepoOptions()
 	exitIfError(err, "error prepare keys repo options")
-	keysRepo, err := jwtis.NewKeysRepo(&jwtis.KeysRepoOptions{
+	keysRepo, err := keys.NewKeysRepo(&keys.RepoOptions{
 		Store:  r.store,
 		Prefix: keysStorePrefix,
 		Opts:   opts,
@@ -425,52 +427,37 @@ func (r *rootCmd) action() {
 	// grpcs.RunServer(*r.config.Listen, *r.config.ListenGrpc,
 	// 	keysRepo, jose.ContentEncryption(*r.config.ContEnc))
 	cancelInterrupt = make(chan struct{})
-	svc.Run(svc.ServerOpts{
-		MetricsAddr:     *r.config.ListenMetrics,
-		Addr:            *r.config.ListenGrpc,
+	runGroup := &group.Group{}
+	initCancelInterrupt(rootLogger, cancelInterrupt, runGroup)
+	initCtx := &services.InitContext{
 		KeysRepo:        keysRepo,
 		ContEnc:         jose.ContentEncryption(*r.config.ContEnc),
-		Logger:          log,
-		G:               &group.Group{},
+		Logger:          zapLogger,
+		G:               runGroup,
 		CancelInterrupt: cancelInterrupt,
-	})
-
-	// srv, err := server.NewJWTISServer(*r.config.Listen,
-	// 	*r.config.ListenGrpc, keysRepo,
-	// 	&r.logger, jose.ContentEncryption(*r.config.ContEnc))
-	// exitIfError(err, "error in setup http server")
-	// var g errgroup.Group
-	// g.Go(func() error {
-	// 	err = srv.Run()
-	// 	if err != nil && err != http.ErrServerClosed {
-	// 		log.Error().Err(err).Msg("run server error")
-	// 		return err
-	// 	}
-	// 	return nil
-	// })
-	// g.Go(func() error {
-	// 	// Wait for interrupt signal to gracefully shutdown the server with
-	// 	// a timeout of 5 seconds.
-	// 	quit := make(chan os.Signal, 1)
-	// 	// kill (no param) default send syscanll.SIGTERM
-	// 	// kill -2 is syscall.SIGINT
-	// 	// kill -9 is syscall. SIGKILL but can"t be catch, so don't need add it
-	// 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-	// 	<-quit
-	// 	fmt.Print("\r")
-	// 	log.Info().Msg("shutdown server on signal")
-	// 	// TODO: add shutdown timeout app option
-	// 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
-	// 	defer cancel()
-	// 	err := srv.Shutdown(ctx)
-	// 	if err != nil {
-	// 		log.Error().Err(err).Msg("server shutdown error")
-	// 	}
-	// 	log.Info().Msg("http server gracefully shutdown")
-	// 	return nil
-	// })
-	// g.Wait()
-	level.Info(log).Log("event", "jwtis finished work")
+		GrpcRegisterers: nil,
+		ServiceInfos:    nil,
+		Services:        nil,
+		GRPCConfig: services.GRPCConfig{
+			Address:        *r.config.ListenGRPC,
+			MaxRecvMsgSize: 0,
+			MaxSendMsgSize: 0,
+		},
+		Metrics: services.Metrics{
+			MetricsAddr:    "",
+			GRPCHistogram:  false,
+			DisableMetrics: false,
+		},
+	}
+	ctx, err := services.NewContext(context.Background(), initCtx)
+	exitIfError(err, "error create new services context")
+	svr, err := server.New(ctx)
+	exitIfError(err, "error create new server")
+	svr.ServeGRPC()
+	svr.ServeMetrics()
+	err = runGroup.Run()
+	rootLogger.Info("stop run group", zap.Error(err))
+	rootLogger.Info("jwtis finished work")
 }
 
 func (r *rootCmd) after() {
@@ -480,7 +467,6 @@ func (r *rootCmd) after() {
 			r.password[i] = 0
 		}
 		exitIfError(err, "error save apps config")
-		level.Info(log).Log("event", "saved config to db")
 	}
 }
 
@@ -503,6 +489,8 @@ func Register(app *cli.Cli, configBucket, envPrefix string) {
 // `boltdb:./data/store.db`
 // or
 // `consul:127.0.0.1:8500`
+// or
+// `consul:127.0.0.1:8500,168.0.0.1:8500`
 func parseDBConfig(dbConfig string) ([]string, error) {
 	ret := []string{}
 	// i := strings.Index(dbConfig, ":")
@@ -580,17 +568,21 @@ func (r *rootCmd) unmarshalConfig() (*Config, error) {
 	// default values are set in NewConfig() func
 	appConfig := &Config{
 		Options: Options{
-			HTTPConf: HTTPConf{
-				ListenMetrics: nil,
-				TLS:           nil,
-				TLSConfig: TLSConfig{
-					CertFile:   nil,
-					KeyFile:    nil,
-					CACertFile: nil,
-				},
+			TLS: nil,
+			TLSConfig: TLSConfig{
+				CertFile:   nil,
+				KeyFile:    nil,
+				CACertFile: nil,
 			},
-			GrpcConf: GrpcConf{
-				ListenGrpc: nil,
+			GRPCConf: GRPCConf{
+				ListenGRPC:     nil,
+				MaxRecvMsgSize: 0,
+				MaxSendMsgSize: 0,
+			},
+			MetricsConf: MetricsConf{
+				ListenMetrics:  nil,
+				GRPCHistogram:  false,
+				DisableMetrics: false,
 			},
 			KeyGeneration: KeyGeneration{
 				Sign: Sign{

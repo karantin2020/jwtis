@@ -46,6 +46,12 @@ type PrivPubKeySet struct {
 	Pub  jose.JSONWebKey
 }
 
+// KeyOptions represent the set of option to create sig or enc keys
+type KeyOptions struct {
+	Use, Alg string
+	Bits     int
+}
+
 // KeygenSig generates keypair for corresponding SignatureAlgorithm.
 func KeygenSig(alg jose.SignatureAlgorithm, bits int) (crypto.PublicKey, crypto.PrivateKey, error) {
 	switch alg {

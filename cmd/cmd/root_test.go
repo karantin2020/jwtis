@@ -8,7 +8,7 @@ import (
 	kitlog "github.com/go-kit/kit/log"
 
 	cli "github.com/jawher/mow.cli"
-	"github.com/karantin2020/jwtis"
+	"github.com/karantin2020/jwtis/pkg/repos/keys"
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/assert"
 )
@@ -89,7 +89,7 @@ func TestRegister(t *testing.T) {
 			assert.Equal(t, tt.args.configBucket, rCmd.config.bucketName,
 				"Store config bucket name must be equal to confTestBucket")
 			assert.Equal(t, "127.0.0.1:3435", *rCmd.config.ListenMetrics)
-			assert.Equal(t, "127.0.0.1:3436", *rCmd.config.ListenGrpc)
+			assert.Equal(t, "127.0.0.1:3436", *rCmd.config.ListenGRPC)
 			assert.Equal(t, "72h", *rCmd.config.AuthTTL)
 			assert.Equal(t, "720h", *rCmd.config.RefreshTTL)
 		})
@@ -207,7 +207,7 @@ func Test_rootCmd_newStore(t *testing.T) {
 	type fields struct {
 		config   *Config
 		logger   zerolog.Logger
-		keysRepo jwtis.KeysRepository
+		keysRepo keys.Repository
 	}
 	type args struct {
 		dbType string

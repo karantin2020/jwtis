@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+package jwtis.services.version.v1;
+
+import "google/protobuf/empty.proto";
+import "github.com/gogo/protobuf/gogoproto/gogo.proto";
+
+option go_package = "github.com/karantin2020/jwtis/api/version/v1;version";
+
+service Version {
+  rpc Version(google.protobuf.Empty) returns (VersionResponse);
+}
+
+message VersionResponse {
+  string version = 1;
+  bytes checksum = 2;
+  string lastCommitSHA = 3 [
+    (gogoproto.jsontag) = "lastCommitSHA",
+    (gogoproto.customname) = "LastCommitSHA"
+  ];
+  string lastCommitTime = 4;
+  string buildTime = 5;
+  string gitBranch = 6;
+  string goVersion = 7;
+}

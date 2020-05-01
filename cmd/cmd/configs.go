@@ -7,6 +7,7 @@ import (
 
 	"github.com/abronan/valkeyrie/store"
 	"github.com/karantin2020/jwtis"
+	"github.com/karantin2020/jwtis/pkg/repos/keys"
 	jose "gopkg.in/square/go-jose.v2"
 )
 
@@ -28,9 +29,18 @@ type HTTPConf struct {
 	TLSConfig     `json:"TLSConfig" yaml:"TLSConfig"`
 }
 
-// GrpcConf config
-type GrpcConf struct {
-	ListenGrpc *string `json:"ListenGrpc" yaml:"ListenGrpc"`
+// GRPCConf config
+type GRPCConf struct {
+	ListenGRPC     *string `json:"ListenGRPC" yaml:"ListenGRPC"`
+	MaxRecvMsgSize int     `json:"MaxRecvMsgSize" yaml:"MaxRecvMsgSize"`
+	MaxSendMsgSize int     `json:"MaxSendMsgSize" yaml:"MaxSendMsgSize"`
+}
+
+// MetricsConf config
+type MetricsConf struct {
+	ListenMetrics  *string `json:"ListenMetrics" yaml:"ListenMetrics"` // ip:port to listen to
+	GRPCHistogram  bool    `json:"GRPCHistogram" yaml:"GRPCHistogram"`
+	DisableMetrics bool    `json:"DisableMetrics" yaml:"DisableMetrics"`
 }
 
 // Sign holds default keys generation options
@@ -86,8 +96,10 @@ type setByUser struct {
 
 // Options config
 type Options struct {
-	HTTPConf      `json:"HTTPConf" yaml:"HTTPConf"`
-	GrpcConf      `json:"GrpcConf" yaml:"GrpcConf"`
+	TLS           *bool `json:"TLS" yaml:"TLS"` // Future feature
+	TLSConfig     `json:"TLSConfig" yaml:"TLSConfig"`
+	GRPCConf      `json:"GrpcConf" yaml:"GrpcConf"`
+	MetricsConf   `json:"MetricsConf" yaml:"MetricsConf"`
 	KeyGeneration `json:"KeyGeneration" yaml:"KeyGeneration"`
 	SelfName      *string `json:"SelfName" yaml:"SelfName"` // Name of this service
 
@@ -129,6 +141,7 @@ type Config struct {
 	Options      `json:"Options" yaml:"Options"`
 	StoreConfig  *StoreConfig  `json:"StoreConfig" yaml:"StoreConfig"`
 	LoggerConfig *LoggerConfig `json:"LoggerConfig" yaml:"LoggerConfig"`
+
 	// bucketName holds app bucket name
 	// to store configs and keys
 	bucketName string `yaml:"-"`
@@ -155,6 +168,9 @@ func NewConfig(bucketName string) *Config {
 			LogFileSave:  true,
 		},
 	}
+	p.MaxRecvMsgSize = 0
+	p.MaxSendMsgSize = 0
+	p.GRPCHistogram = true
 	return p
 }
 
@@ -196,8 +212,8 @@ func (c Config) GetStoreConfig() (*store.Config, error) {
 	return conf, nil
 }
 
-func (c Config) getKeysRepoOptions() (*jwtis.DefaultOptions, error) {
-	opts := jwtis.DefaultOptions{
+func (c Config) getKeysRepoOptions() (*keys.DefaultOptions, error) {
+	opts := keys.DefaultOptions{
 		SigAlg:  *c.SigAlg,
 		SigBits: *c.SigBits,
 		EncAlg:  *c.EncAlg,
@@ -227,7 +243,7 @@ func (c *Config) defToNil() {
 		c.ListenMetrics = nil
 	}
 	if !c.listenGrpcSetByUser {
-		c.ListenGrpc = nil
+		c.ListenGRPC = nil
 	}
 	if !c.tlsSetByUser {
 		c.TLS = nil
@@ -298,8 +314,8 @@ func mergeConfig(dst, src *Config) error {
 	if src.ListenMetrics != nil {
 		dst.ListenMetrics = src.ListenMetrics
 	}
-	if src.ListenGrpc != nil {
-		dst.ListenGrpc = src.ListenGrpc
+	if src.ListenGRPC != nil {
+		dst.ListenGRPC = src.ListenGRPC
 	}
 	if src.TLS != nil {
 		dst.TLS = src.TLS
@@ -400,7 +416,7 @@ func mergeConfig(dst, src *Config) error {
 func (c Config) printConfigs() {
 	fmt.Printf("Current configuration:\n")
 	fmt.Printf("  configs.listen:\t%s\n", *c.ListenMetrics)
-	fmt.Printf("  configs.listenGrpc:\t%s\n", *c.ListenGrpc)
+	fmt.Printf("  configs.listenGrpc:\t%s\n", *c.ListenGRPC)
 	fmt.Printf("  configs.tls:\t\t%t\n", *c.TLS)
 	fmt.Printf("  configs.sigAlg:\t%s\n", *c.SigAlg)
 	fmt.Printf("  configs.sigBits:\t%d\n", *c.SigBits)

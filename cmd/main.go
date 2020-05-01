@@ -4,6 +4,7 @@ import (
 	"os"
 
 	"github.com/karantin2020/jwtis/cmd/cmd"
+	"github.com/karantin2020/jwtis/version"
 )
 
 const (
@@ -21,7 +22,7 @@ var (
 func main() {
 	app := cmd.App(appName, appDescription)
 	app.Config(bucketName, envPrefix)
-	app.Version("V version", cmd.BuildDetails())
+	app.Version("V version", version.BuildDetails())
 	// app.Command("version", "get version details", func(cmd *cli.Cmd) {
 	// 	cmd.Action = func() {
 	// 		fmt.Printf("user %q details (detailed mode: %v)\n", *id, *detailed)

@@ -1,22 +1,25 @@
 BIN            = jwtis
 BUILD         ?= $(shell git rev-parse --short HEAD)
-BUILD_DATE    ?= $(shell git log -1 --format=%ai)
+BUILD_DATE    ?= $(shell git log -1 --format=%cI --date=iso-strict)
 BUILD_BRANCH  ?= $(shell git rev-parse --abbrev-ref HEAD)
 BUILD_VERSION ?= $(shell git describe --always --tags)
+BUILD_TIME    ?= $(shell date --iso-8601=seconds)
 BUILD_TAGS    ?=
 GOPATH        ?= $(shell go env GOPATH)
 
-BASEPATH = github.com/karantin2020/jwtis/cmd/cmd
+BASEPATH = github.com/karantin2020/jwtis
+BUILDPATH = ${BASEPATH}/cmd/cmd
 
 export GO111MODULE := off
 
 # Build-time Go variables
-appVersion     = ${BASEPATH}.appVersion
-gitBranch      = ${BASEPATH}.gitBranch
-lastCommitSHA  = ${BASEPATH}.lastCommitSHA
-lastCommitTime = ${BASEPATH}.lastCommitTime
+appVersion     = ${BASEPATH}/version.AppVersion
+gitBranch      = ${BASEPATH}/version.GitBranch
+lastCommitSHA  = ${BASEPATH}/version.LastCommitSHA
+lastCommitTime = ${BASEPATH}/version.LastCommitTime
+buildTime      = ${BASEPATH}/version.BuildTime
 
-BUILD_FLAGS   ?= -ldflags '-s -w -X ${lastCommitSHA}=${BUILD} -X "${lastCommitTime}=${BUILD_DATE}" -X "${appVersion}=${BUILD_VERSION}" -X ${gitBranch}=${BUILD_BRANCH}'
+BUILD_FLAGS   ?= -ldflags '-s -w -X ${lastCommitSHA}=${BUILD} -X "${lastCommitTime}=${BUILD_DATE}" -X "${appVersion}=${BUILD_VERSION}" -X ${gitBranch}=${BUILD_BRANCH} -X ${buildTime}=${BUILD_TIME}'
 
 all: proto openapi
 
@@ -31,6 +34,21 @@ proto:
 		-I${GOPATH}/src/github.com/grpc-ecosystem/grpc-gateway \
 		-I${GOPATH}/src/github.com/envoyproxy/protoc-gen-validate \
 		--gogofaster_out=plugins=grpc,import_path=jwtispb:. api/jwtispb/*.proto
+
+protoapi:
+	@ if ! which protoc > /dev/null; then \
+		echo "error: protoc not installed" >&2; \
+		exit 1; \
+	fi
+	for x in api/*/*/*.proto; \
+	do protoc -I/usr/local/include -I. \
+		-I${GOPATH}/src \
+		-I${GOPATH}/src/github.com/grpc-ecosystem/grpc-gateway/third_party/googleapis \
+		-I${GOPATH}/src/github.com/grpc-ecosystem/grpc-gateway \
+		-I${GOPATH}/src/github.com/envoyproxy/protoc-gen-validate \
+		--gogofaster_out=plugins=grpc,paths=source_relative:. \
+		$$x; done
+
 
 goclay:
 	@ if ! which protoc > /dev/null; then \

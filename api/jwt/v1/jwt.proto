@@ -1,0 +1,47 @@
+syntax = "proto3";
+
+import "github.com/gogo/protobuf/gogoproto/gogo.proto";
+
+option go_package = "github.com/karantin2020/jwtis/api/jwt/v1;jwt";
+package jwtis.services.jwt.v1;
+
+// The JWT issuer service service definition.
+service JWT {
+  rpc NewJWT(NewJWTRequest) returns (NewJWTResponse);
+  rpc RenewJWT(RenewJWTRequest) returns (RenewJWTResponse);
+  rpc RevokeJWT(RevokeJWTRequest) returns (RevokeJWTResponse);
+}
+
+message NewJWTRequest {
+  string kid = 1 [(gogoproto.jsontag) = "kid", (gogoproto.customname) = "KID"];
+  bytes claims = 2 [(gogoproto.jsontag) = "claims,omitempty"];
+}
+
+message NewJWTResponse {
+  string id = 1 [(gogoproto.jsontag) = "id", (gogoproto.customname) = "ID"];
+  string accessToken = 2 [(gogoproto.jsontag) = "access_token"];
+  string refreshToken = 3 [(gogoproto.jsontag) = "refresh_token"];
+  int64 expiry = 4 [(gogoproto.jsontag) = "expiry"];
+}
+
+message RenewJWTRequest {
+  string kid = 1 [(gogoproto.jsontag) = "kid", (gogoproto.customname) = "KID"];
+  string refreshToken = 2 [(gogoproto.jsontag) = "refresh_token"];
+  string refreshStrategy = 3
+      [(gogoproto.jsontag) = "refresh_strategy,omitempty"];
+}
+
+message RenewJWTResponse {
+  string id = 1 [(gogoproto.jsontag) = "id", (gogoproto.customname) = "ID"];
+  string accessToken = 2 [(gogoproto.jsontag) = "access_token"];
+  string refreshToken = 3 [(gogoproto.jsontag) = "refresh_token"];
+  int64 expiry = 4 [(gogoproto.jsontag) = "expiry"];
+}
+
+message RevokeJWTRequest {
+  string kid = 1 [(gogoproto.jsontag) = "kid", (gogoproto.customname) = "KID"];
+  string id = 2 [(gogoproto.jsontag) = "id", (gogoproto.customname) = "ID"];
+  string refreshToken = 3 [(gogoproto.jsontag) = "refresh_token"];
+}
+
+message RevokeJWTResponse {}

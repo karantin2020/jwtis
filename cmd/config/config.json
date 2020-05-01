@@ -1,16 +1,20 @@
 {
   "Options": {
-    "HTTPConf": {
-      "ListenMetrics": "127.0.0.1:4343",
-      "TLS": false,
-      "TLSConfig": {
-        "CertFile": "",
-        "KeyFile": "",
-        "CACertFile": ""
-      }
+    "TLS": false,
+    "TLSConfig": {
+      "CertFile": "",
+      "KeyFile": "",
+      "CACertFile": ""
     },
     "GrpcConf": {
-      "ListenGrpc": "127.0.0.1:40430"
+      "ListenGRPC": "127.0.0.1:40430",
+      "MaxRecvMsgSize": 0,
+      "MaxSendMsgSize": 0
+    },
+    "MetricsConf": {
+      "ListenMetrics": "127.0.0.1:4343",
+      "GRPCHistogram": true,
+      "DisableMetrics": false
     },
     "KeyGeneration": {
       "Sign": {

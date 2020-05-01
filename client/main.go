@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"os"
 
-	client "github.com/karantin2020/jwtis/cmd/client/pkg/client"
-	log "github.com/karantin2020/jwtis/cmd/client/pkg/log"
+	client "github.com/karantin2020/jwtis/client/pkg/client"
+	log "github.com/karantin2020/jwtis/client/pkg/log"
 	"go.uber.org/zap"
 )
 

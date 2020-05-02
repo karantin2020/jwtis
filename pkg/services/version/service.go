@@ -34,7 +34,7 @@ func Register() *services.ServiceInfo {
 func FromContext(ctx context.Context) (api.VersionServer, error) {
 	init, err := services.FromContext(ctx)
 	if err != nil {
-		return nil, errors.Wrap(err, "keys: service context is not found")
+		return nil, errors.Wrap(err, "version: service context is not found")
 	}
 	return FromInitContext(init)
 }

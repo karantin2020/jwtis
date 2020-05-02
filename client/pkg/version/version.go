@@ -23,6 +23,11 @@ var (
 	BuildTime string
 )
 
+var (
+	checksum  = ExecutableChecksum()
+	goVersion = runtime.Version()
+)
+
 // BuildDetails returns a string containing details about the JWTIS binary.
 func BuildDetails() string {
 	licenseInfo := `Licensed under the MIT License`
@@ -37,8 +42,8 @@ func BuildDetails() string {
 %s.
 Copyright 2018-2020 @karantin2020.
 `,
-		AppVersion, ExecutableChecksum(), LastCommitSHA, LastCommitTime, BuildTime,
-		GitBranch, runtime.Version(), licenseInfo)
+		AppVersion, checksum, LastCommitSHA, LastCommitTime, BuildTime,
+		GitBranch, goVersion, licenseInfo)
 }
 
 // Version returns a string containing the appVersion.

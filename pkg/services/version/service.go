@@ -21,7 +21,10 @@ func Register() *services.ServiceInfo {
 		Type: services.GRPCService,
 		ID:   services.Version,
 		InitFn: func(ctx context.Context) (interface{}, error) {
-			svc := &service{}
+			svc := &service{
+				checksum:  jversion.ExecutableChecksum(),
+				goVersion: runtime.Version(),
+			}
 			return svc, nil
 		},
 	}
@@ -52,6 +55,8 @@ func FromInitContext(init *services.InitContext) (api.VersionServer, error) {
 }
 
 type service struct {
+	checksum  []byte
+	goVersion string
 }
 
 func (s *service) RegisterGRPC(server *grpc.Server) error {
@@ -62,11 +67,11 @@ func (s *service) RegisterGRPC(server *grpc.Server) error {
 func (s *service) Version(ctx context.Context, _ *empty.Empty) (*api.VersionResponse, error) {
 	return &api.VersionResponse{
 		Version:        jversion.AppVersion,
-		Checksum:       jversion.ExecutableChecksum(),
+		Checksum:       s.checksum,
 		LastCommitSHA:  jversion.LastCommitSHA,
 		LastCommitTime: jversion.LastCommitTime,
 		GitBranch:      jversion.GitBranch,
 		BuildTime:      jversion.BuildTime,
-		GoVersion:      runtime.Version(),
+		GoVersion:      s.goVersion,
 	}, nil
 }

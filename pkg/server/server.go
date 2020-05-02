@@ -76,12 +76,11 @@ func New(ctx context.Context) (*Server, error) {
 				fullMethodName == "/grpc.health.v1.Health/Watch" {
 				return false
 			}
-
 			// by default everything will be logged
 			return true
 		}),
 		grpc_zap.WithDurationField(func(duration time.Duration) zapcore.Field {
-			return zap.Int64("grpc.time_us", duration.Nanoseconds()/1000)
+			return zap.Int64("grpc.time_ns", duration.Nanoseconds())
 		}),
 	}
 	grpcLogger := logger.With(zap.String("transport", "grpc"))

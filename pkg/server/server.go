@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"time"
 
 	"github.com/pkg/errors"
 	"github.com/soheilhy/cmux"
@@ -18,6 +19,7 @@ import (
 	"github.com/karantin2020/jwtis/pkg/services/healthcheck"
 	promhttp "github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 	"google.golang.org/grpc"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/reflection"
@@ -64,17 +66,35 @@ func New(ctx context.Context) (*Server, error) {
 	}
 	logger.Info("init services", zap.String("operation", "initServices"), zap.String("status", "finished"))
 	// Shared options for the logger, with a custom gRPC code to log level function.
-	opts := []grpc_recovery.Option{
+	recoveryOpts := []grpc_recovery.Option{
 		grpc_recovery.WithRecoveryHandler(panicFunc),
 	}
+	logOpts := []grpc_zap.Option{
+		grpc_zap.WithDecider(func(fullMethodName string, err error) bool {
+			// will not log gRPC calls if it was a call to healthcheck and no error was raised
+			if fullMethodName == "/grpc.health.v1.Health/Check" ||
+				fullMethodName == "/grpc.health.v1.Health/Watch" {
+				return false
+			}
+
+			// by default everything will be logged
+			return true
+		}),
+		grpc_zap.WithDurationField(func(duration time.Duration) zapcore.Field {
+			return zap.Int64("grpc.time_us", duration.Nanoseconds()/1000)
+		}),
+	}
+	grpcLogger := logger.With(zap.String("transport", "grpc"))
 	serverOptions := []grpc.ServerOption{
 		grpc_middleware.WithUnaryServerChain(
 			grpc_prometheus.UnaryServerInterceptor,
-			grpc_recovery.UnaryServerInterceptor(opts...),
+			grpc_recovery.UnaryServerInterceptor(recoveryOpts...),
+			grpc_zap.UnaryServerInterceptor(grpcLogger, logOpts...),
 		),
 		grpc_middleware.WithStreamServerChain(
 			grpc_prometheus.StreamServerInterceptor,
-			grpc_recovery.StreamServerInterceptor(opts...),
+			grpc_recovery.StreamServerInterceptor(recoveryOpts...),
+			grpc_zap.StreamServerInterceptor(grpcLogger, logOpts...),
 		),
 	}
 	if init.MaxRecvMsgSize > 0 {
@@ -96,7 +116,7 @@ func New(ctx context.Context) (*Server, error) {
 			// Create a cmux
 			m = cmux.New(serverConn)
 			serverConnGRPC = m.MatchWithWriters(cmux.HTTP2MatchHeaderFieldSendSettings("content-type", "application/grpc"))
-			serverConnHTTP = m.Match(cmux.HTTP1Fast(), cmux.HTTP2())
+			serverConnHTTP = m.Match(cmux.Any())
 			// serverConnGRPC = m.Match(cmux.HTTP2() /*("content-type", "application/grpc")*/)
 			// serverConnHTTP = m.Match(cmux.HTTP1Fast())
 		} else {

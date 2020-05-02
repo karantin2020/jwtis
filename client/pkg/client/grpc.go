@@ -1,11 +1,14 @@
 package client
 
 import (
+	"strings"
 	"time"
 
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/backoff"
+
+	// import health client for health check function
 	_ "google.golang.org/grpc/health"
 )
 
@@ -16,6 +19,11 @@ const (
 	// DefaultMaxSendMsgSize defines the default maximum message size for
 	// sending protobufs passed over the GRPC API.
 	DefaultMaxSendMsgSize = 16 << 20
+)
+
+var (
+	// ErrConnRefused describes connection refused error
+	ErrConnRefused = errors.New("failed to dial server: connection refused")
 )
 
 // newConnection returns configured client connection
@@ -49,6 +57,9 @@ func newConnection(addr string, copts []grpc.DialOption) (*grpc.ClientConn, erro
 	// defer cancel()
 	conn, err := grpc.Dial(addr, gopts...)
 	if err != nil {
+		if strings.Contains(err.Error(), "connection refused") {
+			return nil, ErrConnRefused
+		}
 		return nil, errors.Wrap(err, "failed to dial server")
 	}
 	return conn, nil

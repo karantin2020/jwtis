@@ -1,4 +1,5 @@
 BIN            = jwtis
+CLIENT_BIN     = jcli
 BUILD         ?= $(shell git rev-parse --short HEAD)
 BUILD_DATE    ?= $(shell git log -1 --format=%cI --date=iso-strict)
 BUILD_BRANCH  ?= $(shell git rev-parse --abbrev-ref HEAD)
@@ -8,18 +9,28 @@ BUILD_TAGS    ?=
 GOPATH        ?= $(shell go env GOPATH)
 
 BASEPATH = github.com/karantin2020/jwtis
-BUILDPATH = ${BASEPATH}/cmd/cmd
+CLIENTPATH = github.com/karantin2020/jwtis/client
+# BUILDPATH = ./cmd
 
 export GO111MODULE := off
 
-# Build-time Go variables
+# Build-time Go variables - server
 appVersion     = ${BASEPATH}/version.AppVersion
 gitBranch      = ${BASEPATH}/version.GitBranch
 lastCommitSHA  = ${BASEPATH}/version.LastCommitSHA
 lastCommitTime = ${BASEPATH}/version.LastCommitTime
 buildTime      = ${BASEPATH}/version.BuildTime
 
+# Build-time Go variables - client
+clientAppVersion     = ${CLIENTPATH}/pkg/version.AppVersion
+clientGitBranch      = ${CLIENTPATH}/pkg/version.GitBranch
+clientLastCommitSHA  = ${CLIENTPATH}/pkg/version.LastCommitSHA
+clientLastCommitTime = ${CLIENTPATH}/pkg/version.LastCommitTime
+clientBuildTime      = ${CLIENTPATH}/pkg/version.BuildTime
+
 BUILD_FLAGS   ?= -ldflags '-s -w -X ${lastCommitSHA}=${BUILD} -X "${lastCommitTime}=${BUILD_DATE}" -X "${appVersion}=${BUILD_VERSION}" -X ${gitBranch}=${BUILD_BRANCH} -X ${buildTime}=${BUILD_TIME}'
+
+CLIENT_BUILD_FLAGS   ?= -ldflags '-s -w -X ${clientLastCommitSHA}=${BUILD} -X "${clientLastCommitTime}=${BUILD_DATE}" -X "${clientAppVersion}=${BUILD_VERSION}" -X ${clientGitBranch}=${BUILD_BRANCH} -X ${clientBuildTime}=${BUILD_TIME}'
 
 all: proto openapi
 
@@ -85,3 +96,6 @@ cleardb:
 
 build:
 	CGO_ENABLED=0 go build $(BUILD_FLAGS) -v -o cmd/${BIN} ./cmd
+
+clientbuild:
+	CGO_ENABLED=0 go build $(CLIENT_BUILD_FLAGS) -v -o client/${CLIENT_BIN} ./client

@@ -59,16 +59,16 @@ type JWTKeysIssuerSet struct {
 
 // InfoSet holds keys info for list request
 type InfoSet struct {
-	KID             string
-	Expiry          int64
-	AuthTTL         int64
-	RefreshTTL      int64
-	RefreshStrategy string
-	Enc             []byte
-	Sig             []byte
-	Locked          bool
-	Valid           bool
-	Expired         bool
+	KID             string `json:"kid"`
+	Expiry          int64  `json:"expiry"`
+	AuthTTL         int64  `json:"authTTL"`
+	RefreshTTL      int64  `json:"refreshTTL"`
+	RefreshStrategy string `json:"refreshStrategy"`
+	Enc             []byte `json:"enc"`
+	Sig             []byte `json:"sig"`
+	Locked          bool   `json:"locked"`
+	Valid           bool   `json:"valid"`
+	Expired         bool   `json:"expired"`
 }
 
 // Expired returns true if JWTKeysIssuerSet is expired
@@ -137,7 +137,7 @@ type DefaultOptions struct {
 
 // Repository holds all jose.JSONWebKey's
 type Repository struct {
-	Keys map[string]JWTKeysIssuerSet
+	// Keys map[string]JWTKeysIssuerSet
 	DefaultOptions
 
 	defSigOptions jwtis.KeyOptions

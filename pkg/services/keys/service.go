@@ -23,7 +23,7 @@ type Service interface {
 	Auth(ctx context.Context, req *AuthRequest) (*AuthResponse, error)
 	Register(ctx context.Context, req *RegisterRequest) (*RegisterResponse, error)
 	UpdateKeys(ctx context.Context, req *UpdateKeysRequest) (*UpdateKeysResponse, error)
-	ListKeys(ctx context.Context, req *ListKeysRequest) ([]ListKeysResponse, error)
+	ListKeys(ctx context.Context, req *ListKeysRequest) ([]*ListKeysResponse, error)
 	DelKeys(ctx context.Context, req *DelKeysRequest) (*DelKeysResponse, error)
 	PublicKeys(ctx context.Context, req *PublicKeysRequest) (*PublicKeysResponse, error)
 }
@@ -166,7 +166,7 @@ func (s *serviceImpl) UpdateKeys(ctx context.Context, req *UpdateKeysRequest) (*
 	}, nil
 }
 
-func (s *serviceImpl) ListKeys(ctx context.Context, req *ListKeysRequest) ([]ListKeysResponse, error) {
+func (s *serviceImpl) ListKeys(ctx context.Context, req *ListKeysRequest) ([]*ListKeysResponse, error) {
 	if s.keysRepo == nil {
 		return nil, errdef.ErrNullKeysRepo
 	}
@@ -174,9 +174,9 @@ func (s *serviceImpl) ListKeys(ctx context.Context, req *ListKeysRequest) ([]Lis
 	if err != nil {
 		return nil, errors.Wrap(errdef.ErrInternal, "listKeys: error request keys: "+err.Error())
 	}
-	listResp := make([]ListKeysResponse, len(resp))
+	listResp := make([]*ListKeysResponse, len(resp), len(resp))
 	for i := range resp {
-		listResp[i] = ListKeysResponse{
+		listResp[i] = &ListKeysResponse{
 			KID:  resp[i].KID,
 			Keys: resp[i],
 		}

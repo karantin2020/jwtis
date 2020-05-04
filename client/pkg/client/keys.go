@@ -1,7 +1,6 @@
 package client
 
 import (
-	"context"
 	"encoding/json"
 	"io"
 
@@ -12,7 +11,7 @@ import (
 	jwt "gopkg.in/square/go-jose.v2/jwt"
 )
 
-func (c *clientImpl) Auth(ctx context.Context, in *keys.AuthRequest) (*keys.AuthResponse, error) {
+func (c *clientImpl) Auth(in *keys.AuthRequest) (*keys.AuthResponse, error) {
 	pbReq := keys.NewPBFromAuthRequest(in)
 	resp, err := c.keysClient.Auth(c.ctx, pbReq, c.callOpts...)
 	if err != nil {
@@ -21,7 +20,7 @@ func (c *clientImpl) Auth(ctx context.Context, in *keys.AuthRequest) (*keys.Auth
 	return keys.NewAuthResponseFromPB(resp), nil
 }
 
-func (c *clientImpl) Register(ctx context.Context, in *keys.RegisterRequest) (*keys.RegisterResponse, error) {
+func (c *clientImpl) Register(in *keys.RegisterRequest) (*keys.RegisterResponse, error) {
 	pbReq := keys.NewPBFromRegisterRequest(in)
 	resp, err := c.keysClient.Register(c.ctx, pbReq, c.callOpts...)
 	if err != nil {
@@ -51,7 +50,7 @@ func (c *clientImpl) Register(ctx context.Context, in *keys.RegisterRequest) (*k
 	return &result, nil
 }
 
-func (c *clientImpl) UpdateKeys(ctx context.Context, in *keys.UpdateKeysRequest) (*keys.UpdateKeysResponse, error) {
+func (c *clientImpl) UpdateKeys(in *keys.UpdateKeysRequest) (*keys.UpdateKeysResponse, error) {
 	pbReq := keys.NewPBFromUpdateKeysRequest(in)
 	resp, err := c.keysClient.UpdateKeys(c.ctx, pbReq, c.callOpts...)
 	if err != nil {
@@ -81,7 +80,7 @@ func (c *clientImpl) UpdateKeys(ctx context.Context, in *keys.UpdateKeysRequest)
 	return &result, nil
 }
 
-func (c *clientImpl) ListKeys(ctx context.Context, in *keys.ListKeysRequest) ([]*keys.ListKeysResponse, error) {
+func (c *clientImpl) ListKeys(in *keys.ListKeysRequest) ([]*keys.ListKeysResponse, error) {
 	listKeys := []*keys.ListKeysResponse{}
 	pbReq := keys.NewPBFromListKeysRequest(in)
 	stream, err := c.keysClient.ListKeys(c.ctx, pbReq, c.callOpts...)
@@ -110,6 +109,7 @@ func (c *clientImpl) ListKeys(ctx context.Context, in *keys.ListKeysRequest) ([]
 		var domResp = keys.ListKeysResponse{
 			KID: message.KID,
 			Keys: keysRepo.InfoSet{
+				KID:             message.KID,
 				Expiry:          message.Expiry,
 				AuthTTL:         message.AuthTTL,
 				RefreshTTL:      message.RefreshTTL,
@@ -125,7 +125,7 @@ func (c *clientImpl) ListKeys(ctx context.Context, in *keys.ListKeysRequest) ([]
 	}
 }
 
-func (c *clientImpl) DelKeys(ctx context.Context, in *keys.DelKeysRequest) (*keys.DelKeysResponse, error) {
+func (c *clientImpl) DelKeys(in *keys.DelKeysRequest) (*keys.DelKeysResponse, error) {
 	pbReq := keys.NewPBFromDelKeysRequest(in)
 	resp, err := c.keysClient.DelKeys(c.ctx, pbReq, c.callOpts...)
 	if err != nil {
@@ -134,7 +134,7 @@ func (c *clientImpl) DelKeys(ctx context.Context, in *keys.DelKeysRequest) (*key
 	return keys.NewDelKeysResponseFromPB(resp), nil
 }
 
-func (c *clientImpl) PublicKeys(ctx context.Context, in *keys.PublicKeysRequest) (*keys.PublicKeysResponse, error) {
+func (c *clientImpl) PublicKeys(in *keys.PublicKeysRequest) (*keys.PublicKeysResponse, error) {
 	pbReq := keys.NewPBFromPublicKeysRequest(in)
 	resp, err := c.keysClient.PublicKeys(c.ctx, pbReq, c.callOpts...)
 	if err != nil {

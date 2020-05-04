@@ -245,10 +245,26 @@ func (s *grpcServer) ListKeys(req *pb.ListKeysRequest, stream pb.Keys_ListKeysSe
 		return err
 	}
 	listResp, err := s.svc.ListKeys(ctx, decReq)
-	for i := range listResp {
-		resp, err := encodeListKeysGRPCResponse(ctx, listResp[i])
+	for _, message := range listResp {
+		sigKey, err := json.Marshal(message.Keys.Sig)
 		if err != nil {
-			return err
+			return errors.Wrap(err, "error marshal Sig key")
+		}
+		encKey, err := json.Marshal(message.Keys.Enc)
+		if err != nil {
+			return errors.Wrap(err, "error marshal Enc key")
+		}
+		var resp = &pb.ListKeysResponse{
+			KID:             message.KID,
+			Expiry:          message.Keys.Expiry,
+			AuthTTL:         message.Keys.AuthTTL,
+			RefreshTTL:      message.Keys.RefreshTTL,
+			RefreshStrategy: message.Keys.RefreshStrategy,
+			PubSigKey:       sigKey,
+			PubEncKey:       encKey,
+			Locked:          message.Keys.Locked,
+			Valid:           message.Keys.Valid,
+			Expired:         message.Keys.Expired,
 		}
 		err = stream.Send(resp)
 		if err != nil {

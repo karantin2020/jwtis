@@ -20,68 +20,68 @@ import (
 
 // AuthRequest message type
 type AuthRequest struct {
-	KID string
+	KID string `json:"kid"`
 }
 
 // AuthResponse message type
 type AuthResponse struct {
-	AuthJWT string
+	AuthJWT string `json:"authJWT"`
 }
 
 // RegisterRequest message type
 type RegisterRequest struct {
-	KID             string
-	SigAlg          string
-	EncAlg          string
-	SigBits         int
-	EncBits         int
-	Expiry          time.Duration
-	AuthTTL         time.Duration
-	RefreshTTL      time.Duration
-	RefreshStrategy string
+	KID             string        `json:"kid"`
+	SigAlg          string        `json:"sigAlg"`
+	EncAlg          string        `json:"encAlg"`
+	SigBits         int           `json:"sigBits"`
+	EncBits         int           `json:"encBits"`
+	Expiry          time.Duration `json:"expiry"`
+	AuthTTL         time.Duration `json:"authTTL"`
+	RefreshTTL      time.Duration `json:"refreshTTL"`
+	RefreshStrategy string        `json:"refreshStrategy"`
 }
 
 // RegisterResponse message type
 type RegisterResponse struct {
-	KID     string `json:"kid"`
-	AuthJWT string
+	KID     string           `json:"kid"`
+	AuthJWT string           `json:"authJWT"`
 	Keys    *keys.SigEncKeys `json:"keys"`
 }
 
 // UpdateKeysRequest message type
 type UpdateKeysRequest struct {
-	KID             string
-	SigAlg          string
-	EncAlg          string
-	SigBits         int
-	EncBits         int
-	Expiry          time.Duration
-	AuthTTL         time.Duration
-	RefreshTTL      time.Duration
-	RefreshStrategy string
+	KID             string        `json:"kid"`
+	SigAlg          string        `json:"sigAlg"`
+	EncAlg          string        `json:"encAlg"`
+	SigBits         int           `json:"sigBits"`
+	EncBits         int           `json:"encBits"`
+	Expiry          time.Duration `json:"expiry"`
+	AuthTTL         time.Duration `json:"authTTL"`
+	RefreshTTL      time.Duration `json:"refreshTTL"`
+	RefreshStrategy string        `json:"refreshStrategy"`
 }
 
 // UpdateKeysResponse message type
 type UpdateKeysResponse struct {
-	KID     string `json:"kid"`
-	AuthJWT string
+	KID     string           `json:"kid"`
+	AuthJWT string           `json:"authJWT"`
 	Keys    *keys.SigEncKeys `json:"keys"`
 }
 
 // ListKeysRequest message type
 type ListKeysRequest struct {
-	Query string
+	Query string `json:"query"`
 }
 
 // ListKeysResponse message type
 type ListKeysResponse struct {
-	KID  string
+	KID  string       `json:"kid"`
 	Keys keys.InfoSet `json:"keys_list"`
 }
 
 // DelKeysRequest message type
 type DelKeysRequest struct {
-	KID string
+	KID string `json:"kid"`
 }
 
 // DelKeysResponse message type
@@ -90,11 +90,11 @@ type DelKeysResponse struct {
 
 // PublicKeysRequest message type
 type PublicKeysRequest struct {
-	KID string
+	KID string `json:"kid"`
 }
 
 // PublicKeysResponse message type
 type PublicKeysResponse struct {
-	KID  string
+	KID  string           `json:"kid"`
 	Keys *keys.SigEncKeys `json:"keys"`
 }

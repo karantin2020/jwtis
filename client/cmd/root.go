@@ -36,7 +36,7 @@ func Cmd(logger *zap.Logger) *cli.Cli {
 	setupOptions()
 	app.Before = before
 	app.Command("v version", "print app version", cli.ActionCommand(printVersion))
-	// app.Version("V version", printVersion())
+	app.Command("k keys", "execute keys operations", keysCmd)
 
 	return app
 }

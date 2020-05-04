@@ -4,8 +4,10 @@ import (
 	"context"
 
 	empty "github.com/golang/protobuf/ptypes/empty"
+	apiJWT "github.com/karantin2020/jwtis/api/jwt/v1"
 	apiKeys "github.com/karantin2020/jwtis/api/keys/v1"
 	apiVersion "github.com/karantin2020/jwtis/api/version/v1"
+	jwt "github.com/karantin2020/jwtis/pkg/services/jwt"
 	keys "github.com/karantin2020/jwtis/pkg/services/keys"
 	"google.golang.org/grpc"
 )
@@ -15,6 +17,7 @@ import (
 type Client interface {
 	VersionClient
 	KeysClient
+	JWTClient
 }
 
 var _ Client = &clientImpl{}
@@ -26,12 +29,19 @@ type VersionClient interface {
 
 // KeysClient is client interface to interact with keys service
 type KeysClient interface {
-	Auth(ctx context.Context, in *keys.AuthRequest) (*keys.AuthResponse, error)
-	Register(ctx context.Context, in *keys.RegisterRequest) (*keys.RegisterResponse, error)
-	UpdateKeys(ctx context.Context, in *keys.UpdateKeysRequest) (*keys.UpdateKeysResponse, error)
-	ListKeys(ctx context.Context, in *keys.ListKeysRequest) ([]*keys.ListKeysResponse, error)
-	DelKeys(ctx context.Context, in *keys.DelKeysRequest) (*keys.DelKeysResponse, error)
-	PublicKeys(ctx context.Context, in *keys.PublicKeysRequest) (*keys.PublicKeysResponse, error)
+	Auth(in *keys.AuthRequest) (*keys.AuthResponse, error)
+	Register(in *keys.RegisterRequest) (*keys.RegisterResponse, error)
+	UpdateKeys(in *keys.UpdateKeysRequest) (*keys.UpdateKeysResponse, error)
+	ListKeys(in *keys.ListKeysRequest) ([]*keys.ListKeysResponse, error)
+	DelKeys(in *keys.DelKeysRequest) (*keys.DelKeysResponse, error)
+	PublicKeys(in *keys.PublicKeysRequest) (*keys.PublicKeysResponse, error)
+}
+
+// JWTClient is client interface to interact with jwt service
+type JWTClient interface {
+	NewJWT(in *jwt.NewJWTRequest) (*jwt.NewJWTResponse, error)
+	RenewJWT(in *jwt.RenewJWTRequest) (*jwt.RenewJWTResponse, error)
+	RevokeJWT(in *jwt.RevokeJWTRequest) (*jwt.RevokeJWTResponse, error)
 }
 
 // New returns configured client
@@ -53,6 +63,7 @@ type clientImpl struct {
 	callOpts      []grpc.CallOption
 	versionClient apiVersion.VersionClient
 	keysClient    apiKeys.KeysClient
+	jwtClient     apiJWT.JWTClient
 	ctx           context.Context
 }
 

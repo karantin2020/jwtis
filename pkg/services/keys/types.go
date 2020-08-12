@@ -55,6 +55,7 @@ type UpdateKeysRequest struct {
 	EncAlg          string        `json:"encAlg"`
 	SigBits         int           `json:"sigBits"`
 	EncBits         int           `json:"encBits"`
+	ContEnc         string        `json:"contEnc"`
 	Expiry          time.Duration `json:"expiry"`
 	AuthTTL         time.Duration `json:"authTTL"`
 	RefreshTTL      time.Duration `json:"refreshTTL"`

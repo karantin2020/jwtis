@@ -53,6 +53,7 @@ func New(addr string, copts ...grpc.DialOption) (Client, error) {
 	}
 	cl.versionClient = apiVersion.NewVersionClient(conn)
 	cl.keysClient = apiKeys.NewKeysClient(conn)
+	cl.jwtClient = apiJWT.NewJWTClient(conn)
 	cl.ctx = context.Background()
 	cl.callOpts = []grpc.CallOption{}
 	return cl, nil

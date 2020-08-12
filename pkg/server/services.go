@@ -6,6 +6,7 @@ import (
 	"github.com/karantin2020/jwtis/pkg/errdef"
 	"github.com/karantin2020/jwtis/pkg/services"
 	"github.com/karantin2020/jwtis/pkg/services/healthcheck"
+	"github.com/karantin2020/jwtis/pkg/services/jwt"
 	"github.com/karantin2020/jwtis/pkg/services/keys"
 	"github.com/karantin2020/jwtis/pkg/services/version"
 	"github.com/pkg/errors"
@@ -25,6 +26,7 @@ func initServices(ctx context.Context) error {
 		version.Register(),
 		healthcheck.Register(),
 		keys.Register(),
+		jwt.Register(),
 	)
 
 	for i := range init.ServiceInfos {

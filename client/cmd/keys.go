@@ -25,7 +25,7 @@ func authCmd(cmd *cli.Cmd) {
 	cmd.StringOptPtr(&in.KID, "kid", "", "Keys ID (kid) value (required)")
 	cmd.Action = func() {
 		if in.KID == "" {
-			log.Error("error call remote Auth", zap.String("error", "kid mst not be empty string"))
+			log.Error("error call remote Auth", zap.String("error", "kid must not be empty string"))
 			cli.Exit(1)
 		}
 		resp, err := remote.Auth(in)
@@ -77,7 +77,7 @@ func registerCmd(cmd *cli.Cmd) {
 			}
 		}
 		if in.KID == "" {
-			log.Error("error call remote Register", zap.String("error", "kid mst not be empty string"))
+			log.Error("error call remote Register", zap.String("error", "kid must not be empty string"))
 			cli.Exit(1)
 		}
 		resp, err := remote.Register(in)
@@ -129,7 +129,7 @@ func updateKeysCmd(cmd *cli.Cmd) {
 			}
 		}
 		if in.KID == "" {
-			log.Error("error call remote UpdateKeys", zap.String("error", "kid mst not be empty string"))
+			log.Error("error call remote UpdateKeys", zap.String("error", "kid must not be empty string"))
 			cli.Exit(1)
 		}
 		resp, err := remote.UpdateKeys(in)
@@ -158,7 +158,7 @@ func delKeysCmd(cmd *cli.Cmd) {
 	cmd.StringOptPtr(&in.KID, "kid", "", "Keys ID (kid) value (required)")
 	cmd.Action = func() {
 		if in.KID == "" {
-			log.Error("error call remote DelKeys", zap.String("error", "kid mst not be empty string"))
+			log.Error("error call remote DelKeys", zap.String("error", "kid must not be empty string"))
 			cli.Exit(1)
 		}
 		_, err := remote.DelKeys(in)
@@ -174,7 +174,7 @@ func publicKeysCmd(cmd *cli.Cmd) {
 	cmd.StringOptPtr(&in.KID, "kid", "", "Keys ID (kid) value (required)")
 	cmd.Action = func() {
 		if in.KID == "" {
-			log.Error("error call remote PublicKeys", zap.String("error", "kid mst not be empty string"))
+			log.Error("error call remote PublicKeys", zap.String("error", "kid must not be empty string"))
 			cli.Exit(1)
 		}
 		resp, err := remote.PublicKeys(in)

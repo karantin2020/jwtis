@@ -6,7 +6,7 @@ import (
 
 	"go.uber.org/zap"
 
-	pb "github.com/karantin2020/jwtis/api/keys/v1"
+	api "github.com/karantin2020/jwtis/api/keys/v1"
 
 	"github.com/karantin2020/jwtis/pkg/errdef"
 	errors "github.com/pkg/errors"
@@ -15,19 +15,19 @@ import (
 type grpcServer struct {
 	logger *zap.Logger
 	svc    Service
-	// pb.UnimplementedKeysServer
+	api.UnimplementedKeysServer
 }
 
 // NewKeysServer creates new KeysServer instance
-func NewKeysServer(service Service, log *zap.Logger) pb.KeysServer {
+func NewKeysServer(service Service, log *zap.Logger) api.KeysServer {
 	return &grpcServer{
-		logger: log,
+		logger: log.With(zap.String("component", "keys_grpc_server")),
 		svc:    service,
 	}
 }
 
 func decodeAuthGRPCRequest(ctx context.Context, req interface{}) (*AuthRequest, error) {
-	pbReq, ok := req.(*pb.AuthRequest)
+	pbReq, ok := req.(*api.AuthRequest)
 	if !ok {
 		err := errors.Wrapf(errdef.ErrNotExpectedGRPCRequestType, "expecting *pb.AuthRequest, received %T", req)
 		return nil, err
@@ -36,7 +36,7 @@ func decodeAuthGRPCRequest(ctx context.Context, req interface{}) (*AuthRequest, 
 	return NewAuthRequestFromPB(pbReq), nil
 }
 
-func encodeAuthGRPCResponse(ctx context.Context, resp interface{}) (*pb.AuthResponse, error) {
+func encodeAuthGRPCResponse(ctx context.Context, resp interface{}) (*api.AuthResponse, error) {
 	domResp, ok := resp.(*AuthResponse)
 	if !ok {
 		err := errors.Wrapf(errdef.ErrNotExpectedGRPCResponseType, "expecting *AuthResponse, received %T", resp)
@@ -46,7 +46,7 @@ func encodeAuthGRPCResponse(ctx context.Context, resp interface{}) (*pb.AuthResp
 }
 
 func decodeRegisterGRPCRequest(ctx context.Context, req interface{}) (*RegisterRequest, error) {
-	pbReq, ok := req.(*pb.RegisterRequest)
+	pbReq, ok := req.(*api.RegisterRequest)
 	if !ok {
 		err := errors.Wrapf(errdef.ErrNotExpectedGRPCRequestType, "expecting *pb.RegisterRequest, received %T", req)
 		return nil, err
@@ -55,13 +55,13 @@ func decodeRegisterGRPCRequest(ctx context.Context, req interface{}) (*RegisterR
 	return NewRegisterRequestFromPB(pbReq), nil
 }
 
-func encodeRegisterGRPCResponse(ctx context.Context, resp interface{}) (*pb.RegisterResponse, error) {
+func encodeRegisterGRPCResponse(ctx context.Context, resp interface{}) (*api.RegisterResponse, error) {
 	msg, ok := resp.(*RegisterResponse)
 	if !ok {
 		err := errors.Wrapf(errdef.ErrNotExpectedGRPCResponseType, "expecting *RegisterResponse, received %T", resp)
 		return nil, err
 	}
-	var result = pb.RegisterResponse{
+	var result = api.RegisterResponse{
 		KID:     msg.KID,
 		AuthJWT: msg.AuthJWT,
 	}
@@ -83,7 +83,7 @@ func encodeRegisterGRPCResponse(ctx context.Context, resp interface{}) (*pb.Regi
 }
 
 func decodeUpdateKeysGRPCRequest(ctx context.Context, req interface{}) (*UpdateKeysRequest, error) {
-	pbReq, ok := req.(*pb.UpdateKeysRequest)
+	pbReq, ok := req.(*api.UpdateKeysRequest)
 	if !ok {
 		err := errors.Wrapf(errdef.ErrNotExpectedGRPCRequestType, "expecting *pb.UpdateKeysRequest, received %T", req)
 		return nil, err
@@ -92,13 +92,13 @@ func decodeUpdateKeysGRPCRequest(ctx context.Context, req interface{}) (*UpdateK
 	return NewUpdateKeysRequestFromPB(pbReq), nil
 }
 
-func encodeUpdateKeysGRPCResponse(ctx context.Context, resp interface{}) (*pb.UpdateKeysResponse, error) {
+func encodeUpdateKeysGRPCResponse(ctx context.Context, resp interface{}) (*api.UpdateKeysResponse, error) {
 	msg, ok := resp.(*UpdateKeysResponse)
 	if !ok {
 		err := errors.Wrapf(errdef.ErrNotExpectedGRPCResponseType, "expecting *UpdateKeysResponse, received %T", resp)
 		return nil, err
 	}
-	var result = pb.UpdateKeysResponse{
+	var result = api.UpdateKeysResponse{
 		KID:     msg.KID,
 		AuthJWT: msg.AuthJWT,
 	}
@@ -121,7 +121,7 @@ func encodeUpdateKeysGRPCResponse(ctx context.Context, resp interface{}) (*pb.Up
 // streaming decoder : nothing to do, just pass it over
 // it will be service responsibility to decode
 func decodeListKeysGRPCRequest(ctx context.Context, req interface{}) (*ListKeysRequest, error) {
-	pbReq, ok := req.(*pb.ListKeysRequest)
+	pbReq, ok := req.(*api.ListKeysRequest)
 	if !ok {
 		err := errors.Wrapf(errdef.ErrNotExpectedGRPCRequestType, "expecting *pb.ListKeysRequest, received %T", req)
 		return nil, err
@@ -132,7 +132,7 @@ func decodeListKeysGRPCRequest(ctx context.Context, req interface{}) (*ListKeysR
 
 // streaming encoder : nothing to do, just pass it over
 // it will be service responsibility to encode
-func encodeListKeysGRPCResponse(ctx context.Context, resp interface{}) (*pb.ListKeysResponse, error) {
+func encodeListKeysGRPCResponse(ctx context.Context, resp interface{}) (*api.ListKeysResponse, error) {
 	domResp, ok := resp.(*ListKeysResponse)
 	if !ok {
 		err := errors.Wrapf(errdef.ErrNotExpectedGRPCResponseType, "expecting *ListKeysResponse, received %T", resp)
@@ -142,7 +142,7 @@ func encodeListKeysGRPCResponse(ctx context.Context, resp interface{}) (*pb.List
 }
 
 func decodeDelKeysGRPCRequest(ctx context.Context, req interface{}) (*DelKeysRequest, error) {
-	pbReq, ok := req.(*pb.DelKeysRequest)
+	pbReq, ok := req.(*api.DelKeysRequest)
 	if !ok {
 		err := errors.Wrapf(errdef.ErrNotExpectedGRPCRequestType, "expecting *pb.DelKeysRequest, received %T", req)
 		return nil, err
@@ -151,7 +151,7 @@ func decodeDelKeysGRPCRequest(ctx context.Context, req interface{}) (*DelKeysReq
 	return NewDelKeysRequestFromPB(pbReq), nil
 }
 
-func encodeDelKeysGRPCResponse(ctx context.Context, resp interface{}) (*pb.DelKeysResponse, error) {
+func encodeDelKeysGRPCResponse(ctx context.Context, resp interface{}) (*api.DelKeysResponse, error) {
 	domResp, ok := resp.(*DelKeysResponse)
 	if !ok {
 		err := errors.Wrapf(errdef.ErrNotExpectedGRPCResponseType, "expecting *DelKeysResponse, received %T", resp)
@@ -161,7 +161,7 @@ func encodeDelKeysGRPCResponse(ctx context.Context, resp interface{}) (*pb.DelKe
 }
 
 func decodePublicKeysGRPCRequest(ctx context.Context, req interface{}) (*PublicKeysRequest, error) {
-	pbReq, ok := req.(*pb.PublicKeysRequest)
+	pbReq, ok := req.(*api.PublicKeysRequest)
 	if !ok {
 		err := errors.Wrapf(errdef.ErrNotExpectedGRPCRequestType, "expecting *pb.PublicKeysRequest, received %T", req)
 		return nil, err
@@ -170,7 +170,7 @@ func decodePublicKeysGRPCRequest(ctx context.Context, req interface{}) (*PublicK
 	return NewPublicKeysRequestFromPB(pbReq), nil
 }
 
-func encodePublicKeysGRPCResponse(ctx context.Context, resp interface{}) (*pb.PublicKeysResponse, error) {
+func encodePublicKeysGRPCResponse(ctx context.Context, resp interface{}) (*api.PublicKeysResponse, error) {
 	domResp, ok := resp.(*PublicKeysResponse)
 	if !ok {
 		err := errors.Wrapf(errdef.ErrNotExpectedGRPCResponseType, "expecting *PublicKeysResponse, received %T", resp)
@@ -184,7 +184,7 @@ func encodePublicKeysGRPCResponse(ctx context.Context, resp interface{}) (*pb.Pu
 	if err != nil {
 		return nil, errors.Wrap(err, "error marshal enc key")
 	}
-	var result = pb.PublicKeysResponse{
+	var result = api.PublicKeysResponse{
 		KID:       domResp.KID,
 		PubSigKey: sigKey,
 		PubEncKey: encKey,
@@ -196,27 +196,22 @@ func encodePublicKeysGRPCResponse(ctx context.Context, resp interface{}) (*pb.Pu
 }
 
 // Auth protobuf implementation : no streaming for Auth
-func (s *grpcServer) Auth(ctx context.Context, req *pb.AuthRequest) (*pb.AuthResponse, error) {
-	decReq, err := decodeAuthGRPCRequest(ctx, req)
-	if err != nil {
-		return nil, err
-	}
+func (s *grpcServer) Auth(ctx context.Context, req *api.AuthRequest) (*api.AuthResponse, error) {
+	decReq := NewAuthRequestFromPB(req)
 	resp, err := s.svc.Auth(ctx, decReq)
 	if err != nil {
+		s.logger.Error("authentication error", zap.String("operation", "auth"), zap.Error(err))
 		return nil, err
 	}
-	pbResp, err := encodeAuthGRPCResponse(ctx, resp)
-	return pbResp, nil
+	return NewPBFromAuthResponse(resp), nil
 }
 
 // Register protobuf implementation : no streaming for Register
-func (s *grpcServer) Register(ctx context.Context, req *pb.RegisterRequest) (*pb.RegisterResponse, error) {
-	decReq, err := decodeRegisterGRPCRequest(ctx, req)
-	if err != nil {
-		return nil, err
-	}
+func (s *grpcServer) Register(ctx context.Context, req *api.RegisterRequest) (*api.RegisterResponse, error) {
+	decReq := NewRegisterRequestFromPB(req)
 	resp, err := s.svc.Register(ctx, decReq)
 	if err != nil {
+		s.logger.Error("register error", zap.String("operation", "register"), zap.Error(err))
 		return nil, err
 	}
 	pbResp, err := encodeRegisterGRPCResponse(ctx, resp)
@@ -224,13 +219,11 @@ func (s *grpcServer) Register(ctx context.Context, req *pb.RegisterRequest) (*pb
 }
 
 // UpdateKeys protobuf implementation : no streaming for UpdateKeys
-func (s *grpcServer) UpdateKeys(ctx context.Context, req *pb.UpdateKeysRequest) (*pb.UpdateKeysResponse, error) {
-	decReq, err := decodeUpdateKeysGRPCRequest(ctx, req)
-	if err != nil {
-		return nil, err
-	}
+func (s *grpcServer) UpdateKeys(ctx context.Context, req *api.UpdateKeysRequest) (*api.UpdateKeysResponse, error) {
+	decReq := NewUpdateKeysRequestFromPB(req)
 	resp, err := s.svc.UpdateKeys(ctx, decReq)
 	if err != nil {
+		s.logger.Error("update keys error", zap.String("operation", "updateKeys"), zap.Error(err))
 		return nil, err
 	}
 	pbResp, err := encodeUpdateKeysGRPCResponse(ctx, resp)
@@ -238,23 +231,22 @@ func (s *grpcServer) UpdateKeys(ctx context.Context, req *pb.UpdateKeysRequest) 
 }
 
 // ListKeys protobuf implementation : half duplex for ListKeys
-func (s *grpcServer) ListKeys(req *pb.ListKeysRequest, stream pb.Keys_ListKeysServer) error {
+func (s *grpcServer) ListKeys(req *api.ListKeysRequest, stream api.Keys_ListKeysServer) error {
 	ctx := context.Background()
-	decReq, err := decodeListKeysGRPCRequest(ctx, req)
-	if err != nil {
-		return err
-	}
+	decReq := NewListKeysRequestFromPB(req)
 	listResp, err := s.svc.ListKeys(ctx, decReq)
 	for _, message := range listResp {
 		sigKey, err := json.Marshal(message.Keys.Sig)
 		if err != nil {
+			s.logger.Error("marshal sig key error", zap.String("operation", "listKeys"), zap.Error(err))
 			return errors.Wrap(err, "error marshal Sig key")
 		}
 		encKey, err := json.Marshal(message.Keys.Enc)
 		if err != nil {
+			s.logger.Error("marshal enc key error", zap.String("operation", "listKeys"), zap.Error(err))
 			return errors.Wrap(err, "error marshal Enc key")
 		}
-		var resp = &pb.ListKeysResponse{
+		var resp = &api.ListKeysResponse{
 			KID:             message.KID,
 			Expiry:          message.Keys.Expiry,
 			AuthTTL:         message.Keys.AuthTTL,
@@ -275,27 +267,22 @@ func (s *grpcServer) ListKeys(req *pb.ListKeysRequest, stream pb.Keys_ListKeysSe
 }
 
 // DelKeys protobuf implementation : no streaming for DelKeys
-func (s *grpcServer) DelKeys(ctx context.Context, req *pb.DelKeysRequest) (*pb.DelKeysResponse, error) {
-	decReq, err := decodeDelKeysGRPCRequest(ctx, req)
-	if err != nil {
-		return nil, err
-	}
+func (s *grpcServer) DelKeys(ctx context.Context, req *api.DelKeysRequest) (*api.DelKeysResponse, error) {
+	decReq := NewDelKeysRequestFromPB(req)
 	resp, err := s.svc.DelKeys(ctx, decReq)
 	if err != nil {
+		s.logger.Error("delete keys error", zap.String("operation", "delKeys"), zap.Error(err))
 		return nil, err
 	}
-	pbResp, err := encodeDelKeysGRPCResponse(ctx, resp)
-	return pbResp, nil
+	return NewPBFromDelKeysResponse(resp), nil
 }
 
 // PublicKeys protobuf implementation : no streaming for PublicKeys
-func (s *grpcServer) PublicKeys(ctx context.Context, req *pb.PublicKeysRequest) (*pb.PublicKeysResponse, error) {
-	decReq, err := decodePublicKeysGRPCRequest(ctx, req)
-	if err != nil {
-		return nil, err
-	}
+func (s *grpcServer) PublicKeys(ctx context.Context, req *api.PublicKeysRequest) (*api.PublicKeysResponse, error) {
+	decReq := NewPublicKeysRequestFromPB(req)
 	resp, err := s.svc.PublicKeys(ctx, decReq)
 	if err != nil {
+		s.logger.Error("get public keys error", zap.String("operation", "publicKeys"), zap.Error(err))
 		return nil, err
 	}
 	pbResp, err := encodePublicKeysGRPCResponse(ctx, resp)

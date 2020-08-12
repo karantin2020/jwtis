@@ -145,6 +145,7 @@ func (s *serviceImpl) UpdateKeys(ctx context.Context, req *UpdateKeysRequest) (*
 		SigBits:         req.SigBits,
 		EncAlg:          req.EncAlg,
 		EncBits:         req.EncBits,
+		ContEnc:         req.ContEnc,
 		Expiry:          req.Expiry,
 		AuthTTL:         req.AuthTTL,
 		RefreshTTL:      req.RefreshTTL,

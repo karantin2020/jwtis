@@ -33,6 +33,7 @@ import (
 	jose "gopkg.in/square/go-jose.v2"
 	"gopkg.in/yaml.v3"
 
+	tokensRepo "github.com/karantin2020/jwtis/pkg/repos/jwt"
 	"github.com/karantin2020/jwtis/pkg/repos/keys"
 	"github.com/karantin2020/jwtis/pkg/server"
 	"github.com/karantin2020/jwtis/pkg/services"
@@ -409,12 +410,21 @@ func (r *rootCmd) action() {
 
 	opts, err := r.config.getKeysRepoOptions()
 	exitIfError(err, "error prepare keys repo options")
-	keysRepo, err := keys.NewKeysRepo(&keys.RepoOptions{
+	keysRepo, err := keys.New(&keys.RepoOptions{
 		Store:  r.store,
 		Prefix: keysStorePrefix,
 		Opts:   opts,
 	})
 	exitIfError(err, "error create keys repository; exit")
+
+	jwtRepo, err := tokensRepo.New(&tokensRepo.RepoOptions{
+		Store:  r.store,
+		Prefix: tokensStorePrefix,
+		Opts:   &tokensRepo.DefaultOptions{},
+	})
+	exitIfError(err, "error create JWT repository; exit")
+	_ = jwtRepo
+
 	// if err != nil {
 	// 	log.Error().Err(err).Msg("error create keys repository; exit")
 	// 	// err = r.store.Put(configStoreKey, r.config, nil)

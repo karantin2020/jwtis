@@ -109,7 +109,7 @@ func (s *serviceImpl) NewJWT(ctx context.Context, req *NewJWTRequest) (*NewJWTRe
 		return nil, ErrNullKeysRepo
 	}
 	kid := req.KID
-	ok, jwtset, err := s.keysRepo.KeyExists([]byte(kid))
+	ok, keysSet, err := s.keysRepo.KeyExists([]byte(kid))
 	if err != nil {
 		return nil, errors.Wrap(ErrInternal, "NewJWT: check KeyExists error: "+err.Error())
 	}
@@ -132,7 +132,7 @@ func (s *serviceImpl) NewJWT(ctx context.Context, req *NewJWTRequest) (*NewJWTRe
 		req.Claims["iss"] = string(kid)
 	}
 	// define default expiry times
-	ttl := [2]time.Duration{jwtset.AuthTTL, jwtset.RefreshTTL}
+	ttl := [2]time.Duration{keysSet.AuthTTL, keysSet.RefreshTTL}
 
 	privKeys, err := s.keysRepo.GetPrivateKeys(kid)
 	if err != nil {
@@ -195,16 +195,16 @@ func (s *serviceImpl) RenewJWT(ctx context.Context, req *RenewJWTRequest) (*Rene
 	kid := req.KID
 	refreshToken := req.RefreshToken
 	refreshStrategy := req.RefreshStrategy
-	ok, jwtset, err := s.keysRepo.KeyExists([]byte(kid))
+	ok, keysSet, err := s.keysRepo.KeyExists([]byte(kid))
 	if err != nil {
 		return nil, errors.Wrap(ErrInternal, "RenewJWT: KeyExists error: "+err.Error())
 	}
 	if !ok {
 		return nil, ErrKIDNotExists
 	}
-	pubSig := jwtset.Sig.Public()
+	pubSig := keysSet.Sig.Public()
 	claimsMap := make(map[string]interface{})
-	err = jwtis.ClaimsSignedAndEncrypted(&jwtset.Enc, &pubSig, refreshToken, &claimsMap)
+	err = jwtis.ClaimsSignedAndEncrypted(&keysSet.Enc, &pubSig, refreshToken, &claimsMap)
 	if err != nil {
 		return nil, ErrDecryptRefreshToken
 	}
@@ -251,29 +251,29 @@ func (s *serviceImpl) RenewJWT(ctx context.Context, req *RenewJWTRequest) (*Rene
 	}
 
 	// define default expiry times
-	ttl := [2]time.Duration{jwtset.AuthTTL, jwtset.RefreshTTL}
+	ttl := [2]time.Duration{keysSet.AuthTTL, keysSet.RefreshTTL}
 
 	// [TODO] Validate and verify refresh token
 	// Check refresh token expiration
 	// create new auth claims
 
 	claimsMap["exp"] = jwt.NewNumericDate(time.Now().Add(ttl[0]))
-	auth, err := jwtis.JWTSigned(&jwtset.Sig, claimsMap)
+	auth, err := jwtis.JWTSigned(&keysSet.Sig, claimsMap)
 	if err != nil {
 		return nil, errors.Wrap(ErrInternal, "RenewJWT: JWTSigned error: "+err.Error())
 	}
 
-	if jwtset.RefreshStrategy == StrategyRefreshBoth || refreshStrategy == StrategyRefreshBoth {
+	if keysSet.RefreshStrategy == StrategyRefreshBoth || refreshStrategy == StrategyRefreshBoth {
 		claimsMap["exp"] = jwt.NewNumericDate(time.Now().Add(ttl[1]))
-		refreshToken, err = jwtis.JWTSignedAndEncrypted(s.defContEnc, &jwtset.Enc, &jwtset.Sig, claimsMap)
+		refreshToken, err = jwtis.JWTSignedAndEncrypted(s.defContEnc, &keysSet.Enc, &keysSet.Sig, claimsMap)
 		if err != nil {
 			return nil, errors.Wrap(ErrInternal, "RenewJWT: JWTSignedAndEncrypted error "+err.Error())
 		}
 	}
-	if jwtset.RefreshStrategy == StrategyRefreshOnExpire || refreshStrategy == StrategyRefreshOnExpire {
+	if keysSet.RefreshStrategy == StrategyRefreshOnExpire || refreshStrategy == StrategyRefreshOnExpire {
 		if float64(float64(time.Second*time.Duration(int64(nExp)-time.Now().Unix()))/float64(ttl[1])) < 0.3 {
 			claimsMap["exp"] = jwt.NewNumericDate(time.Now().Add(ttl[1]))
-			refreshToken, err = jwtis.JWTSignedAndEncrypted(s.defContEnc, &jwtset.Enc, &jwtset.Sig, claimsMap)
+			refreshToken, err = jwtis.JWTSignedAndEncrypted(s.defContEnc, &keysSet.Enc, &keysSet.Sig, claimsMap)
 			if err != nil {
 				return nil, errors.Wrap(ErrInternal, "RenewJWT: JWTSignedAndEncrypted error "+err.Error())
 			}

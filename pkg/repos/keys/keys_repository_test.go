@@ -102,7 +102,7 @@ func TestKeysRepoFull(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := NewKeysRepo(tt.args.repoOpts)
+			got, err := New(tt.args.repoOpts)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("NewKeysRepo() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -228,7 +228,7 @@ func TestNewKeysRepo(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := NewKeysRepo(tt.args.repoOpts)
+			got, err := New(tt.args.repoOpts)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("NewKeysRepo() error = %v, wantErr %v", err, tt.wantErr)
 				return

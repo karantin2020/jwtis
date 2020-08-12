@@ -41,14 +41,15 @@ var (
 
 // JWTKeysIssuerSet holds keys info
 type JWTKeysIssuerSet struct {
-	KID             []byte          // key id
-	Expiry          jwt.NumericDate // keys expiry time
-	AuthTTL         time.Duration   // token expiry duration
-	RefreshTTL      time.Duration   // token expiry duration
-	RefreshStrategy string          // optional, values are: 'refreshBoth', 'refreshOnExpire', 'noRefresh' (default)
-	Enc             jose.JSONWebKey // enc private key
-	Sig             jose.JSONWebKey // sig private key
-	Locked          bool            // is this keyset locked for further deletion (lost or other reason)
+	KID             []byte                 // key id
+	Expiry          jwt.NumericDate        // keys expiry time
+	AuthTTL         time.Duration          // token expiry duration
+	RefreshTTL      time.Duration          // token expiry duration
+	RefreshStrategy string                 // optional, values are: 'refreshBoth', 'refreshOnExpire', 'noRefresh' (default)
+	Enc             jose.JSONWebKey        // enc private key
+	Sig             jose.JSONWebKey        // sig private key
+	ContEnc         jose.ContentEncryption // content encryption algorithm
+	Locked          bool                   // is this keyset locked for further deletion (lost or other reason)
 	SigOpts         jwtis.KeyOptions
 	EncOpts         jwtis.KeyOptions
 	pubEnc          jose.JSONWebKey // enc public key
@@ -66,6 +67,7 @@ type InfoSet struct {
 	RefreshStrategy string `json:"refreshStrategy"`
 	Enc             []byte `json:"enc"`
 	Sig             []byte `json:"sig"`
+	ContEnc         string `json:"contEnc"`
 	Locked          bool   `json:"locked"`
 	Valid           bool   `json:"valid"`
 	Expired         bool   `json:"expired"`
@@ -116,11 +118,12 @@ func (k *JWTKeysIssuerSet) attachPublic() {
 
 // SigEncKeys represents a structure that holds public or private JWT keys
 type SigEncKeys struct {
-	Sig             jose.JSONWebKey `json:"sig"`
-	Enc             jose.JSONWebKey `json:"enc"`
-	Expiry          jwt.NumericDate `json:"expiry"`
-	Valid           bool            `json:"valid"`
-	RefreshStrategy string          `json:"refresh_strategy"`
+	Sig             jose.JSONWebKey        `json:"sig"`
+	Enc             jose.JSONWebKey        `json:"enc"`
+	ContEnc         jose.ContentEncryption `json:"contEnc"`
+	Expiry          jwt.NumericDate        `json:"expiry"`
+	Valid           bool                   `json:"valid"`
+	RefreshStrategy string                 `json:"refresh_strategy"`
 }
 
 // DefaultOptions represents default sig ang enc options
@@ -129,6 +132,7 @@ type DefaultOptions struct {
 	SigBits         int           // Default key size in bits for sign
 	EncAlg          string        // Default algorithm to be used for encrypt
 	EncBits         int           // Default key size in bits for encrypt
+	ContEnc         string        // Default content encryption algorithm
 	Expiry          time.Duration // Default value for keys ttl
 	AuthTTL         time.Duration // Default value for auth jwt ttl
 	RefreshTTL      time.Duration // Default value for refresh jwt ttl
@@ -156,8 +160,8 @@ type RepoOptions struct {
 	Opts   *DefaultOptions
 }
 
-// NewKeysRepo returns pointer to new KeysRepository
-func NewKeysRepo(repoOpts *RepoOptions) (*Repository, error) {
+// New returns pointer to new KeysRepository
+func New(repoOpts *RepoOptions) (*Repository, error) {
 	if repoOpts == nil {
 		return nil, fmt.Errorf("error NewKeysRepo: nil pointer to KeysRepoOptions")
 	}
@@ -193,7 +197,7 @@ func NewKeysRepo(repoOpts *RepoOptions) (*Repository, error) {
 		p.prefix = p.prefix + "/"
 	}
 	p.DefaultOptions = *repoOpts.Opts
-	p.DefaultOptions.RefreshStrategy = "noRefresh"
+	p.DefaultOptions.RefreshStrategy = "refreshOnExpire"
 	opts := repoOpts.Opts
 	p.defSigOptions = jwtis.KeyOptions{
 		Use:  "sig",
@@ -288,6 +292,11 @@ func (p *Repository) NewKey(kid string, opts *DefaultOptions) (*SigEncKeys, erro
 	} else {
 		privKeys.RefreshStrategy = p.DefaultOptions.RefreshStrategy
 	}
+	if opts.ContEnc != "" {
+		privKeys.ContEnc = jose.ContentEncryption(opts.ContEnc)
+	} else {
+		privKeys.ContEnc = jose.ContentEncryption(p.DefaultOptions.ContEnc)
+	}
 	return p.AddKey(privKeys)
 }
 
@@ -352,6 +361,7 @@ func (p *Repository) AddKey(key *JWTKeysIssuerSet) (*SigEncKeys, error) {
 	pubKeys := SigEncKeys{
 		Enc:             key.pubEnc,
 		Sig:             key.pubSig,
+		ContEnc:         key.ContEnc,
 		Expiry:          key.Expiry,
 		Valid:           !key.invalid,
 		RefreshStrategy: key.RefreshStrategy,
@@ -393,6 +403,7 @@ func (p *Repository) GetPublicKeys(kid string) (*SigEncKeys, error) {
 	pubKeys := SigEncKeys{
 		Enc:             privKeys.Enc.Public(),
 		Sig:             privKeys.Sig.Public(),
+		ContEnc:         privKeys.ContEnc,
 		Expiry:          privKeys.Expiry,
 		Valid:           privKeys.Valid,
 		RefreshStrategy: privKeys.RefreshStrategy,
@@ -422,6 +433,7 @@ func (p *Repository) GetPrivateKeys(kid string) (SigEncKeys, error) {
 	retKeys := SigEncKeys{
 		Enc:             privKeys.Enc,
 		Sig:             privKeys.Sig,
+		ContEnc:         privKeys.ContEnc,
 		Expiry:          privKeys.Expiry,
 		Valid:           !privKeys.invalid,
 		RefreshStrategy: privKeys.RefreshStrategy,
@@ -460,6 +472,7 @@ func (p *Repository) ListKeys() ([]InfoSet, error) {
 			resErr.Append(fmt.Errorf("error marshal public sig key for kid: '%s': %s", string(kvs[i].KID), err.Error()))
 		}
 		keySet.Sig = b
+		keySet.ContEnc = string(kvs[i].ContEnc)
 		keysList = append(keysList, keySet)
 	}
 	if len(resErr) > 0 {

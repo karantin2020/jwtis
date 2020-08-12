@@ -37,7 +37,7 @@ func Cmd(logger *zap.Logger) *cli.Cli {
 	app.Before = before
 	app.Command("v version", "print app version", cli.ActionCommand(printVersion))
 	app.Command("k keys", "execute keys operations", keysCmd)
-
+	app.Command("j jwt", "jwt operations", jwtCmd)
 	return app
 }
 

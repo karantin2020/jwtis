@@ -154,7 +154,7 @@ func newTestKeysRepo(t *testing.T) *keys.Repository {
 			RefreshStrategy: "noRefresh",
 		},
 	}
-	keysRepo, err := keys.NewKeysRepo(opts)
+	keysRepo, err := keys.New(opts)
 	if err != nil {
 		t.Fatalf("error create new keys repo: %s", err)
 	}

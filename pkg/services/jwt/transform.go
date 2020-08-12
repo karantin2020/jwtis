@@ -10,7 +10,11 @@ func NewNewJWTRequestFromPB(msg *apiJWT.NewJWTRequest) *NewJWTRequest {
 	if msg == nil {
 		return nil
 	}
-	var result NewJWTRequest
+	// claims := msg.GetClaims()
+	result := NewJWTRequest{
+		KID: msg.GetKID(),
+	}
+	// err :=
 	return &result
 }
 

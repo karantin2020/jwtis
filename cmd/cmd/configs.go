@@ -218,6 +218,7 @@ func (c Config) getKeysRepoOptions() (*keys.DefaultOptions, error) {
 		SigBits: *c.SigBits,
 		EncAlg:  *c.EncAlg,
 		EncBits: *c.EncBits,
+		ContEnc: *c.ContEnc,
 	}
 	var err error
 	opts.Expiry, err = time.ParseDuration(*c.Expiry)

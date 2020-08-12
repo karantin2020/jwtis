@@ -64,6 +64,8 @@ func JWTSignedAndEncrypted(contEnc jose.ContentEncryption, enckey *jose.JSONWebK
 		tkey := enckey.Public()
 		enckey = &tkey
 	}
+	fmt.Printf("contEnc: %#v\n", contEnc)
+	fmt.Printf("enckey: %#v\n", *enckey)
 	enc, err := jose.NewEncrypter(
 		contEnc,
 		jose.Recipient{
